@@ -5,7 +5,7 @@
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
-cmds = ["cd rozedesk-app && npm ci --frozen-lockfile"]
+cmds = ["cd rozedesk-app && npm install"]
 
 [phases.build]
 cmds = [
