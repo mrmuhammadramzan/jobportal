@@ -1,16 +1,16 @@
 # nixpacks.toml — Nixpacks build config for Railway
-# Tells Nixpacks to use Node 20 and where the app lives.
+# Monorepo: prisma/ at root, Next.js app in rozedesk-app/
 
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = ["cd rozedesk-app && npm ci --frozen-lockfile"]
 
 [phases.build]
 cmds = [
-  "cd rozedesk-app && node node_modules/prisma/build/index.js generate --schema=../prisma/schema.prisma",
-  "cd rozedesk-app && node node_modules/next/dist/bin/next build"
+  "cd rozedesk-app && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma",
+  "cd rozedesk-app && ./node_modules/.bin/next build"
 ]
 
 [start]

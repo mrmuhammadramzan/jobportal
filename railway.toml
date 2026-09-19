@@ -5,7 +5,6 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "cd rozedesk-app && npm ci --frozen-lockfile && node node_modules/prisma/build/index.js generate --schema=../prisma/schema.prisma && node node_modules/next/dist/bin/next build"
 
 [deploy]
 startCommand = "cd rozedesk-app && node .next/standalone/server.js"
