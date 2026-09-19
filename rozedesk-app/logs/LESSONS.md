@@ -3714,3 +3714,27 @@ The Google OAuth route called `createSupabaseServerClient()` which used `process
 - Railway Variables — switched to `${{MYSQLHOST}}` etc., DB_POOL_SIZE=5, DB_CONNECT_TIMEOUT=30
 
 **Related SOP:** DevOps SOP Hard Rule 1 (no secrets in code), Backend SOP §6 (graceful degradation for optional integrations)
+
+---
+
+## DevOps Lessons (continued)
+
+### 2026-09-19 — Railway private networking: wrong hostname caused all DB pool timeouts
+
+**Root cause:** Railway MySQL service was renamed/registered as `mysql` — so its private hostname is `mysql.railway.internal`. But the `MYSQLHOST` variable exported by Railway still resolved to `affectionate-curiosity.railway.internal` (the project/environment name), which is NOT the correct private DNS name for the MySQL service after rename.
+
+Every DB query failed with `pool timeout: active=0 idle=0` because the mariadb driver could never open a TCP connection to a hostname that didn't resolve.
+
+**Fix:** Hardcode `mysql.railway.internal` directly in `DATABASE_URL` and `DB_HOST` instead of using `${{MYSQLHOST}}`. The MySQL service's Settings tab showed "You can also call me `mysql`" which confirmed the correct short hostname.
+
+**Schema push:** Could not run `prisma db push` from the container because `DATABASE_URL` template wasn't resolving at build time (Railway templates only resolve at runtime). Solution: connected directly to MySQL console (`mysql -u root -p...`) and pasted raw `CREATE TABLE` SQL.
+
+**db.ts build-time safety:** `parseDbUrl()` must return `null` (not throw) when URL is invalid/unresolved, so `next build` doesn't fail when `DATABASE_URL` contains unresolved Railway templates like `${{MYSQLHOST}}`. The caller falls back to a dummy config for build-time static analysis.
+
+**Prevention rules:**
+1. Always verify the private hostname from MySQL service Settings tab ("You can also call me `mysql`"), not from `${{MYSQLHOST}}` which may resolve to a stale/wrong value.
+2. For Railway MySQL: use `mysql.railway.internal` directly, not the `${{MYSQLHOST}}` reference.
+3. Keep a hand-written MySQL schema SQL file (`prisma/mysql-schema.sql`) as a fallback for when Prisma CLI can't reach the DB at deploy time.
+4. After first successful admin login: remove `SETUP_SECRET` from env immediately.
+
+**Files changed:** `src/lib/db.ts` (null-safe parseDbUrl), Railway Variables (hardcoded `mysql.railway.internal`), `prisma/mysql-schema.sql` (created as manual fallback).
