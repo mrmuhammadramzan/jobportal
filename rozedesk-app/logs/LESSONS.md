@@ -3681,3 +3681,36 @@ DB error messages often contain: hostname, DB name, user, query fragments, drive
 - `.env.production.example` — new file
 
 **Related SOP sections:** DevOps SOP Hard Rules 1 (no secrets in code), 4 (private by default), 7 (no monitoring, no launch); §4 (self-contained deployment unit); §6 (secrets management)
+
+---
+
+## DevOps Lessons (continued)
+
+### 2026-09-19 — Railway production: DB pool timeout + Supabase crash on missing env vars
+
+**Issue 1 — DB pool timeout: `active=0 idle=0 limit=2`**
+
+`DATABASE_URL=mysql://root:PASS@${{RAILWAY_PRIVATE_DOMAIN}}:3306/railway` failed silently. The `${{RAILWAY_PRIVATE_DOMAIN}}` reference resolves to the MySQL service's internal hostname, but it's a Railway-internal template that only works when the variable is defined **referencing the MySQL service**. Using it in a raw string meant the hostname was literally `${{RAILWAY_PRIVATE_DOMAIN}}` at runtime — no DNS, no connections, pool immediately exhausted.
+
+**Fix:** Use `${{MYSQLHOST}}`, `${{MYSQLPORT}}`, `${{MYSQLUSER}}`, `${{MYSQL_ROOT_PASSWORD}}`, `${{MYSQL_DATABASE}}` — these are the actual variable names exported by Railway's MySQL service and they resolve correctly via Railway's inter-service variable sharing.
+
+Also set individual `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` so `db.ts` uses the individual-var path (more reliable than URL parsing). Increased `DB_POOL_SIZE=5` and `DB_CONNECT_TIMEOUT=30`.
+
+**Prevention rule:** Never use `${{RAILWAY_PRIVATE_DOMAIN}}` in a raw string. Use the MySQL service's own exported variable names. Always verify which variable names the MySQL service exports by checking its Variables tab.
+
+---
+
+**Issue 2 — Supabase client crash on placeholder env vars**
+
+The Google OAuth route called `createSupabaseServerClient()` which used `process.env.NEXT_PUBLIC_SUPABASE_URL!` — the `!` non-null assertion. When the value was `https://placeholder.supabase.co`, the Supabase SDK validated it and threw `"Your project's URL and Key are required"` crashing the route handler at module level.
+
+**Fix:** `supabase-server.ts` now checks for missing/placeholder values and returns `null`. `api/auth/google/route.ts` checks `SUPABASE_CONFIGURED` at module level and returns a graceful redirect to `/signin?error=oauth_unavailable` instead of crashing.
+
+**Prevention rule:** Any optional integration (OAuth, analytics, storage) must have a "not configured" path that returns a clean response, never a crash. Check for placeholder values, not just null/undefined.
+
+**Files changed:**
+- `src/app/api/auth/google/route.ts` — SUPABASE_CONFIGURED guard
+- `src/lib/supabase-server.ts` — returns null when not configured
+- Railway Variables — switched to `${{MYSQLHOST}}` etc., DB_POOL_SIZE=5, DB_CONNECT_TIMEOUT=30
+
+**Related SOP:** DevOps SOP Hard Rule 1 (no secrets in code), Backend SOP §6 (graceful degradation for optional integrations)
