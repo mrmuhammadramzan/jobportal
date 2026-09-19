@@ -31,6 +31,10 @@ export async function GET(req: NextRequest) {
 
     /* 1. Exchange code for Supabase session */
     const supabase = await createSupabaseServerClient();
+    if (!supabase) {
+      console.error("[/api/auth/callback] Supabase not configured.");
+      return NextResponse.redirect(`${APP_URL}/signin?error=oauth_unavailable`);
+    }
     const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (sessionError || !sessionData.user) {

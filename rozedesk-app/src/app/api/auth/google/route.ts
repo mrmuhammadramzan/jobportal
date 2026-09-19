@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase   = await createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.redirect(`${appUrl}/signin?error=oauth_unavailable`);
+    }
     const redirectTo = `${appUrl}/api/auth/callback`;
 
     const { data, error } = await supabase.auth.signInWithOAuth({
