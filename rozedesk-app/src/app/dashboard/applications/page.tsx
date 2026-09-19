@@ -21,7 +21,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import Button from "@/components/Button";
 import Badge  from "@/components/Badge";
 import SkeletonCard from "@/components/dashboard/SkeletonCard";
-import { ROUTES, jobUrl } from "@/lib/routes";
+import { ROUTES, dashboardJobUrl } from "@/lib/routes";
 
 function Icon({ path, className = "w-5 h-5" }: { path: string; className?: string }) {
   return (
@@ -140,7 +140,7 @@ export default function ApplicationsPage() {
             {loading ? "Loading…" : `${applications.length} total application${applications.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button variant="gradient" size="md" href={ROUTES.jobs} pill
+        <Button variant="gradient" size="md" href={ROUTES.dashboardJobs} pill
           iconRight={<Icon path="M9 5l7 7-7 7" className="w-4 h-4"/>}>
           Find More Jobs
         </Button>
@@ -206,7 +206,7 @@ export default function ApplicationsPage() {
               {search ? "Try different keywords." : "Browse open jobs and apply in one click."}
             </p>
           </div>
-          {!search && <Button variant="gradient" size="md" href={ROUTES.jobs} pill>Browse Jobs</Button>}
+          {!search && <Button variant="gradient" size="md" href={ROUTES.dashboardJobs} pill>Browse Jobs</Button>}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -339,7 +339,7 @@ export default function ApplicationsPage() {
 
                     {/* CTA buttons */}
                     <div className="flex items-center gap-3 flex-wrap">
-                      <Button variant="outline" size="sm" href={jobUrl(app.jobId)} pill>
+                      <Button variant="outline" size="sm" href={dashboardJobUrl(app.jobId)} pill>
                         View Job Listing
                       </Button>
                       {app.status === "PENDING_PAYMENT" && (
