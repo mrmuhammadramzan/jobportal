@@ -15,6 +15,7 @@ import Badge         from "@/components/Badge";
 import SaveJobButton from "@/components/SaveJobButton";
 import { ROUTES, applyJobUrl } from "@/lib/routes";
 import { useFee } from "@/hooks/useFee";
+import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 
 function Icon({ path, className = "w-5 h-5" }: { path: string; className?: string }) {
   return (
@@ -51,6 +52,7 @@ export default function JobDetailPage() {
   const [job,     setJob]     = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound,setNotFound]= useState(false);
+  const appStatus = useApplicationStatus(id);
 
   useEffect(() => {
     if (!id) return;
@@ -204,9 +206,26 @@ export default function JobDetailPage() {
                     </p>
                   </div>
 
-                  <Button variant="gradient" size="lg" href={applyJobUrl(job.id)} fullWidth pill glow>
-                    Apply Now — PKR {appFee}
-                  </Button>
+                  {/* Apply / Already Applied */}
+                  {appStatus.applied ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="w-full px-4 py-3 rounded-[var(--radius-lg)] bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-success)_25%,transparent)] text-center">
+                        <p className="text-sm font-bold text-[var(--color-success)]">✓ Already Applied</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          Status: <span className="font-semibold text-[var(--text-secondary)]">
+                            {(appStatus.status ?? "").replace(/_/g, " ")}
+                          </span>
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" href={ROUTES.applications} fullWidth pill>
+                        View My Application →
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button variant="gradient" size="lg" href={applyJobUrl(job.id)} fullWidth pill glow>
+                      Apply Now — PKR {appFee}
+                    </Button>
+                  )}
 
                   {/* Save job button — shared component */}
                   <SaveJobButton jobId={job.id} variant="detail" />
