@@ -17,12 +17,15 @@ import { PrismaClient } from "@/generated/prisma";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 /* Dummy URL used only at build time so Next.js static analysis doesn't throw.
-   The adapter never actually connects during build — no query is executed.   */
-const BUILD_TIME_DUMMY_URL = "mysql://build:dummy@localhost:3306/build";
+   The adapter never actually connects during build — no query is executed.
+   Accepts any string — even unresolved Railway templates like ${{MYSQLHOST}}.   */
+const BUILD_TIME_DUMMY = {
+  user: "build", password: "dummy", host: "localhost", port: 3306, database: "build",
+};
 
 function parseDbUrl(url: string) {
   const m = url.match(/^mysql:\/\/([^:@]*)(?::([^@]*))?@([^:/]+)(?::(\d+))?\/(.+)$/);
-  if (!m) throw new Error("Invalid DATABASE_URL. Expected: mysql://user:pass@host:port/db");
+  if (!m) return null;  // return null instead of throwing — caller decides fallback
   return {
     user:     decodeURIComponent(m[1] || "root"),
     password: decodeURIComponent(m[2] || ""),
@@ -44,8 +47,8 @@ function createPrismaClient(): PrismaClient {
         password: process.env.DB_PASSWORD           ?? "",
         database: dbName,
       }
-    /* Use DATABASE_URL if set, else fall back to dummy for build-time safety */
-    : parseDbUrl(process.env.DATABASE_URL ?? BUILD_TIME_DUMMY_URL);
+    /* Parse DATABASE_URL — fall back to dummy config if URL is invalid/unresolved */
+    : parseDbUrl(process.env.DATABASE_URL ?? "") ?? BUILD_TIME_DUMMY;
 
   const adapter = new PrismaMariaDb({
     ...config,
