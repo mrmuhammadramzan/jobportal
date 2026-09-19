@@ -1,0 +1,17 @@
+# nixpacks.toml — Nixpacks build config for Railway
+# Tells Nixpacks to use Node 20 and where the app lives.
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["cd rozedesk-app && npm ci --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "cd rozedesk-app && node node_modules/prisma/build/index.js generate --schema=../prisma/schema.prisma",
+  "cd rozedesk-app && node node_modules/next/dist/bin/next build"
+]
+
+[start]
+cmd = "cd rozedesk-app && node .next/standalone/server.js"

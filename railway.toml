@@ -1,14 +1,15 @@
 # railway.toml — Railway deployment config for RozeDesk
-# Repo root is D:\RozeDesk (monorepo: prisma/ + rozedesk-app/)
-# The Next.js app lives in rozedesk-app/
+# Monorepo layout:
+#   /prisma/          — Prisma schema + config (outside app)
+#   /rozedesk-app/    — Next.js app
 
 [build]
 builder = "nixpacks"
-buildCommand = "cd rozedesk-app && npm ci --frozen-lockfile && npm run build"
+buildCommand = "cd rozedesk-app && npm ci --frozen-lockfile && node node_modules/prisma/build/index.js generate --schema=../prisma/schema.prisma && node node_modules/next/dist/bin/next build"
 
 [deploy]
 startCommand = "cd rozedesk-app && node .next/standalone/server.js"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
