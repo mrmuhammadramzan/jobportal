@@ -376,36 +376,69 @@ export default function AdminPaymentsPage() {
 
             {/* Receipt image / PDF */}
             <div className="flex-1 overflow-auto flex items-center justify-center bg-[var(--bg-surface)] p-4">
-              {receiptModal.url.endsWith(".pdf") ? (
-                <iframe
-                  src={receiptModal.url}
-                  className="w-full h-full min-h-[400px] rounded-[var(--radius-lg)]"
-                  title="Payment receipt PDF"
-                />
-              ) : (
-                <img
-                  src={receiptModal.url}
-                  alt="Payment receipt"
-                  className="max-w-full max-h-[70vh] rounded-[var(--radius-lg)] shadow-[var(--shadow-2)] object-contain"
-                  onError={e => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = "none";
-                    const fallback = img.parentElement?.querySelector("[data-fallback]") as HTMLElement | null;
-                    if (fallback) fallback.style.display = "flex";
-                  }}
-                />
-              )}
-              {/* Fallback for stub/missing images */}
-              <div data-fallback style={{ display: "none" }}
-                className="flex-col items-center gap-3 py-12 text-center flex">
-                <Icon path="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" className="w-10 h-10 text-[var(--text-muted)]"/>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">Receipt not available for preview</p>
-                <p className="text-xs text-[var(--text-muted)]">The file may not be accessible from this device.</p>
-                <a href={receiptModal.url} target="_blank" rel="noopener noreferrer"
-                  className="text-xs font-semibold text-[var(--brand-500)] hover:underline">
-                  Try opening directly →
-                </a>
-              </div>
+              {(() => {
+                const url = receiptModal.url;
+                /* Determine file type — data: URLs carry mime type, paths have extension */
+                const isPdf = url.startsWith("data:application/pdf") || url.toLowerCase().includes(".pdf");
+                const isImage = url.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                /* Stale /uploads/ path — file no longer exists on server */
+                const isStale = url.startsWith("/uploads/");
+
+                if (isStale) {
+                  return (
+                    <div className="flex flex-col items-center gap-3 py-12 text-center">
+                      <Icon path="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" className="w-10 h-10 text-[var(--color-warning)]"/>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Receipt no longer available</p>
+                      <p className="text-xs text-[var(--text-muted)] max-w-xs">
+                        This file was stored on the server and was lost during a redeploy.
+                        Ask the applicant to resubmit their receipt.
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (isPdf) {
+                  /* Use <object> instead of <iframe> — bypasses X-Frame-Options DENY header */
+                  return (
+                    <object
+                      data={url}
+                      type="application/pdf"
+                      className="w-full h-full min-h-[400px] rounded-[var(--radius-lg)]"
+                      aria-label="Payment receipt PDF">
+                      <div className="flex flex-col items-center gap-3 py-12 text-center">
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">PDF cannot be previewed here</p>
+                        <a href={url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs font-semibold text-[var(--brand-500)] hover:underline">
+                          Open PDF in new tab →
+                        </a>
+                      </div>
+                    </object>
+                  );
+                }
+
+                if (isImage) {
+                  return (
+                    <img
+                      src={url}
+                      alt="Payment receipt"
+                      className="max-w-full max-h-[70vh] rounded-[var(--radius-lg)] shadow-[var(--shadow-2)] object-contain"
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  );
+                }
+
+                /* Unknown type — show open link */
+                return (
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <Icon path="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" className="w-10 h-10 text-[var(--text-muted)]"/>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Cannot preview this file type</p>
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs font-semibold text-[var(--brand-500)] hover:underline">
+                      Open file directly →
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </>
