@@ -1,8 +1,7 @@
 # nixpacks.toml — Nixpacks build config for Railway
 # Monorepo: prisma/ at root, Next.js app in rozedesk-app/
-
-[phases.setup]
-nixPkgs = ["nodejs_22"]
+# Node version resolved automatically from package.json engines field.
+# Do NOT pin nixPkgs nodejs_* here — Nix package names vary by snapshot.
 
 [phases.install]
 cmds = ["cd rozedesk-app && npm ci --frozen-lockfile"]
