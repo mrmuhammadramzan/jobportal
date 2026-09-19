@@ -1,10 +1,14 @@
 # railway.toml — Railway deployment config for RozeDesk
 # Monorepo layout:
-#   /prisma/          — Prisma schema + config (outside app)
+#   /prisma/          — Prisma schema
 #   /rozedesk-app/    — Next.js app
+#
+# No nixpacks.toml — let Railway auto-detect Node from package.json engines field.
+# Build and start commands are defined here to handle the monorepo structure.
 
 [build]
 builder = "nixpacks"
+buildCommand = "cd rozedesk-app && npm install && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
 
 [deploy]
 startCommand = "cd rozedesk-app && node .next/standalone/server.js"
