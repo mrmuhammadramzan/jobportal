@@ -6,7 +6,7 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "cd rozedesk-app && npm install && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
+buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
 
 [deploy]
 startCommand = "cd rozedesk-app && node .next/standalone/server.js"
