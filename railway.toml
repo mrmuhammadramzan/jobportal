@@ -9,7 +9,10 @@ builder = "nixpacks"
 buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
 
 [deploy]
-startCommand = "cd rozedesk-app && node .next/standalone/server.js"
+# In a monorepo, Next.js standalone output mirrors the full path:
+# .next/standalone/rozedesk-app/server.js  (not .next/standalone/server.js)
+# Static + public files must be copied into standalone for it to serve them.
+startCommand = "cp -r rozedesk-app/.next/static rozedesk-app/.next/standalone/rozedesk-app/.next/static && cp -r rozedesk-app/public rozedesk-app/.next/standalone/rozedesk-app/public && node rozedesk-app/.next/standalone/rozedesk-app/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
