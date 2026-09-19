@@ -348,7 +348,8 @@ function ApplicantsPageInner() {
                             {app.payment.method} · <Badge variant={app.payment.status === "APPROVED" ? "success" : app.payment.status === "REJECTED" ? "error" : "warning"} size="sm">{app.payment.status}</Badge>
                           </p>
                         </div>
-                        {app.payment.receiptUrl && (
+                        {/* now i  remove that  */}
+                        {/* {app.payment.receiptUrl && (
                           <button type="button"
                             onClick={async () => {
                               if (app.payment!.receiptUrl.startsWith("/uploads/")) {
@@ -364,7 +365,7 @@ function ApplicantsPageInner() {
                             className="text-xs font-semibold text-[var(--brand-500)] hover:underline underline-offset-2 flex-shrink-0">
                             View Receipt →
                           </button>
-                        )}
+                        )} */}
                       </div>
                     )}
 

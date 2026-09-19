@@ -181,7 +181,7 @@ export default function AlertsPage() {
         </div>
         <Button variant="gradient" size="md" pill onClick={() => { setShowForm(s => !s); setSaveError(""); setKwError(""); }}
           iconLeft={<Icon path="M12 4v16m8-8H4" className="w-4 h-4" />}>
-          + New Alert
+           New Alert
         </Button>
       </div>
 
