@@ -1,16 +1,13 @@
 # railway.toml — Railway deployment config for RozeDesk
 # Monorepo: /prisma/ at root, /rozedesk-app/ is the Next.js app.
-#
-# NIXPACKS_NODE_VERSION must also be set in Railway Variables UI
-# to guarantee the correct Node version regardless of Nixpacks snapshot.
 
 [build]
 builder = "nixpacks"
-# List standalone contents after build so we can see the exact server.js path in build logs
-buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build && find rozedesk-app/.next/standalone -name 'server.js' 2>/dev/null || find .next/standalone -name 'server.js' 2>/dev/null"
+buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
 
 [deploy]
-startCommand = "node rozedesk-app/.next/standalone/server.js"
+# Use next start directly — no standalone mode needed for Railway's persistent Node runtime.
+startCommand = "cd rozedesk-app && node_modules/.bin/next start -p ${PORT:-3000}"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"

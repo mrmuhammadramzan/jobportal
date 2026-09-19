@@ -14,13 +14,14 @@ const allowedDevOrigins: string[] = !isProd && process.env.ALLOWED_DEV_ORIGINS
 
 const nextConfig: NextConfig = {
   /**
-   * output: "standalone"
-   * Produces a self-contained build in .next/standalone/ that includes
-   * only the server runtime + required node_modules.
-   * Required for Docker / Railway / Render / VPS deployments.
-   * DevOps SOP §4: deployment unit must be self-contained.
+   * output: "standalone" is disabled for Railway deployment.
+   * Railway runs a persistent Node process — standalone is only needed for
+   * Docker images or serverless. Using next start directly is simpler and
+   * avoids monorepo path resolution issues with the standalone server.js.
+   *
+   * Re-enable for Dockerfile-based deployments:
+   * output: "standalone",
    */
-  output: "standalone",
 
   /**
    * Security headers — applied to every response.
