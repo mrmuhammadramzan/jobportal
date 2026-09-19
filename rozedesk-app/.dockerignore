@@ -1,0 +1,33 @@
+# ── Development / local only ──────────────────────────────────────────────────
+.env*
+.env.local
+.env.development*
+.env.production.example
+
+# ── Build artifacts ───────────────────────────────────────────────────────────
+.next/
+node_modules/
+out/
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Dev tooling ───────────────────────────────────────────────────────────────
+.eslintrc*
+eslint.config*
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+
+# ── User uploads (rebuilt at runtime, not baked into image) ──────────────────
+public/uploads/cv/
+public/uploads/receipts/
+
+# ── OS noise ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

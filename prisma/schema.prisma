@@ -1,0 +1,266 @@
+// RozeDesk — Prisma Schema (MySQL / XAMPP)
+// Switched from PostgreSQL to MySQL.
+// MySQL differences:
+//   - No native String[] arrays → use Json for lists
+//   - @db.Text for long strings
+//   - Enums work natively in MySQL
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../rozedesk-app/src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  // NOTE: In Prisma 7, url is configured in prisma7.config.ts NOT here
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Role {
+  SEEKER
+  ADMIN
+}
+
+enum JobStatus {
+  ACTIVE
+  CLOSED
+  DRAFT
+}
+
+enum ApplicationStatus {
+  PENDING_PAYMENT
+  PAYMENT_UNDER_REVIEW
+  PAYMENT_REJECTED
+  CV_UNDER_REVIEW
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  JAZZCASH
+  EASYPAISA
+}
+
+// ─────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(SEEKER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  profile      SeekerProfile?
+  applications Application[]
+  savedJobs    SavedJob[]
+  alerts       Alert[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// SEEKER PROFILE
+// ─────────────────────────────────────────
+model SeekerProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone         String?
+  location      String?
+  summary       String?  @db.Text
+
+  // MySQL: no native arrays — use Json
+  skills        Json     @default("[]")
+
+  linkedin      String?
+  github        String?
+  portfolio     String?
+
+  education     Json     @default("[]")
+  experience    Json     @default("[]")
+  currentProject String? @db.Text
+
+  jobType       String?
+  desiredSalary String?
+  remotePref    String?
+  cvUrl         String?
+  updatedAt     DateTime @updatedAt
+
+  @@map("seeker_profiles")
+}
+
+// ─────────────────────────────────────────
+// JOB LISTING
+// ─────────────────────────────────────────
+model Job {
+  id           String    @id @default(cuid())
+  title        String
+  company      String
+  location     String
+  type         String
+  category     String
+  description  String    @db.Text
+  // MySQL: no native arrays — use Json
+  requirements Json      @default("[]")
+  benefits     Json      @default("[]")
+  salaryMin    Int?
+  salaryMax    Int?
+  deadline     DateTime?
+  status       JobStatus @default(ACTIVE)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  applications Application[]
+  savedBy      SavedJob[]
+
+  @@map("jobs")
+}
+
+// ─────────────────────────────────────────
+// APPLICATION
+// ─────────────────────────────────────────
+model Application {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cvUrl     String            @db.Text
+  status    ApplicationStatus @default(PENDING_PAYMENT)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  payment   Payment?
+
+  @@unique([userId, jobId])
+  @@map("applications")
+}
+
+// ─────────────────────────────────────────
+// PAYMENT
+// ─────────────────────────────────────────
+model Payment {
+  id              String        @id @default(cuid())
+  applicationId   String        @unique
+  application     Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  amount          Int
+  method          PaymentMethod
+  receiptUrl      String        @db.Text
+  receiptRef      String?
+  status          PaymentStatus @default(PENDING)
+  rejectionReason String?       @db.Text
+  submittedAt     DateTime      @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────
+// PAYMENT SETTINGS
+// ─────────────────────────────────────────
+model PaymentSetting {
+  id        String   @id @default(cuid())
+  method    String   @unique
+  phone     String
+  name      String
+  address   String?
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_settings")
+}
+
+// ─────────────────────────────────────────
+// SAVED JOBS
+// ─────────────────────────────────────────
+model SavedJob {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId   String
+  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  savedAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@map("saved_jobs")
+}
+
+// ─────────────────────────────────────────
+// JOB ALERTS
+// ─────────────────────────────────────────
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keywords  String
+  location  String   @default("Any")
+  type      String   @default("Any")
+  frequency String   @default("Daily")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("alerts")
+}
+
+// ─────────────────────────────────────────
+// ANALYTICS SUMMARY
+// ─────────────────────────────────────────
+model AnalyticsSummary {
+  id           String   @id @default(cuid())
+  date         DateTime @unique
+  visitors     Int      @default(0)
+  pageViews    Int      @default(0)
+  applications Int      @default(0)
+  newUsers     Int      @default(0)
+
+  @@map("analytics_summaries")
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String   @db.Text
+  type      String   @default("info")  // info | success | warning | error | applicant | payment
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────
+// PLATFORM SETTINGS
+// ─────────────────────────────────────────
+model PlatformSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}

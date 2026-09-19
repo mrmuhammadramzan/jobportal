@@ -1,0 +1,43 @@
+{
+  "name": "rozedesk-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev":   "next dev",
+    "build": "node ../node_modules/prisma/build/index.js generate && next build",
+    "start": "next start",
+    "lint":  "eslint",
+    "db:push":     "node ../node_modules/prisma/build/index.js db push --config ../prisma7.config.ts",
+    "db:generate": "node ../node_modules/prisma/build/index.js generate --config ../prisma7.config.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-mariadb": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pg": "^8.23.1",
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "mariadb": "^3.5.4",
+    "mysql2": "^3.24.4",
+    "next": "16.3.5",
+    "nodemailer": "^10.0.10",
+    "pg": "^8.23.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
