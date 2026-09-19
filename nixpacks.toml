@@ -2,7 +2,7 @@
 # Monorepo: prisma/ at root, Next.js app in rozedesk-app/
 
 [phases.setup]
-nixPkgs = ["nodejs_22"]
+nixPkgs = ["nodejs_24"]
 
 [phases.install]
 cmds = ["cd rozedesk-app && npm install"]
