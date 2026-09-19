@@ -3,7 +3,7 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/prisma db push --schema=../prisma/schema.prisma --skip-generate && ./node_modules/.bin/next build"
+buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/prisma db push --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
 
 [deploy]
 # Use next start directly — no standalone mode needed for Railway's persistent Node runtime.
