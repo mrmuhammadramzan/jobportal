@@ -275,7 +275,8 @@ export default function AdminPaymentsPage() {
                           setReceiptLoading(true);
                           try {
                             let url = r.receiptUrl;
-                            if (!r.receiptUrl.startsWith("/uploads/")) {
+                            /* data: URLs are already usable — open directly */
+                            if (!url.startsWith("data:") && !url.startsWith("/uploads/")) {
                               const res = await fetch(`/api/admin/file?path=${encodeURIComponent(r.receiptUrl)}`, {
                                 headers: { Authorization: `Bearer ${localStorage.getItem("rozedesk-token") ?? ""}` },
                                 credentials: "include",

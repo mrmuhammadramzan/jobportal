@@ -18,21 +18,35 @@ async function getAppFee(): Promise<number> {
 }
 
 async function uploadOrStub(file: File, folder: "cv" | "receipts", userId: string, jobId: string): Promise<string> {
+  /* Option 1: Supabase Storage (production — persistent, cloud) */
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const { uploadFile } = await import("@/lib/storage");
     return uploadFile(file, folder, userId, jobId);
   }
-  const ext      = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const filename = `${userId}_${jobId}_${Date.now()}.${ext}`;
-  const webPath  = `/uploads/${folder}/${filename}`;
-  try {
-    const { writeFile, mkdir } = await import("fs/promises");
-    const { join }             = await import("path");
-    const dir = join(process.cwd(), "public", "uploads", folder);
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
-  } catch (e) { console.error("[uploadOrStub]", e); }
-  return webPath;
+
+  /* Option 2: Local filesystem (dev only — NOT persistent on Railway/containers) */
+  if (process.env.NODE_ENV !== "production") {
+    const ext      = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const filename = `${userId}_${jobId}_${Date.now()}.${ext}`;
+    const webPath  = `/uploads/${folder}/${filename}`;
+    try {
+      const { writeFile, mkdir } = await import("fs/promises");
+      const { join }             = await import("path");
+      const dir = join(process.cwd(), "public", "uploads", folder);
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
+    } catch (e) { console.error("[uploadOrStub] local write failed:", e); }
+    return webPath;
+  }
+
+  /* Option 3: Base64 data URL stored in DB (production fallback when no cloud storage)
+     Works on any platform — no filesystem dependency.
+     Trade-off: larger DB rows. Suitable for receipts (<10MB) and CVs (<5MB).
+     Set SUPABASE_SERVICE_ROLE_KEY to use cloud storage instead.           */
+  const arrayBuf   = await file.arrayBuffer();
+  const base64     = Buffer.from(arrayBuf).toString("base64");
+  const mimeType   = file.type || "application/octet-stream";
+  return `data:${mimeType};base64,${base64}`;
 }
 
 function err(status: number, message: string) {

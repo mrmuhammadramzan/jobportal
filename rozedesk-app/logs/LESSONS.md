@@ -3738,3 +3738,25 @@ Every DB query failed with `pool timeout: active=0 idle=0` because the mariadb d
 4. After first successful admin login: remove `SETUP_SECRET` from env immediately.
 
 **Files changed:** `src/lib/db.ts` (null-safe parseDbUrl), Railway Variables (hardcoded `mysql.railway.internal`), `prisma/mysql-schema.sql` (created as manual fallback).
+
+---
+
+## DevOps / Backend Lessons (continued)
+
+### 2026-09-19 — Receipt files 404 on Railway: ephemeral filesystem
+
+**What happened:** Payment receipts uploaded via the apply flow were saved to `public/uploads/receipts/` on the container's local filesystem. After a redeploy, Railway spins up a new container with a fresh filesystem — all uploaded files are gone. Visiting the receipt URL returns 404.
+
+**Root cause:** `uploadOrStub()` in `api/applications/route.ts` fell through to the local filesystem write when `SUPABASE_SERVICE_ROLE_KEY` was not set — even in `NODE_ENV=production`. Railway containers are ephemeral by design.
+
+**Fix:** Added a third storage path:
+1. **Supabase Storage** — if `SUPABASE_SERVICE_ROLE_KEY` is set (cloud, persistent, recommended)
+2. **Local filesystem** — only in `NODE_ENV !== "production"` (dev only)
+3. **Base64 data URL in DB** — production fallback when no cloud storage. Stores the file content as `data:mime/type;base64,...` directly in the `receiptUrl` DB column. Works on any platform, no filesystem dependency. Trade-off: larger DB rows (~33% larger than binary).
+
+**Prevention rule:** Never write user-uploaded files to the local filesystem in a production API route. Railway, Vercel, Render, and all containerised platforms use ephemeral filesystems. Always use:
+- Cloud storage (S3, Supabase, R2) for production
+- Base64 data URLs in DB as a fallback if no storage service is configured
+- Local filesystem write only behind `NODE_ENV !== "production"` guard
+
+**Files changed:** `src/app/api/applications/route.ts` — `uploadOrStub()` prod guard + base64 fallback. `src/app/admin/payments/page.tsx` — receipt viewer handles `data:` URLs.
