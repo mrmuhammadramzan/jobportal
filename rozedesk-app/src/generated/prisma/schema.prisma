@@ -144,7 +144,7 @@ model Application {
   user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobId     String
   job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  cvUrl     String            @db.Text
+  cvUrl     String            @db.LongText
   status    ApplicationStatus @default(PENDING_PAYMENT)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
@@ -163,7 +163,7 @@ model Payment {
   application     Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   amount          Int
   method          PaymentMethod
-  receiptUrl      String        @db.Text
+  receiptUrl      String        @db.LongText
   receiptRef      String?
   status          PaymentStatus @default(PENDING)
   rejectionReason String?       @db.Text
