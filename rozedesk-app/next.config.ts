@@ -52,10 +52,11 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  /* Turbopack root fix — only needed in dev due to monorepo double package-lock */
-  ...(isProd ? {} : {
-    turbopack: { root: __dirname },
-  }),
+  /* Turbopack root — always set to this app's directory to prevent Turbopack
+     from walking up to the monorepo root and failing to resolve CSS plugins.
+     Without this, in production Railway builds Turbopack finds /app/package-lock.json
+     (the root lockfile) and looks for @tailwindcss/postcss in the wrong node_modules. */
+  turbopack: { root: __dirname },
 
   /* LAN dev origins — dev only, empty in production */
   ...(allowedDevOrigins.length > 0 && { allowedDevOrigins }),
