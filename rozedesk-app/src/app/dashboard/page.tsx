@@ -16,7 +16,7 @@ import Button    from "@/components/Button";
 import Badge     from "@/components/Badge";
 import MiniChart from "@/components/dashboard/MiniChart";
 import SkeletonCard from "@/components/dashboard/SkeletonCard";
-import { ROUTES, jobUrl, applyJobUrl } from "@/lib/routes";
+import { ROUTES, dashboardJobUrl, applyJobUrl } from "@/lib/routes";
 import { useAuth } from "@/context/AuthContext";
 
 function Icon({ path, className = "w-5 h-5" }: { path: string; className?: string }) {
@@ -156,7 +156,7 @@ export default function SeekerDashboard() {
             }
           </p>
         </div>
-        <Button variant="gradient" size="md" href={ROUTES.jobs} pill glow
+        <Button variant="gradient" size="md" href={ROUTES.dashboardJobs} pill glow
           iconRight={<Icon path="M9 5l7 7-7 7" className="w-4 h-4"/>}>
           Browse Jobs
         </Button>
@@ -246,7 +246,7 @@ export default function SeekerDashboard() {
             <Icon path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" className="w-8 h-8 text-[var(--text-muted)]"/>
             <p className="font-semibold text-[var(--text-primary)]">No applications yet</p>
             <p className="text-[var(--text-secondary)] text-sm">Apply to your first job and it will appear here.</p>
-            <Button variant="gradient" size="md" href={ROUTES.jobs} pill>Browse Jobs</Button>
+            <Button variant="gradient" size="md" href={ROUTES.dashboardJobs} pill>Browse Jobs</Button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -286,7 +286,7 @@ export default function SeekerDashboard() {
           <h2 id="jobs-heading" className="font-bold text-lg text-[var(--text-primary)]">
             Latest Job Listings
           </h2>
-          <Link href={ROUTES.jobs}
+          <Link href={ROUTES.dashboardJobs}
             className="text-sm font-semibold text-[var(--brand-500)] hover:underline underline-offset-2 transition-colors">
             Browse all →
           </Link>
@@ -312,7 +312,7 @@ export default function SeekerDashboard() {
                     {(job.company?.[0] ?? "?").toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <a href={jobUrl(job.id)}
+                    <a href={dashboardJobUrl(job.id)}
                       className="font-semibold text-sm text-[var(--text-primary)] group-hover:text-[var(--brand-500)] transition-colors truncate block hover:underline underline-offset-2">
                       {job.title}
                     </a>
