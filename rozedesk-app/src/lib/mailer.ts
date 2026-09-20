@@ -23,28 +23,33 @@ let _transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 /* ── Transporter — created fresh each call in dev to pick up env changes ── */
 function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
   const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
+  const port = parseInt(process.env.SMTP_PORT ?? "465", 10);
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  /* Trim spaces — Gmail App Passwords are often pasted with spaces between groups */
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
 
   if (!host || !user || !pass) {
     throw new Error(
-      `Email not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in .env.local\n` +
-      `Current values: host=${host} user=${user} pass=${pass ? "***set***" : "NOT SET"}`
+      `Email not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in env.\n` +
+      `Current: host=${host ?? "NOT SET"} port=${port} user=${user ?? "NOT SET"} pass=${pass ? "***set***" : "NOT SET"}`
     );
   }
 
-  /* Singleton in production, fresh in dev so env changes take effect */
+  /* Singleton in production, fresh in dev */
   if (_transporter && process.env.NODE_ENV === "production") return _transporter;
 
   _transporter = nodemailer.createTransport({
     host,
     port,
-    secure: port === 465,
+    secure: port === 465,        /* true = SSL/TLS, false = STARTTLS */
     auth: { user, pass },
-    connectionTimeout: 10_000,
-    greetingTimeout:   5_000,
-    socketTimeout:     15_000,
+    tls: {
+      /* Allow self-signed certs in dev; in prod Railway's network is trusted */
+      rejectUnauthorized: process.env.NODE_ENV === "production",
+    },
+    connectionTimeout: 15_000,
+    greetingTimeout:   10_000,
+    socketTimeout:     20_000,
   });
 
   return _transporter;

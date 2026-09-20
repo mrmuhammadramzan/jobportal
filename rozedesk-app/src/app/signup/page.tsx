@@ -272,14 +272,16 @@ export default function SignUpPage() {
             </p>
           </div>
 
-          {/* Social auth — Google only (GitHub removed) */}
-          <div className="flex flex-col gap-2.5">
-            <SocialAuthButton
-              provider="google"
-              action="signup"
-              onClick={() => { window.location.href = "/api/auth/google"; }}
-            />
-          </div>
+          {/* Social auth — Google. Only shown when NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true */}
+          {process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true" && (
+            <div className="flex flex-col gap-2.5">
+              <SocialAuthButton
+                provider="google"
+                action="signup"
+                onClick={() => { window.location.href = "/api/auth/google"; }}
+              />
+            </div>
+          )}
 
           {/* Divider */}
           <div className="flex items-center gap-3" role="separator" aria-label="Or register with email">
