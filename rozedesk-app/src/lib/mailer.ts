@@ -43,8 +43,10 @@ function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
     port,
     secure: port === 465,        /* true = SSL/TLS, false = STARTTLS */
     auth: { user, pass },
+    /* Force IPv4 — Railway containers don't support IPv6 outbound connections.
+       Without this, Node.js picks the IPv6 address (2607:...) which is unreachable. */
+    family: 4,
     tls: {
-      /* Allow self-signed certs in dev; in prod Railway's network is trusted */
       rejectUnauthorized: process.env.NODE_ENV === "production",
     },
     connectionTimeout: 15_000,
