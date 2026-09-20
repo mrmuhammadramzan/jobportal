@@ -16,14 +16,17 @@
  *   SMTP_FROM      — display name + address, e.g. "RozeDesk <noreply@rozedesk.com>"
  */
 import nodemailer from "nodemailer";
+import dns from "dns/promises";
 
 /* ── Transporter singleton ───────────────────────────────────────────────── */
 let _transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+/* Cache the resolved IPv4 address to avoid repeated DNS lookups */
+let _resolvedHost: string | null = null;
 
 /* ── Transporter — created fresh each call in dev to pick up env changes ── */
-function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
+async function getTransporter(): Promise<ReturnType<typeof nodemailer.createTransport>> {
   const host = process.env.SMTP_HOST;
-  /* Railway blocks port 465 (SMTP/SSL). Use 587 (STARTTLS) instead.
+  /* Railway blocks port 465 (SMTP/SSL). Use 587 (STARTTLS) — always allowed.
      Default changed from 465 → 587 for cloud platform compatibility. */
   const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
   const user = process.env.SMTP_USER;
@@ -40,14 +43,28 @@ function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
   /* Singleton in production, fresh in dev */
   if (_transporter && process.env.NODE_ENV === "production") return _transporter;
 
+  /* Resolve hostname to IPv4 to avoid Railway's broken IPv6 routing.
+     dns.lookup with {family:4} returns an A record, never AAAA.
+     We pass the resolved IP as `host` so Node's net.connect uses IPv4 directly. */
+  if (!_resolvedHost) {
+    try {
+      const { address } = await dns.lookup(host, { family: 4 });
+      _resolvedHost = address;
+      console.log(`[mailer] Resolved ${host} → ${_resolvedHost} (IPv4)`);
+    } catch (e) {
+      console.warn(`[mailer] DNS lookup failed for ${host}, using hostname directly:`, e);
+      _resolvedHost = host;
+    }
+  }
+
   _transporter = nodemailer.createTransport({
-    host,
+    host: _resolvedHost,
     port,
-    secure: port === 465,        /* 465=SSL/TLS  587=STARTTLS */
+    secure: port === 465,
     auth: { user, pass },
-    /* Force IPv4 — Railway containers cannot reach IPv6 outbound addresses */
-    family: 4,
     tls: {
+      /* SNI must match original hostname, not the IP */
+      servername: host,
       rejectUnauthorized: process.env.NODE_ENV === "production",
     },
     connectionTimeout: 15_000,
@@ -131,7 +148,7 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
     </p>
   `);
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from:    FROM,
     to,
     subject: "Welcome to RozeDesk — Your account is ready",
@@ -170,7 +187,7 @@ export async function sendPasswordResetEmail(
     </p>
   `);
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from:    FROM,
     to,
     subject: "Reset your RozeDesk password",
@@ -214,7 +231,7 @@ export async function sendApplicationConfirmationEmail(
     </table>
   `);
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from:    FROM,
     to,
     subject: `Application received — ${jobTitle} at ${company}`,
@@ -252,7 +269,7 @@ export async function sendPaymentApprovedEmail(
     </table>
   `);
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from:    FROM,
     to,
     subject: `Payment approved — ${jobTitle} at ${company}`,
@@ -291,7 +308,7 @@ export async function sendPaymentRejectedEmail(
     </table>
   `);
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from:    FROM,
     to,
     subject: `Payment not accepted — ${jobTitle}`,
