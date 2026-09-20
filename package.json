@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "start": "cd rozedesk-app && node_modules/.bin/next start -p ${PORT:-3000}",
+    "build": "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma && ./node_modules/.bin/next build"
+  },
   "devDependencies": {
     "dotenv": "^17.4.2",
     "prisma": "^7.10.0"
