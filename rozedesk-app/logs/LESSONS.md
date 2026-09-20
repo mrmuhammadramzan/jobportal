@@ -3760,3 +3760,30 @@ Every DB query failed with `pool timeout: active=0 idle=0` because the mariadb d
 - Local filesystem write only behind `NODE_ENV !== "production"` guard
 
 **Files changed:** `src/app/api/applications/route.ts` — `uploadOrStub()` prod guard + base64 fallback. `src/app/admin/payments/page.tsx` — receipt viewer handles `data:` URLs.
+
+---
+
+## DevOps Lessons (continued)
+
+### 2026-09-19 — SMTP email failing on Railway: IPv6 ENETUNREACH
+
+**Error:** `connect ENETUNREACH 2607:f8b0:4023:c03::6d:465 - Local (:::0)`
+
+**Root cause:** Railway containers have IPv6 outbound connections disabled. Gmail's `smtp.gmail.com` hostname resolves to both IPv4 and IPv6 addresses. Node.js's DNS resolution picks the IPv6 address first (standard behaviour). The connection to the IPv6 address fails immediately with `ENETUNREACH` because Railway's network doesn't route IPv6 outbound traffic.
+
+**Fix:** Add `family: 4` to the nodemailer transport config. This forces Node.js to only use IPv4 DNS resolution for the SMTP connection, skipping IPv6 addresses entirely.
+
+```ts
+nodemailer.createTransport({
+  host, port, secure: port === 465,
+  auth: { user, pass },
+  family: 4,  // ← force IPv4 — Railway has no IPv6 outbound
+  ...
+});
+```
+
+**Prevention rule:** Any Node.js app making outbound TCP connections on Railway (SMTP, external APIs, etc.) must use `family: 4` if the target hostname resolves to IPv6. Alternatively, enable "Outbound IPv6" in Railway service Settings → Networking — but this costs more. The `family: 4` fix is free and always works.
+
+**Secondary fix in same session:** `SMTP_PASS` was stored with spaces (`gagk wamx ixxz znlx`) — Gmail App Passwords work both with and without spaces, but to be safe the transporter now calls `.replace(/\s+/g, "")` on the password before use.
+
+**Related SOP:** DevOps SOP Hard Rule 2 (all external calls have timeout and defined failure behavior), Backend SOP §7 (external service errors logged in full).
