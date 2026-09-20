@@ -1,84 +1,74 @@
 /**
  * mailer.ts — RozeDesk transactional email service.
  *
- * Uses Nodemailer with SMTP (works with Gmail App Password, Outlook, or any SMTP).
- * All email templates are defined here — DRY, never inline in API routes.
+ * Uses Resend (HTTPS API) in production — immune to Railway's SMTP port blocks.
+ * Falls back to Nodemailer SMTP in development.
  *
- * Backend SOP §7: every external call has a timeout and defined failure behavior.
- * Backend SOP Hard Rule 2: never swallow errors silently.
- * DRY: one mailer instance, all templates in one file.
+ * ENV VARS:
+ *   RESEND_API_KEY   — Resend API key (production, get from resend.com)
+ *   RESEND_FROM      — From address verified in Resend (e.g. "RozeDesk <noreply@yourdomain.com>")
+ *                      Falls back to SMTP_FROM if not set.
+ *   SMTP_HOST        — SMTP host (dev only, e.g. smtp.gmail.com)
+ *   SMTP_PORT        — SMTP port (dev only, e.g. 587)
+ *   SMTP_USER        — SMTP user (dev only)
+ *   SMTP_PASS        — SMTP app password (dev only)
+ *   SMTP_FROM        — From address (dev only)
  *
- * ENV VARS required in .env.local:
- *   SMTP_HOST      — e.g. smtp.gmail.com
- *   SMTP_PORT      — e.g. 587
- *   SMTP_USER      — your sending email
- *   SMTP_PASS      — app password (NOT your account password)
- *   SMTP_FROM      — display name + address, e.g. "RozeDesk <noreply@rozedesk.com>"
+ * DRY: one mailer module, all templates defined here.
+ * Backend SOP §7: every external call has timeout and defined failure behaviour.
  */
+
 import nodemailer from "nodemailer";
-import dns from "dns/promises";
 
-/* ── Transporter singleton ───────────────────────────────────────────────── */
-let _transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
-/* Cache the resolved IPv4 address to avoid repeated DNS lookups */
-let _resolvedHost: string | null = null;
+/* ── Dynamic Resend import (only used in production when RESEND_API_KEY is set) ── */
+async function sendViaResend(to: string, subject: string, html: string, text: string): Promise<void> {
+  /* Dynamic import so nodemailer-only builds don't require resend package */
+  const { Resend } = await import("resend");
+  const client = new Resend(process.env.RESEND_API_KEY!);
+  const from   = process.env.RESEND_FROM ?? process.env.SMTP_FROM ?? "RozeDesk <onboarding@resend.dev>";
 
-/* ── Transporter — created fresh each call in dev to pick up env changes ── */
-async function getTransporter(): Promise<ReturnType<typeof nodemailer.createTransport>> {
+  const { error } = await client.emails.send({ from, to, subject, html, text });
+  if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
+}
+
+/* ── Nodemailer SMTP (dev fallback) ── */
+async function sendViaSMTP(to: string, subject: string, html: string, text: string): Promise<void> {
   const host = process.env.SMTP_HOST;
-  /* Railway blocks port 465 (SMTP/SSL). Use 587 (STARTTLS) — always allowed.
-     Default changed from 465 → 587 for cloud platform compatibility. */
   const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
   const user = process.env.SMTP_USER;
-  /* Trim spaces — Gmail App Passwords are often pasted with spaces between groups */
   const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
+  const from = process.env.SMTP_FROM ?? "RozeDesk <noreply@rozedesk.com>";
 
   if (!host || !user || !pass) {
     throw new Error(
-      `Email not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in env.\n` +
-      `Current: host=${host ?? "NOT SET"} port=${port} user=${user ?? "NOT SET"} pass=${pass ? "***set***" : "NOT SET"}`
+      `SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS.\n` +
+      `host=${host ?? "NOT SET"} user=${user ?? "NOT SET"} pass=${pass ? "SET" : "NOT SET"}`
     );
   }
 
-  /* Singleton in production, fresh in dev */
-  if (_transporter && process.env.NODE_ENV === "production") return _transporter;
-
-  /* Resolve hostname to IPv4 to avoid Railway's broken IPv6 routing.
-     dns.lookup with {family:4} returns an A record, never AAAA.
-     We pass the resolved IP as `host` so Node's net.connect uses IPv4 directly. */
-  if (!_resolvedHost) {
-    try {
-      const { address } = await dns.lookup(host, { family: 4 });
-      _resolvedHost = address;
-      console.log(`[mailer] Resolved ${host} → ${_resolvedHost} (IPv4)`);
-    } catch (e) {
-      console.warn(`[mailer] DNS lookup failed for ${host}, using hostname directly:`, e);
-      _resolvedHost = host;
-    }
-  }
-
-  _transporter = nodemailer.createTransport({
-    host: _resolvedHost,
-    port,
+  const transporter = nodemailer.createTransport({
+    host, port,
     secure: port === 465,
     auth: { user, pass },
-    tls: {
-      /* SNI must match original hostname, not the IP */
-      servername: host,
-      rejectUnauthorized: process.env.NODE_ENV === "production",
-    },
     connectionTimeout: 15_000,
     greetingTimeout:   10_000,
     socketTimeout:     20_000,
   });
 
-  return _transporter;
+  await transporter.sendMail({ from, to, subject, html, text });
 }
 
-const FROM = process.env.SMTP_FROM ?? "RozeDesk <noreply@rozedesk.com>";
+/* ── Unified send function — Resend in prod, SMTP in dev ── */
+async function send(to: string, subject: string, html: string, text: string): Promise<void> {
+  if (process.env.RESEND_API_KEY) {
+    return sendViaResend(to, subject, html, text);
+  }
+  return sendViaSMTP(to, subject, html, text);
+}
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-/* ── Base HTML wrapper ───────────────────────────────────────────────────── */
+/* ── Base HTML wrapper ─────────────────────────────────────────────────────── */
 function htmlWrapper(body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -91,22 +81,18 @@ function htmlWrapper(body: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:32px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,#2563eb,#0ea5e9);padding:28px 32px;">
             <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">RozeDesk</h1>
             <p style="margin:4px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Pakistan's Job Board</p>
           </td>
         </tr>
-        <!-- Body -->
         <tr><td style="padding:32px;">${body}</td></tr>
-        <!-- Footer -->
         <tr>
           <td style="padding:20px 32px;border-top:1px solid #e5e7eb;background:#f9fafb;">
             <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
               © ${new Date().getFullYear()} RozeDesk · 
-              <a href="${APP_URL}" style="color:#2563eb;text-decoration:none;">rozedesk.com</a> · 
-              Pakistan's trusted job board
+              <a href="${APP_URL}" style="color:#2563eb;text-decoration:none;">rozedesk.com</a>
             </p>
           </td>
         </tr>
@@ -119,13 +105,12 @@ function htmlWrapper(body: string): string {
 
 /* ── Email templates ─────────────────────────────────────────────────────── */
 
-/** Welcome email sent after successful registration */
 export async function sendWelcomeEmail(to: string, name: string): Promise<void> {
   const firstName = name.split(" ")[0];
   const html = htmlWrapper(`
     <h2 style="margin:0 0 8px;color:#111827;font-size:20px;font-weight:700;">Welcome, ${firstName}! 🎉</h2>
     <p style="margin:0 0 16px;color:#6b7280;font-size:14px;line-height:1.6;">
-      Your RozeDesk account is ready. You can now browse thousands of jobs and apply with a single click.
+      Your RozeDesk account is ready. Browse jobs and apply with a single click.
     </p>
     <table cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr>
@@ -136,40 +121,18 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
         </td>
       </tr>
     </table>
-    <p style="margin:0 0 8px;color:#374151;font-size:14px;font-weight:600;">What you can do:</p>
-    <ul style="margin:0;padding-left:20px;color:#6b7280;font-size:14px;line-height:2;">
-      <li>Browse and filter hundreds of job listings</li>
-      <li>Upload your CV to your profile — pre-fills every application</li>
-      <li>Set job alerts to get notified of new matches</li>
-      <li>Track all your applications in one place</li>
-    </ul>
-    <p style="margin:20px 0 0;color:#9ca3af;font-size:12px;">
-      Application fee: <strong style="color:#374151;">PKR ${process.env.APP_FEE_PKR ?? "150"}</strong> per job application (paid via JazzCash or Easypaisa).
-    </p>
   `);
-
-  await (await getTransporter()).sendMail({
-    from:    FROM,
-    to,
-    subject: "Welcome to RozeDesk — Your account is ready",
-    html,
-    text:    `Welcome ${name}! Your RozeDesk account is ready. Browse jobs at ${APP_URL}/jobs`,
-  });
+  await send(to, "Welcome to RozeDesk — Your account is ready", html,
+    `Welcome ${name}! Your RozeDesk account is ready. Browse jobs at ${APP_URL}/jobs`);
 }
 
-/** Password reset email */
-export async function sendPasswordResetEmail(
-  to: string,
-  name: string,
-  resetToken: string
-): Promise<void> {
-  const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`;
+export async function sendPasswordResetEmail(to: string, name: string, resetToken: string): Promise<void> {
+  const resetUrl  = `${APP_URL}/reset-password?token=${resetToken}`;
   const firstName = name.split(" ")[0];
-
   const html = htmlWrapper(`
     <h2 style="margin:0 0 8px;color:#111827;font-size:20px;font-weight:700;">Reset your password</h2>
     <p style="margin:0 0 16px;color:#6b7280;font-size:14px;line-height:1.6;">
-      Hi ${firstName}, we received a request to reset your password. Click the button below — this link expires in <strong>1 hour</strong>.
+      Hi ${firstName}, click the button below to reset your password. This link expires in <strong>1 hour</strong>.
     </p>
     <table cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr>
@@ -180,46 +143,28 @@ export async function sendPasswordResetEmail(
         </td>
       </tr>
     </table>
-    <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Or copy this link into your browser:</p>
+    <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Or copy this link:</p>
     <p style="margin:0 0 16px;color:#2563eb;font-size:12px;word-break:break-all;">${resetUrl}</p>
     <p style="margin:16px 0 0;padding:12px 16px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:13px;">
-      ⚠️ If you didn't request this, ignore this email. Your password won't change.
+      ⚠️ If you didn't request this, ignore this email.
     </p>
   `);
-
-  await (await getTransporter()).sendMail({
-    from:    FROM,
-    to,
-    subject: "Reset your RozeDesk password",
-    html,
-    text:    `Reset your password: ${resetUrl} (expires in 1 hour)`,
-  });
+  await send(to, "Reset your RozeDesk password", html,
+    `Reset your password: ${resetUrl} (expires in 1 hour)`);
 }
 
-/** Application confirmation email sent to seeker after applying */
 export async function sendApplicationConfirmationEmail(
-  to: string,
-  name: string,
-  jobTitle: string,
-  company: string
+  to: string, name: string, jobTitle: string, company: string
 ): Promise<void> {
   const firstName = name.split(" ")[0];
-
   const html = htmlWrapper(`
     <h2 style="margin:0 0 8px;color:#111827;font-size:20px;font-weight:700;">Application submitted ✓</h2>
     <p style="margin:0 0 16px;color:#6b7280;font-size:14px;line-height:1.6;">
-      Hi ${firstName}, your application for <strong style="color:#111827;">${jobTitle}</strong> at <strong style="color:#111827;">${company}</strong> has been received.
+      Hi ${firstName}, your application for <strong>${jobTitle}</strong> at <strong>${company}</strong> has been received.
     </p>
     <div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin:16px 0;">
-      <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">✓ Payment receipt submitted</p>
-      <p style="margin:4px 0 0;color:#166534;font-size:13px;">Admin will verify your payment within a few hours.</p>
+      <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">✓ Payment receipt submitted — under review</p>
     </div>
-    <p style="margin:0 0 8px;color:#374151;font-size:14px;font-weight:600;">What happens next:</p>
-    <ol style="margin:0;padding-left:20px;color:#6b7280;font-size:14px;line-height:2.2;">
-      <li><strong style="color:#374151;">Payment review</strong> — Admin verifies your JazzCash/Easypaisa receipt</li>
-      <li><strong style="color:#374151;">CV review</strong> — Hiring team reviews your CV</li>
-      <li><strong style="color:#374151;">Status update</strong> — You'll be notified of shortlisting or rejection</li>
-    </ol>
     <table cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr>
         <td style="background:#f3f4f6;border-radius:8px;">
@@ -230,34 +175,19 @@ export async function sendApplicationConfirmationEmail(
       </tr>
     </table>
   `);
-
-  await (await getTransporter()).sendMail({
-    from:    FROM,
-    to,
-    subject: `Application received — ${jobTitle} at ${company}`,
-    html,
-    text:    `Your application for ${jobTitle} at ${company} has been received. Track it at ${APP_URL}/dashboard/applications`,
-  });
+  await send(to, `Application received — ${jobTitle} at ${company}`, html,
+    `Your application for ${jobTitle} at ${company} has been received.`);
 }
 
-/** Payment approved notification */
 export async function sendPaymentApprovedEmail(
-  to: string,
-  name: string,
-  jobTitle: string,
-  company: string
+  to: string, name: string, jobTitle: string, company: string
 ): Promise<void> {
   const firstName = name.split(" ")[0];
-
   const html = htmlWrapper(`
     <h2 style="margin:0 0 8px;color:#111827;font-size:20px;font-weight:700;">Payment approved ✓</h2>
     <p style="margin:0 0 16px;color:#6b7280;font-size:14px;line-height:1.6;">
-      Great news, ${firstName}! Your payment for <strong style="color:#111827;">${jobTitle}</strong> at <strong style="color:#111827;">${company}</strong> has been verified.
+      Great news, ${firstName}! Your payment for <strong>${jobTitle}</strong> at <strong>${company}</strong> has been verified. Your CV is now under review.
     </p>
-    <div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin:16px 0;">
-      <p style="margin:0;color:#166534;font-size:14px;font-weight:600;">✓ Your CV is now under review</p>
-      <p style="margin:4px 0 0;color:#166534;font-size:13px;">The hiring team will review your application soon.</p>
-    </div>
     <table cellpadding="0" cellspacing="0" style="margin:24px 0;">
       <tr>
         <td style="background:linear-gradient(135deg,#2563eb,#0ea5e9);border-radius:8px;">
@@ -268,51 +198,24 @@ export async function sendPaymentApprovedEmail(
       </tr>
     </table>
   `);
-
-  await (await getTransporter()).sendMail({
-    from:    FROM,
-    to,
-    subject: `Payment approved — ${jobTitle} at ${company}`,
-    html,
-    text:    `Your payment for ${jobTitle} at ${company} has been approved. Your CV is now under review.`,
-  });
+  await send(to, `Payment approved — ${jobTitle} at ${company}`, html,
+    `Your payment for ${jobTitle} at ${company} has been approved.`);
 }
 
-/** Payment rejected notification */
 export async function sendPaymentRejectedEmail(
-  to: string,
-  name: string,
-  jobTitle: string,
-  reason: string
+  to: string, name: string, jobTitle: string, reason: string
 ): Promise<void> {
   const firstName = name.split(" ")[0];
-
   const html = htmlWrapper(`
     <h2 style="margin:0 0 8px;color:#111827;font-size:20px;font-weight:700;">Payment not accepted</h2>
     <p style="margin:0 0 16px;color:#6b7280;font-size:14px;line-height:1.6;">
-      Hi ${firstName}, unfortunately your payment receipt for <strong style="color:#111827;">${jobTitle}</strong> was not accepted.
+      Hi ${firstName}, your payment receipt for <strong>${jobTitle}</strong> was not accepted.
     </p>
     <div style="padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin:16px 0;">
-      <p style="margin:0;color:#991b1b;font-size:14px;font-weight:600;">Reason:</p>
-      <p style="margin:4px 0 0;color:#991b1b;font-size:13px;">${reason}</p>
+      <p style="margin:0;color:#991b1b;font-size:14px;font-weight:600;">Reason: ${reason}</p>
     </div>
-    <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Please resubmit your application with a valid receipt.</p>
-    <table cellpadding="0" cellspacing="0" style="margin:8px 0;">
-      <tr>
-        <td style="background:linear-gradient(135deg,#2563eb,#0ea5e9);border-radius:8px;">
-          <a href="${APP_URL}/jobs" style="display:inline-block;padding:12px 28px;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;">
-            Browse Jobs Again →
-          </a>
-        </td>
-      </tr>
-    </table>
+    <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Please resubmit with a valid receipt.</p>
   `);
-
-  await (await getTransporter()).sendMail({
-    from:    FROM,
-    to,
-    subject: `Payment not accepted — ${jobTitle}`,
-    html,
-    text:    `Your payment for ${jobTitle} was not accepted. Reason: ${reason}`,
-  });
+  await send(to, `Payment not accepted — ${jobTitle}`, html,
+    `Your payment for ${jobTitle} was not accepted. Reason: ${reason}`);
 }
