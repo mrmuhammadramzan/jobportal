@@ -23,7 +23,9 @@ let _transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 /* ── Transporter — created fresh each call in dev to pick up env changes ── */
 function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
   const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT ?? "465", 10);
+  /* Railway blocks port 465 (SMTP/SSL). Use 587 (STARTTLS) instead.
+     Default changed from 465 → 587 for cloud platform compatibility. */
+  const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
   const user = process.env.SMTP_USER;
   /* Trim spaces — Gmail App Passwords are often pasted with spaces between groups */
   const pass = process.env.SMTP_PASS?.replace(/\s+/g, "");
@@ -41,10 +43,9 @@ function getTransporter(): ReturnType<typeof nodemailer.createTransport> {
   _transporter = nodemailer.createTransport({
     host,
     port,
-    secure: port === 465,        /* true = SSL/TLS, false = STARTTLS */
+    secure: port === 465,        /* 465=SSL/TLS  587=STARTTLS */
     auth: { user, pass },
-    /* Force IPv4 — Railway containers don't support IPv6 outbound connections.
-       Without this, Node.js picks the IPv6 address (2607:...) which is unreachable. */
+    /* Force IPv4 — Railway containers cannot reach IPv6 outbound addresses */
     family: 4,
     tls: {
       rejectUnauthorized: process.env.NODE_ENV === "production",
