@@ -9168,3 +9168,65 @@ npm run dev
 **This error is NOT a code bug** — it cannot be fixed by editing source files. The only fix is always cache deletion.
 
 **Related SOP section:** DevOps SOP §Incident Response — distinguish infra/tooling failures from application code bugs before attempting a code fix.
+
+---
+
+## DevOps Lessons
+
+### 2026-09-26 — Railway MySQL plugin injects different env var names than what db.ts and Prisma config were reading
+
+**What happened:**
+The app connected to the local XAMPP MySQL database fine in development but failed to connect on Railway deployment. No database connection was established because the DB config code was reading env vars that Railway never sets.
+
+**Root cause — env var name mismatch:**
+Railway's MySQL plugin automatically injects these variables into the service environment:
+```
+MYSQLHOST        = <private domain>
+MYSQLPORT        = 3306
+MYSQLUSER        = root
+MYSQLPASSWORD    = <generated password>
+MYSQLDATABASE    = railway
+MYSQL_URL        = mysql://root:<pass>@<host>:3306/railway   (pre-resolved)
+```
+
+The existing `db.ts` read: `DB_HOST`, `DB_NAME`, `DB_PASSWORD`, `DB_USER`, `DB_PORT` — none of which Railway sets. The fallback then tried `DATABASE_URL`, which in `.env.local` was `mysql://root:@127.0.0.1:3306/rozedesk` (localhost — correct for dev, wrong for prod). Railway does NOT automatically inject `DATABASE_URL`.
+
+`prisma7.config.ts` read only `process.env["DATABASE_URL"]` — same problem, missed the Railway vars entirely.
+
+**The `${{...}}` trap:**
+The Railway dashboard displays a `MYSQL_URL` template like:
+```
+mysql://${{MYSQLUSER}}:${{MYSQL_ROOT_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:3306/${{MYSQL_DATABASE}}
+```
+This is Railway's reference syntax for composing variables in the dashboard UI. It is resolved by Railway's config system at deploy time, so `process.env.MYSQL_URL` at runtime contains the **fully resolved** string with real values. However, if you copy this template string into a `.env` file as-is (with the `${{...}}` syntax), Node.js will NOT resolve it — it reads it as a literal string. Never paste Railway reference syntax into `.env` files.
+
+**Correct fix — 4-tier fallback chain (identical in db.ts AND prisma7.config.ts):**
+```
+Tier 1: MYSQLHOST + MYSQLDATABASE present → compose mysql:// URL from individual vars
+Tier 2: MYSQL_URL set → use directly (Railway pre-resolved URL)
+Tier 3: DATABASE_URL set → use directly (local dev / custom hosting)
+Tier 4: Build-time dummy → used only during `next build` static analysis (never connects)
+```
+
+Both `db.ts` (runtime Prisma Client) and `prisma7.config.ts` (Prisma CLI — `db push`, `migrate`) must use the same resolution logic. If only one is fixed, `db push` runs against the wrong database or fails entirely.
+
+**railway.toml `startCommand` must include `prisma db push`:**
+```toml
+startCommand = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=../prisma/schema.prisma --skip-generate --accept-data-loss && node_modules/.bin/next start -p ${PORT:-3000}"
+```
+- `--skip-generate`: client was generated during `buildCommand` — no need to regenerate at startup.
+- `--accept-data-loss`: required for `db push` on existing databases with schema changes. Remove when migrating to `prisma migrate deploy` for production.
+- Running `db push` at start (not build) ensures the real `DATABASE_URL` / Railway vars are available — they are NOT available during the build phase.
+
+**Prevention rules:**
+1. Before writing any DB connection code for a new hosting platform, check its documentation for the exact env var names it injects. Never assume `DATABASE_URL` is set — verify it.
+2. Implement the resolution chain in a single `resolveConfig()` function and import/call it from both the runtime client (`db.ts`) and the Prisma CLI config (`prisma7.config.ts`). DRY principle — one resolution logic, two consumers.
+3. Never paste hosting-platform template syntax (`${{VAR}}`, `${VAR}`, `%VAR%`) into `.env` files — these are resolved by the platform, not by Node.js. Copy only the final resolved value into `.env` files, or use the platform's native secret management.
+4. Schema migrations must run at startup (`startCommand`), not build (`buildCommand`), because DB credentials are environment-injected at runtime, not available during image build.
+
+**Files changed:**
+- `src/lib/db.ts` — 4-tier fallback `resolveConfig()` function
+- `prisma7.config.ts` — same 4-tier `resolveDatasourceUrl()` function
+- `railway.toml` — `startCommand` now includes `prisma db push` before `next start`
+
+**Related SOP section:** DevOps SOP §Hard Rule 1 (no secrets in code — all from env), §4 (environment parity — dev and prod must read from the same variable resolution path), Backend SOP §Hard Rule 1 (never trust env var names — verify against platform docs)

@@ -6,9 +6,14 @@ builder = "nixpacks"
 buildCommand = "cd rozedesk-app && npm install --ignore-engines && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma && ./node_modules/.bin/next build"
 
 [deploy]
-# Run db push at startup (runtime) when DATABASE_URL is actually available,
-# then start the Next.js server. Both commands run in the rozedesk-app directory.
-startCommand = "cd rozedesk-app && node_modules/.bin/next start -p ${PORT:-3000}"
+# Two-phase start:
+#   1. prisma db push — syncs schema to Railway MySQL at runtime when real
+#      DB credentials are available (DATABASE_URL / MYSQLHOST etc. are set).
+#      --skip-generate: client was already generated in the build step.
+#      --accept-data-loss: safe here because push is additive for new columns;
+#      remove this flag once you switch to prisma migrate for production.
+#   2. next start — serves the app.
+startCommand = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=../prisma/schema.prisma --skip-generate --accept-data-loss && node_modules/.bin/next start -p ${PORT:-3000}"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"
