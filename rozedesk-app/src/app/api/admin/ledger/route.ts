@@ -66,16 +66,24 @@ export async function GET(req: NextRequest) {
     const cutPct = await getPlatformCut();
     const cut    = (100 - cutPct) / 100; // e.g. 0.85
 
-    /* Build where clause — uses both from and to when available */
+    /* Build where clause */
     const where: Record<string, unknown> = {};
     if (dateRange) {
       where.submittedAt = { gte: dateRange.from, lte: dateRange.to };
     }
     if (status) where.status = status.toUpperCase();
 
-    /* Load all payments matching filter */
+    /* Push text search into DB — avoids loading the entire payment table into memory */
+    const searchFilter = q ? {
+      OR: [
+        { application: { user: { name: { contains: q } } } },
+        { application: { job:  { title: { contains: q } } } },
+        { id: { contains: q } },
+      ],
+    } : {};
+
     const payments = await db.payment.findMany({
-      where,
+      where:   { ...where, ...searchFilter },
       orderBy: { submittedAt: "desc" },
       include: {
         application: {
@@ -87,14 +95,8 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    /* Filter by search query (client-friendly but done server-side for CSV) */
-    const filtered = q
-      ? payments.filter(p =>
-          p.application.user.name.toLowerCase().includes(q.toLowerCase()) ||
-          p.application.job.title.toLowerCase().includes(q.toLowerCase()) ||
-          p.id.toLowerCase().includes(q.toLowerCase())
-        )
-      : payments;
+    /* `filtered` is now the full DB result — no second JS filter pass */
+    const filtered = payments;
 
     /* Map transactions */
     const transactions = filtered.map(p => {

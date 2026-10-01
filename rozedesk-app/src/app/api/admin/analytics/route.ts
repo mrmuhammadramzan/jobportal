@@ -26,10 +26,12 @@ function resolveDateRange(
 ): { from: Date; to: Date } {
   const now = new Date();
   if (period === "custom" && fromParam) {
-    return {
-      from: new Date(fromParam + "T00:00:00"),
-      to:   toParam ? new Date(toParam + "T23:59:59") : now,
-    };
+    const from = new Date(fromParam + "T00:00:00");
+    const to   = toParam ? new Date(toParam + "T23:59:59") : now;
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      return { from: new Date(now.getTime() - 24 * 60 * 60 * 1000), to: now };
+    }
+    return { from, to };
   }
   switch (period) {
     case "today":  { const d = new Date(now); d.setHours(0,0,0,0); return { from: d, to: now }; }
@@ -144,9 +146,16 @@ export async function GET(req: NextRequest) {
       chartLabels = buckets.map((b, i) => (buckets.length <= 14 || i % Math.ceil(buckets.length / 14) === 0 ? b.label : ""));
     }
 
-    /* ── Conversion rate — applicants / (listings * estimated views) ── */
-    const conversionPct = listings > 0 && applicants > 0
-      ? parseFloat(((applicants / Math.max(applicants * 10, 1)) * 100).toFixed(1))
+    /* Conversion rate: applicants who reached CV_UNDER_REVIEW or beyond ÷ total applicants.
+       Previously this formula always returned 10% — meaningless metric. */
+    const advancedCount = await db.application.count({
+      where: {
+        status: { in: ["CV_UNDER_REVIEW", "SHORTLISTED", "HIRED"] },
+        createdAt: { gte: from, lte: to },
+      },
+    });
+    const conversionPct = applicants > 0
+      ? parseFloat(((advancedCount / applicants) * 100).toFixed(1))
       : 0;
 
     /* ── Application funnel — all-time status counts ── */
@@ -189,9 +198,10 @@ export async function GET(req: NextRequest) {
     });
 
     const topJobsWithConversion = topJobs.map(j => ({
-      title:          j.title,
-      applicants:     j._count.applications,
-      conversionPct:  `${(j._count.applications > 0 ? (j._count.applications / Math.max(j._count.applications * 12, 1) * 100).toFixed(1) : "0")}%`,
+      title:         j.title,
+      applicants:    j._count.applications,
+      /* conversionPct — placeholder until per-job hire data is available */
+      conversionPct: "—",
     }));
 
     return NextResponse.json({

@@ -3787,3 +3787,5384 @@ nodemailer.createTransport({
 **Secondary fix in same session:** `SMTP_PASS` was stored with spaces (`gagk wamx ixxz znlx`) — Gmail App Passwords work both with and without spaces, but to be safe the transporter now calls `.replace(/\s+/g, "")` on the password before use.
 
 **Related SOP:** DevOps SOP Hard Rule 2 (all external calls have timeout and defined failure behavior), Backend SOP §7 (external service errors logged in full).
+
+
+---
+
+## Game Feature Lessons (2026-09-26)
+
+### 2026-09-26 — Business rules must live in one constants file, not scattered across API routes
+
+**What happened:**
+Initial design temptation was to hardcode `120`, `100`, `10`, `1000` in each API route handler separately. This would have caused drift when the minimum deposit is changed — requiring edits in 3 separate route files.
+
+**What was wrong about it:**
+DRY Hard Rule 2 violation: the same numeric business rule defined in multiple places. When one copy is updated and another is missed, behaviour diverges silently.
+
+**Correct approach:**
+Created `src/lib/gameConstants.ts` as the single source of truth for all game rules: `GAME.MIN_DEPOSIT`, `GAME.MIN_WAGER`, `GAME.WIN_INTERVAL`, `GAME.WIN_PER_STEP`, `GAME.JACKPOT_SCORE`, etc. All API routes, the game page, and the canvas component import from it. All values are also overridable via environment variables.
+
+**Prevention rule:**
+Before hardcoding any numeric business rule (minimum amounts, multipliers, score thresholds) in a route handler, first check: does a constants file already exist for this domain? If yes, add it there. If not, create one and import it everywhere.
+
+**Related SOP section:** DRY (Universal Engineering Principles SOP Hard Rule 2), Backend SOP §2.1 (contract before implementation)
+
+---
+
+### 2026-09-26 — Multi-step writes (balance deduction + session create) must be in a transaction
+
+**What happened:**
+First design of `POST /api/game/session` updated wallet balance and created the session in two separate `await db.` calls. A server crash or timeout between the two calls would deduct balance without creating a session — money lost with no record.
+
+**What was wrong about it:**
+Backend SOP Hard Rule 6 violation: any multi-step write that must succeed or fail together must be wrapped in a transaction. "Probably won't crash between two lines" is not a consistency strategy.
+
+**Correct approach:**
+Wrapped both operations in `db.$transaction(async tx => { ... })`. The DBA SOP §7.1 pattern: keep transactions short, no network calls inside, state the invariant being protected.
+
+**Prevention rule:**
+Before writing any two sequential `db.` calls that affect money or state consistency, ask: "If the server dies after line 1 but before line 2, is the database in a coherent state?" If no → transaction required.
+
+**Related SOP section:** Backend SOP Hard Rule 6, DBA SOP §7.1
+
+---
+
+### 2026-09-26 — Game canvas must use named constants, never magic numbers
+
+**What happened:**
+`FlappyBird.tsx` initial draft had `0.45`, `-8.5`, `148`, `230` scattered inline across Bird and GameEngine methods. When tuning felt wrong it was impossible to know which number controlled which behaviour.
+
+**What was wrong about it:**
+DRY Hard Rule 2 — magic numbers are a form of duplication (the same concept referenced by an anonymous value in multiple places). They also violate readability: `PIPE_GAP = 148` communicates intent; `148` does not.
+
+**Correct approach:**
+All physics and layout constants declared at the top of the file as named `const` values: `GRAVITY`, `JUMP_VEL`, `PIPE_W`, `PIPE_GAP`, `PIPE_SPEED`, `PIPE_SPAWN`, etc. Business rules (`WIN_INTERVAL`, `WIN_PER_STEP`) imported from `gameConstants.ts`.
+
+**Prevention rule:**
+Any number appearing in a canvas / game loop that isn't `0`, `1`, `2`, or a trivial fraction must be a named constant at the top of the file, with the name explaining its purpose.
+
+**Related SOP section:** Universal Engineering Principles SOP Hard Rule 2, UI_MASTER_SKILL (readability)
+
+---
+
+### 2026-09-26 — Deposit screenshot stored as base64 data URL matches existing receipt pattern
+
+**What happened:**
+Considered writing a new file-upload strategy for game deposit screenshots. Almost introduced a second upload mechanism (direct disk write) inconsistent with the existing `receipts/` Supabase → base64 fallback pattern.
+
+**What was wrong about it:**
+Grounding SOP §Hard Rule 3: read and match the existing pattern before building a new one. Universal Engineering Principles SOP Hard Rule 1: check if a solution already exists before building a new one.
+
+**Correct approach:**
+Game deposit screenshots follow the identical pattern to payment receipts: `Buffer.from(arrayBuf).toString("base64")` → `data:${mime};base64,${b64}` stored in `screenshotUrl LONGTEXT`. This means the admin screenshot modal reuses the exact same image render logic as the admin payments receipt modal.
+
+**Prevention rule:**
+Before writing any new file handling logic, search the codebase for "base64", "receiptUrl", "screenshotUrl". If the pattern already exists, extend it — don't create a parallel mechanism.
+
+**Related SOP section:** Universal Engineering Principles SOP Hard Rule 1 (reuse check), Grounding SOP §6.1 (re-read before editing)
+
+---
+
+### 2026-09-26 — PATCH /api/game/session must be idempotent (Backend SOP §4.3)
+
+**What happened:**
+Initial design of the session-end endpoint would re-calculate winnings and credit the balance on every PATCH call. A client retry after a network timeout would credit the user twice.
+
+**What was wrong about it:**
+Backend SOP §4.3 violation: mutations that are not naturally idempotent must be explicitly guarded against retry. Double-crediting a wallet is a real money bug.
+
+**Correct approach:**
+Added an `if (session.completed) { return cached result; }` guard at the start of the PATCH handler. The first call sets `completed=true` and credits balance atomically. All retries with the same `sessionId` return the cached `winAmount` without re-running the transaction.
+
+**Prevention rule:**
+Any PATCH or POST that modifies a balance, sends a message, or has side effects: before writing the update logic, add a guard that checks whether the operation was already completed (idempotency key or status flag). Never rely on the caller not retrying.
+
+**Related SOP section:** Backend SOP §4.3, Backend SOP Hard Rule 8
+
+
+---
+
+## Backend / Frontend Lessons (2026-09-26 — DOCTYPE JSON parse error fix)
+
+### 2026-09-26 — "Unexpected token '<', <!DOCTYPE..." means fetch() got HTML, not JSON
+
+**What happened:**
+Multiple pages crashed with `SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`. This made the error look like a server bug, but it was a client-side defensive programming failure.
+
+**Root causes found (three independent bugs):**
+
+**Bug A — `apiAuth.ts`: thrown `Response` had no `Content-Type` header.**
+`requireAuth` threw `new Response(JSON.stringify({...}), { status: 401 })`. Without a `Content-Type: application/json` header, the browser treats the body as `text/plain`. Any client-side code doing a content-type guard before calling `.json()` would incorrectly skip parsing.
+Fix: Added a shared `JSON_HEADERS` constant and passed `{ headers: JSON_HEADERS }` to every thrown Response.
+
+**Bug B — `ledger/page.tsx` and `applicants/page.tsx`: double-consume of `res.body`.**
+Pattern was:
+```ts
+if (!res.ok) throw new Error((await res.json()).message ?? "...");  // consumes body
+const data = await res.json();  // BUG: stream already read — throws on success path too
+```
+If the server returned HTML (e.g., a Railway cold-start 503), the first `.json()` threw `SyntaxError: Unexpected token '<'`, which masked the real HTTP error. Fix: replaced with `safeFetch` which parses exactly once.
+
+**Bug C — `game/page.tsx`: `await res.json()` called BEFORE `res.ok` check.**
+Pattern was:
+```ts
+const data = await res.json();   // throws SyntaxError if body is HTML
+if (!res.ok) throw new Error(data.message);  // never reached
+```
+Fix: replaced all 4 instances with `safeFetch`.
+
+**Correct pattern (safeFetch in lib/api.ts):**
+```ts
+// 1. Check content-type BEFORE calling .json()
+// 2. Parse body exactly ONCE
+// 3. If !ok, throw ApiError with server message or clean HTTP status fallback
+// 4. Network errors (offline, CORS, DNS) wrapped in ApiError(0, ...)
+const data = await safeFetch<MyType>("/api/...", { credentials: "include", headers: authHeaders() });
+```
+
+**Prevention rule:**
+Never write `await res.json()` directly in a component or page. Always use `safeFetch` from `lib/api.ts`. If you see the pattern `const data = await res.json(); if (!res.ok)` anywhere — that is a bug: `.json()` will throw before the guard runs if the server returns HTML.
+
+**Secondary prevention — server side:**
+Every `throw new Response(...)` in an API route MUST include `Content-Type: application/json`. Use the `JSON_HEADERS` constant from `apiAuth.ts` as the pattern.
+
+**Related SOP sections:**
+- Backend SOP Hard Rule 2 (never swallow errors silently — surface them cleanly)
+- Universal Engineering Principles SOP Hard Rule 2 (DRY — one fetch wrapper used everywhere)
+- Grounding SOP §Hard Rule 3 (read code before claiming it works)
+
+
+---
+
+## Branding & Rebrand Lessons (2026-09-26 — RozeDesk → FlappyWin rebrand)
+
+### 2026-09-26 — A full platform rebrand requires hitting 11 distinct surfaces — missing even one leaves stale branding
+
+**What happened:**
+Rebranding from RozeDesk (job portal) to FlappyWin (game platform) initially felt like "just change the name and logo." The actual surface count was 11 distinct files, each with independent branding strings, localStorage keys, copy, nav items, and metadata.
+
+**Complete surface checklist (for any future rebrand):**
+
+| # | File | What to change |
+|---|------|----------------|
+| 1 | `app/layout.tsx` | `metadata` title/description/keywords/OG tags + inline theme script `localStorage` key |
+| 2 | `components/Logo.tsx` | `alt`, `aria-label`, wordmark text |
+| 3 | `components/NavBar.tsx` | `NAV_LINKS` array labels/hrefs + CTA button text |
+| 4 | `components/Footer.tsx` | Brand column heading, description paragraph, copyright line, tagline |
+| 5 | `components/AuthLayout.tsx` | Left panel headline, sub-copy, `DEFAULT_FEATURES`, `DEFAULT_QUOTE`, `DEFAULT_AUTHOR`, `DEFAULT_ROLE`, mobile logo wordmark |
+| 6 | `app/signin/page.tsx` + `signup/page.tsx` | `AuthLayout` quote/features props, `localStorage` key (`rozedesk-remember` → `flappywin-remember`), success state copy, trust line |
+| 7 | `components/dashboard/Sidebar.tsx` | `SEEKER_NAV` items (labels + hrefs), section label text |
+| 8 | `components/dashboard/DashboardHeader.tsx` | `localStorage.getItem` key (`rozedesk-token` → `flappywin-token`) × 2, role label `"Job Seeker"` → `"Player"`, profile dropdown links |
+| 9 | `app/dashboard/page.tsx` | All stat labels, section headings, empty state copy, API calls, `localStorage` key |
+| 10 | `app/page.tsx` (landing) | Every DATA array: `STATS`, `STEPS`, `FEATURES`, `TESTIMONIALS`, `FAQS`, hero copy, section headings, CTAs |
+| 11 | `logs/LESSONS.md` | Append this entry |
+
+**localStorage key consistency rule:**
+When a brand name is embedded in a localStorage key (e.g. `rozedesk-token`, `rozedesk-theme`, `rozedesk-remember`), you must rename it in EVERY location it is read or written. Missing one location causes auth to silently fail on that page — the user is logged in globally but the specific page reads an empty string and behaves as if unauthenticated.
+
+Locations that read/write session token in this project:
+- `components/dashboard/DashboardHeader.tsx` (×2 — notifications + mark-all-read)
+- `app/dashboard/page.tsx` (token() helper)
+- `app/admin/page.tsx` (authHeaders() helper)
+- `app/admin/applicants/page.tsx`
+- `app/admin/ledger/page.tsx`
+- `app/admin/payments/page.tsx`
+- `app/admin/game-deposits/page.tsx`
+- `app/dashboard/game/page.tsx`
+- `lib/auth.ts` (saveSession, getStoredUser, signOut)
+
+**Prevention rule:**
+Before a rebrand, grep for the old brand name string across the entire codebase:
+`Select-String -Path rozedesk-app\src -Recurse -Pattern "rozedesk" | Select-String -NotMatch "node_modules"`
+Treat every match as a required change. Do not stop at the UI layer — localStorage keys, cookie names, and API auth headers are just as important as visible text.
+
+**Related SOP sections:**
+- Grounding SOP §Hard Rule 3 (read code before claiming it's done)
+- Universal Engineering Principles SOP Hard Rule 2 (DRY — brand name defined once, referenced everywhere, not scattered)
+- Process Log SOP §4 (log every surface touched, not just the obvious ones)
+
+
+---
+
+## Database & Prisma Lessons (2026-09-26 — game tables migration + Prisma adapter bugs)
+
+### 2026-09-26 — `db.$transaction([])` array form crashes with `@prisma/adapter-mariadb` — use callback form only
+
+**What happened:**
+`db.gameWallet` appeared undefined in the API logs (`TypeError: Cannot read properties of undefined (reading 'upsert')`). The Prisma client had been regenerated and `gameWallet` was confirmed present in `index.d.ts`. The real crash was happening in a *different* route (`admin/game-deposits`) where `db.$transaction([...])` — the array/batch form — was used.
+
+**Root cause:**
+The MariaDB driver adapter (`@prisma/adapter-mariadb`) does **not** support the `$transaction([...])` array form. This form requires Prisma's internal query engine to orchestrate the operations, which is unavailable when using a driver adapter. The adapter only supports the **interactive transaction** (callback form): `db.$transaction(async tx => { ... })`.
+
+When the array form is called, the adapter throws an internal error that surfaces as a misleading `undefined` property error — not as a clear "unsupported operation" message.
+
+**Affected files fixed:**
+- `src/app/api/admin/game-deposits/route.ts` — APPROVE action used `db.$transaction([update, update])`
+- `src/app/api/admin/payments/[id]/reset/route.ts` — reset used `db.$transaction([delete, update])`
+
+**Correct pattern:**
+```typescript
+// WRONG — array form, not supported by driver adapters
+await db.$transaction([
+  db.model.update({ where: {...}, data: {...} }),
+  db.model.update({ where: {...}, data: {...} }),
+]);
+
+// CORRECT — callback form, works with all adapters
+await db.$transaction(async (tx) => {
+  await tx.model.update({ where: {...}, data: {...} });
+  await tx.model.update({ where: {...}, data: {...} });
+});
+```
+
+**Prevention rule:**
+Any time you write `db.$transaction(`, the next character must be `async` (callback form). If you find yourself typing `db.$transaction([`, stop — that is the array form and it will crash with driver adapters. Do a global search for `$transaction(\[` before any deployment to catch all occurrences.
+
+**Related SOP sections:** Backend SOP Hard Rule 6 (multi-write atomicity), DBA SOP §7.1 (transaction safety)
+
+---
+
+### 2026-09-26 — After adding models to schema.prisma, always run `prisma generate` before starting the dev server
+
+**What happened:**
+Three new models (`GameWallet`, `GameDeposit`, `GameSession`) were added to `schema.prisma` but `prisma generate` was not run. The dev server started with a stale generated client that had no knowledge of these models. Any call to `db.gameWallet.*` crashed immediately.
+
+**Prevention rule:**
+After any change to `schema.prisma` — adding a model, renaming a field, changing a relation — run:
+```powershell
+npx prisma generate --schema="d:\RozeDesk\prisma\schema.prisma"
+```
+Then restart the dev server so Node.js picks up the new generated module (the `globalThis._prisma` singleton caches the old instance until restart).
+
+Also run the SQL migration to create the actual DB tables:
+```powershell
+Get-Content "d:\RozeDesk\prisma\migrations\game-tables.sql" | & "C:\xampp\mysql\bin\mysql.exe" -u root --host=127.0.0.1 --port=3306 rozedesk
+```
+
+Note: `mysql` is not on PATH on this machine. Always use the full XAMPP path `C:\xampp\mysql\bin\mysql.exe`.
+Note: PowerShell does not support `<` stdin redirection. Use `Get-Content file | & "mysql.exe" ...` instead.
+
+**Related SOP sections:** DBA SOP §5 (migration execution checklist), DevOps SOP §3.1 (build pipeline order)
+
+---
+
+### 2026-09-26 — Nav items with duplicate `href` must use `label` as the React `key`, not `href`
+
+**What happened:**
+After the rebrand, `SEEKER_NAV` had three items ("Play Game", "My Wallet", "Game History") all pointing to `ROUTES.game` (`/dashboard/game`). React uses the `key` prop to track component identity. Since all three used `key={item.href}`, React saw three siblings with key `/dashboard/game` and warned: *"Encountered two children with the same key"*.
+
+**Root cause:**
+Keys must be unique among siblings in a list. When multiple nav items point to the same route (e.g. different sections of the same page accessed via hash or tabs), the `href` is no longer unique.
+
+**Fix:**
+Use `key={item.label}` instead of `key={item.href}`. Labels are always unique within a nav — two items with the same label would be a UX problem regardless.
+
+**General rule:**
+In any `.map()` rendering a list, use the most unique stable identifier as the key. For nav items: prefer `label` over `href` since labels must be unique per nav, but hrefs don't have to be.
+
+**Related SOP sections:** Frontend SOP §5 (list rendering), Universal Engineering Principles SOP Hard Rule 2 (DRY keys)
+
+
+---
+
+## Admin Dashboard Rebrand Lesson (2026-09-26)
+
+### 2026-09-26 — Rebranding a platform requires updating BOTH the user dashboard AND the admin dashboard
+
+**What happened:**
+The FlappyWin rebrand replaced the user-facing dashboard (`/dashboard/page.tsx`) with game-platform stats (balance, sessions, scores). However `/admin/page.tsx` was left showing job-portal KPIs: "Active Listings", "Applicants", "Revenue" from the payment receipts table. The admin saw a broken, contextually wrong dashboard that still referenced job data.
+
+**What was wrong:**
+The admin page is as much a product surface as the user dashboard. Leaving it with old-domain data creates:
+1. Functional confusion — querying `db.job`, `db.application` tables that are now irrelevant to the platform's purpose.
+2. Security surface — `authHeaders()` still used `rozedesk-token` instead of `flappywin-token`, so the token lookup silently returned empty string on any machine where the new key was used.
+3. UX mismatch — admin has no visibility into what actually matters: pending deposits that need approval, player sessions, payout amounts.
+
+**What was built:**
+- New `/api/admin/game-analytics` endpoint: all game KPIs in a single `Promise.all` (totalPlayers, pendingDeposits, totalSessions, totalPayout, totalWagered, avgScore, todaySessions, 7-day charts, recent deposits queue, recent sessions list).
+- New `/admin/page.tsx`: 7 KPI cards, session + payout dual charts, inline approve/reject deposit table (with reject modal), recent sessions table. All via `safeFetch` with `flappywin-token`.
+
+**Prevention rule:**
+During a platform rebrand, create a checklist that explicitly covers **both** the user-facing dashboard AND the admin dashboard. They are separate surfaces with separate API dependencies. A rebrand checklist must include:
+- [ ] User dashboard page + API calls
+- [ ] Admin dashboard page + API calls
+- [ ] Admin sub-pages (payments, analytics, applicants) — check if they query now-irrelevant models
+
+Also check `authHeaders()` in every admin page after any localStorage key rename. One missed page = silent auth failure.
+
+**Related SOP sections:** Grounding SOP §Hard Rule 3 (read ALL affected surfaces before declaring done), Process Log SOP §4 (log every surface in the rebrand checklist)
+
+
+---
+
+## Game Platform UX & Config Lessons (2026-09-26)
+
+### 2026-09-26 — Never show a deposit form without showing the user WHERE to send the money
+
+**What happened:**
+The deposit modal let users pick JazzCash or Easypaisa and upload a screenshot, but showed no account number or account name. Users had no idea where to actually send the money — they had to contact support or guess.
+
+**Root cause:**
+The `POST /api/admin/payment-settings` endpoint and `payment_settings` table already existed and stored the account phone + name for each method. The deposit modal simply never fetched or displayed this data.
+
+**The fix:**
+`DepositModal` now calls `GET /api/payment-settings` (public, no auth) on mount. When the user selects a method, the matching account card shows:
+- Phone number (large, tapable, copy-to-clipboard on click)
+- Account holder name
+- Optional address
+- Instruction: "Send exactly Rs. X then upload the screenshot"
+- Falls back to a warning banner if no account is configured yet
+
+**Prevention rule:**
+Any form that asks a user to make a payment MUST show the destination account details for the selected method, derived from the live database — never hardcoded, never hidden. Always pair the method selector with the account info display, switched reactively on method change.
+
+**Related SOP:** Frontend SOP §Hard Rule 5 (loading/empty/error/success all handled — "no account configured" is the empty state)
+
+---
+
+### 2026-09-26 — Business limits (min deposit, min wager) must be admin-controllable from the DB, not baked into env vars
+
+**What happened:**
+`GAME.MIN_DEPOSIT` and `GAME.MIN_WAGER` were read only from `process.env.GAME_MIN_DEPOSIT` at server startup. Changing the minimum deposit required editing `.env.local`, pushing a new deployment, and restarting the server — a full redeploy for a one-number change.
+
+**Root cause:**
+The constants file (`gameConstants.ts`) was the correct pattern for fallback defaults, but was used as the *only* source of truth. There was no admin UI or DB row to override it at runtime.
+
+**The fix:**
+- `/api/admin/settings` PUT now accepts `gameMinDeposit` and `gameMinWager`, stores them in `platform_settings` table (key-value store that already exists).
+- `/api/game/wallet` GET now calls `getIntSetting("gameMinDeposit", GAME.MIN_DEPOSIT)` before returning — reads from DB first, falls back to env constant if not set. Non-fatal: wrapped in try/catch, never throws.
+- Admin Settings page has a new "Game Settings" section with the two number inputs and a dedicated Save button.
+- Changes take effect on the next page load — no redeploy needed.
+
+**Prevention rule:**
+Any numeric business rule that a non-developer operator might need to adjust (prices, limits, multipliers, timeouts) must be stored in a DB config table and exposed via an admin UI. Env vars are for infrastructure secrets (DB passwords, API keys, JWT secrets) — not for product configuration. The env var becomes the deploy-time default; the DB row is the runtime override.
+
+**Related SOP sections:**
+- Backend SOP Hard Rule 1 (server validates — and the server must know the current limit from DB, not stale env)
+- DevOps SOP §Hard Rule 1 (no hardcoded secrets or config — all from env or DB)
+- Universal Engineering Principles SOP Hard Rule 2 (DRY — one source of truth for each configurable value)
+
+---
+
+### 2026-09-26 — `getIntSetting()` is the correct pattern for reading a single platform_settings row safely
+
+**Pattern to reuse:**
+
+```typescript
+// lib/db helpers — add once, use everywhere (DRY)
+async function getIntSetting(key: string, fallback: number): Promise<number> {
+  try {
+    const row = await db.platformSetting.findUnique({ where: { key } });
+    const v   = row ? parseInt(row.value, 10) : NaN;
+    return isNaN(v) || v < 1 ? fallback : v;
+  } catch {
+    return fallback; // table doesn't exist yet (fresh deploy) — never crash
+  }
+}
+```
+
+Rules:
+1. Always provide a `fallback` — the table may not exist on a fresh deploy.
+2. Validate the parsed int (`isNaN` + bounds check) before using it.
+3. Catch DB errors silently — a missing config row should never crash an API route.
+4. Read multiple settings in `Promise.all` alongside other queries, not sequentially.
+
+**Related SOP:** Backend SOP Hard Rule 2 (no silent crash), DBA SOP §3.2 (graceful degradation)
+
+
+---
+
+## Sidebar & Navigation Lessons (2026-09-26 — big refactor)
+
+### 2026-09-26 — Nav items that share the same href ALL become active simultaneously
+
+**What happened:**
+Three seeker nav items ("Play Game", "My Wallet", "Game History") all had `href: ROUTES.game` (`/dashboard/game`). The `isActive()` function does an exact match against `pathname === href`. On `/dashboard/game`, all three matched → all three highlighted blue at once.
+
+**Root cause:**
+The original intent was to have one game page with tab-like sections. But in a left sidebar, each nav item must have a distinct route — the sidebar's active state is path-based, not tab-based.
+
+**Fix:**
+Give each nav item its own distinct route:
+- Play Game → `/dashboard/game`
+- My Wallet → `/dashboard/wallet`
+- Withdraw   → `/dashboard/withdraw`
+- History    → `/dashboard/history`
+
+Each route got its own `page.tsx` and was added to `EXACT_ONLY` in the sidebar.
+
+**Prevention rule:**
+Before adding any nav item to SEEKER_NAV or ADMIN_NAV, assert: "does this href already appear in any other nav item in the same nav array?" If yes — it must have its own distinct route. Use a Set check if writing a linter for this.
+
+**Related SOP sections:** Frontend SOP §5 (router patterns), Universal Engineering Principles SOP Hard Rule 2 (DRY with single responsibility)
+
+---
+
+### 2026-09-26 — Gaming palette means ALWAYS dark — merge light/dark overrides into a single noop block
+
+**What happened:**
+`globals.css` had three separate dark-mode override blocks: `html[data-theme="dark"]`, `html[data-theme="light"]`, and `@media (prefers-color-scheme: dark)`. After switching to a gaming palette where all surfaces are permanently dark, these overrides added noise and could theoretically override the gaming tokens if a user's OS was in light mode with no theme preference set.
+
+**Fix:**
+All three blocks were replaced with a single noop block that forces every theme variant to the same dark gaming values:
+
+```css
+html[data-theme="dark"], html[data-theme="light"],
+:root:not([data-theme="light"]) {
+  --bg-base:    #0a0a0f;
+  --bg-surface: #13131a;
+  /* ... */
+}
+```
+
+This ensures the gaming palette is invariant regardless of OS preference or ThemeToggle state.
+
+**Prevention rule:**
+When a platform is always-dark (games, IDEs, terminals), replace theme toggle CSS with a single invariant block. Remove the `ThemeToggle` component from the UI as well (or repurpose it) since it no longer has an effect users can see.
+
+**Related SOP sections:** UI/UX SOP §Hard Rule 3 (tokens, not hardcoded values), Frontend SOP §0 (dark mode implementation)
+
+---
+
+### 2026-09-26 — Admin sidebar must be stripped of job-portal items when the product pivots
+
+**What happened:**
+After rebrand to FlappyWin, the admin sidebar still showed 10 items including "Job Listings", "Post a Job", "Applicants", "Analytics", "Ledger", "Payments". These were dead pages for the game platform — they queried irrelevant DB tables. The screenshot showed them prominently in the nav.
+
+**Fix:**
+Admin nav reduced from 10 to 5 items: Overview, Game Deposits, Withdrawals, Payment Settings, Settings.
+Old routes (`adminJobs`, `adminPostJob`, etc.) kept in `routes.ts` for any legacy API links, but NOT added to ADMIN_NAV.
+
+**Prevention rule:**
+The sidebar nav is the contract between the product and the admin. Every item in ADMIN_NAV must correspond to a task the admin actually performs on this platform. After any platform pivot, do a nav audit: for each nav item, ask "does this admin need this for their day-to-day on the NEW platform?" If no → remove it.
+
+**Related SOP sections:** Process Log SOP §4 (log every surface in a rebrand), UI/UX SOP §Hard Rule 1 (only show controls that are relevant and functional)
+
+---
+
+### 2026-09-26 — Withdrawal form must deduct balance on approval, NOT on submission
+
+**What happened:**
+Initial design temptation was to deduct the balance when the user submits the withdrawal request (to "reserve" funds). This would cause a negative experience: user submits, balance drops, then admin rejects → user has to wait for a manual refund.
+
+**Correct approach:**
+Balance is only deducted when the admin **approves** the withdrawal, atomically in a DB transaction:
+```typescript
+await db.$transaction(async (tx) => {
+  // verify balance >= amount (re-check inside transaction — no TOCTOU race)
+  const wallet = await tx.gameWallet.findUnique({ where: { id } });
+  if (wallet.balance < amount) throw insufficientError;
+  await tx.gameWithdrawal.update({ data: { status: "APPROVED" } });
+  await tx.gameWallet.update({ data: { balance: { decrement: amount } } });
+});
+```
+
+On rejection, balance is untouched — the player never loses money for a rejected request.
+
+**Prevention rule:**
+For any financial mutation triggered by an external approval workflow:
+- Submit: create the request record, notify approver. Do NOT move money.
+- Approve: move money + update status atomically in a transaction.
+- Reject: update status only. Do NOT touch balance.
+
+**Related SOP sections:** Backend SOP Hard Rule 6 (atomic multi-writes), DBA SOP §7.1 (transaction safety)
+
+
+---
+
+## CSS Syntax Lessons (2026-09-26 — globals.css PostCSS build error)
+
+### 2026-09-26 — Stray closing brace in globals.css caused PostCSS CssSyntaxError: Unexpected }
+
+**What happened:**
+After the gaming palette refactor, the Next.js build crashed with:
+`CssSyntaxError: D:\RozeDesk\rozedesk-app\src\app\globals.css:172:1: Unexpected }`
+
+**Root cause — two problems in the same edit:**
+
+1. **Stray `}` at line 172.** The old `html[data-theme="light"]` block had a closing `}`. When the new "noop override" block was written to replace it, the new block's own closing `}` was placed correctly, but the *old* light-mode block's closing brace was left behind — producing `}}` (double close, one of which was unmatched).
+
+2. **Dead `@media (prefers-color-scheme: dark)` block left behind.** This block referenced `var(--gray-950)`, `var(--gray-900)` etc. — tokens that no longer exist after the gray scale was replaced with the new dark gaming palette. PostCSS would have failed on unresolved vars even if the stray brace was fixed.
+
+**Fix:**
+- Removed the stray `}` 
+- Removed the entire leftover `@media (prefers-color-scheme: dark)` block (redundant for an always-dark gaming palette)
+- Left one clean selector group: `html[data-theme="dark"], html[data-theme="light"], :root:not([data-theme="light"])` with one closing `}`
+
+**Prevention rule:**
+When doing a large search-and-replace in a CSS file, always verify brace balance after the edit. A quick check:
+```powershell
+(Select-String -Path globals.css -Pattern "\{").Count
+(Select-String -Path globals.css -Pattern "\}").Count
+```
+Both counts must match. If they differ, there is an unmatched brace.
+
+Also: when removing a CSS block, remove the ENTIRE block including its closing `}`. Never leave orphaned braces behind.
+
+**Related SOP sections:** Universal Engineering Principles SOP Hard Rule 3 (verify before shipping), Grounding SOP §Hard Rule 1 (run the build, don't assume it works)
+
+
+---
+
+## Mobile UX & Color Contrast Lessons (2026-09-26)
+
+### 2026-09-26 — Neon-on-neon = unreadable. High contrast on dark bg requires blue/orange not green/purple
+
+**What happened:**
+The first gaming palette used neon green (#00ff88) as primary and neon purple (#bf00ff) as accent on a very dark bg (#0a0a0f). The result: the "Register Free & Play" CTA button was green text on a green gradient background — completely unreadable. The profile page had purple icons against dark purple shadows — mixed-colour soup.
+
+**Root cause:**
+Picking "gaming" colours (green, purple) without checking contrast ratios. Both `--color-success` and `--brand-*` were green → any success state blended with CTAs. The `.gradient-text` class used green→purple which is the same hue as buttons making text disappear.
+
+**Correct approach:**
+Electric blue (#3b82f6) primary + hot orange (#f97316) accent on deep-space dark (#050510). These are **complementary colours** on opposite sides of the wheel — they create maximum visual separation. White text on either is always ≥4.5:1. Orange CTA on dark bg stands out clearly.
+
+**Prevention rule:**
+Before finalising any colour palette:
+1. Check every `--brand-*` CTA against `--bg-base` — ratio must be ≥4.5:1 (AA).
+2. Check `--color-success`, `--color-warning`, `--color-error` — none should be the same hue as `--brand-*`.
+3. Verify button text (`text-white` or `--text-inverse`) on `--brand-500` background.
+
+---
+
+### 2026-09-26 — Mobile web app needs a bottom nav bar, not a hamburger sidebar
+
+**What happened:**
+The seeker dashboard on mobile showed only a hamburger icon in the top-left. Users had to tap the hamburger, wait for the slide-in drawer, then find their destination — 3 taps minimum. This is a desktop-nav pattern on a mobile screen.
+
+**Correct approach:**
+For seeker (5 nav items — fits a bottom bar), replaced the mobile sidebar drawer with a fixed bottom nav bar (`position:fixed; bottom:0; inset-x:0`). Each item shows icon + label. Active state shown with a top accent bar and bolder stroke. Admin keeps the hamburger/drawer since it has fewer mobile users.
+
+**Additional fix:** Main content got `padding-bottom: calc(var(--bottom-nav-height) + 16px)` on mobile so the last content item is never hidden behind the bar.
+
+**Prevention rule:**
+Any dashboard with ≤6 nav items targeting mobile users → use bottom nav, not sidebar drawer. The `--bottom-nav-height` CSS variable (64px) is the single source of truth for all bottom nav spacing.
+
+---
+
+### 2026-09-26 — Profile avatar in the header should show wallet balance for a game platform
+
+**What happened:**
+The header showed the user's initials ("P") in an avatar circle — a job-portal pattern. For a game platform where the user's most important number is their balance, showing an obscure initial instead of "Rs. 9160" is a missed UX opportunity.
+
+**Correct approach:**
+Added `useWalletBalance(isSeeker)` hook that fetches `/api/game/wallet` on mount and caches the balance. The header now shows a pill chip: wallet icon + `Rs. 9160`. When balance is loading (null), it falls back to the avatar. Admin header keeps the avatar since admins don't have game wallets.
+
+**Prevention rule:**
+The header's right-side chip should always show the user's most important real-time value. For job portals it's application count. For wallets/games it's balance. For dashboards it's notifications. Match the chip to the platform's core metric.
+
+
+---
+
+## Mobile Layout Lessons (2026-09-26 — sidebar pushing content off-screen)
+
+### 2026-09-26 — `hidden lg:flex` sidebar div still occupies 0px in flex layout and causes layout shift on mobile
+
+**What happened:**
+The dashboard layout was `<div className="flex h-screen">` with `<Sidebar>` as the first flex child. On desktop, the sidebar was `hidden lg:flex`. On mobile the `hidden` class hid the sidebar visually, but the `<div className="hidden lg:flex ...">` wrapper was **still a flex item** taking 0px — however the `<aside className="w-64">` inside it was still rendered in the DOM. In some Turbopack/CSS evaluation orders, the `w-64` on the inner aside leaked out and caused the flex container to give it space, pushing the main content 256px to the right and off the visible screen.
+
+**The screenshot showed:**
+- Bottom nav rendered correctly (so the Sidebar's conditional rendering worked)
+- But the page content was shifted ~256px to the right
+- All text was clipped at the right edge
+- The layout appeared to have a large black void on the left (the 256px sidebar space)
+
+**Root cause:**
+`hidden` in Tailwind sets `display: none` which removes the element from layout. BUT the element inside (the `aside`) was still rendered by React — and in certain CSS specificity or Turbopack evaluation orders, the `display: none` on the wrapper did not cascade correctly to prevent the inner `aside` from affecting the flex container's sizing algorithm.
+
+**Fix:**
+The `Sidebar` component now handles its own mobile rendering entirely:
+- On desktop (`lg+`): renders a `<div className="hidden lg:flex ...">` with the sidebar content (correctly 0px on mobile).
+- On mobile for admin: renders a `fixed` slide-in drawer (not in the flex row at all).
+- On mobile for seeker: renders only the `<nav>` bottom bar (fixed overlay, not in the flex row).
+
+The **dashboard layout** no longer depends on the sidebar being hidden — there is literally no sidebar in the flex row on mobile. The `<Sidebar>` component's mobile output is always `position: fixed`, so it never affects the flex layout of `<div className="flex">`.
+
+**Prevention rule:**
+Never rely on `hidden` (display:none) on a flex child to "remove" it from layout in complex component trees. If an element must not be in the flex row on mobile, use a conditional render (`{isDesktop && <Sidebar />}`) or structure the component so its mobile output is always `position: fixed`/`absolute` — outside the normal flow.
+
+**Related SOP sections:**
+- Frontend SOP §5 (responsive layout patterns)
+- Universal Engineering Principles SOP Hard Rule 3 (verify on device, not just desktop)
+
+
+---
+
+## Game Config & Admin Control Lessons (2026-09-26)
+
+### 2026-09-26 — All game physics must be admin-controllable at runtime — never hardcoded constants
+
+**What happened:**
+The original FlappyBird.tsx had `const GRAVITY = 0.45`, `const PIPE_SPEED = 2.4`, `const PIPE_GAP = 148` etc. as hardcoded module-level constants. Changing any game feel required a code edit and redeploy. The admin had no way to adjust game difficulty, earning rate, or speed without developer involvement.
+
+**Fix:**
+Created `GET /api/game/config` endpoint that returns a `GameConfig` object loaded from `platform_settings` DB (with env var fallbacks). FlappyBird loads this config on mount before starting the engine. The `GameEngine` receives the config object and uses `cfg.gravity`, `cfg.baseSpeed`, `cfg.pipeGap` etc. instead of module constants.
+
+Admin can now change any game parameter in real-time via `/admin/game-settings` without touching code.
+
+**Prevention rule:**
+Any numeric value that affects game balance, player experience, or earnings is a business rule — not a code constant. Before writing `const GRAVITY = 0.45`, ask: "Does a non-developer need to change this?" If yes → DB-backed config via admin UI. Env vars are the deploy-time fallback; DB row is the runtime override.
+
+---
+
+### 2026-09-26 — biasMode must be resolved per-user, not just globally
+
+**What happened:**
+Initial design had a single global `biasMode` setting ("none" / "win" / "loss"). The requirement was that **blocked players should always lose** regardless of the global setting. If the admin sets global mode to "win" and a blocked player logs in, they would incorrectly get win mode.
+
+**Fix:**
+In `GET /api/game/config`, the route loads `user.blocked` from DB. If `user.blocked === true`, it overrides biasMode to `"loss"` regardless of the global platform setting. The FlappyBird canvas receives the already-resolved `biasMode` and applies it.
+
+The canvas itself doesn't know why biasMode is "loss" — it just follows the instruction. This keeps the logic server-side (more secure) and the canvas clean.
+
+**Prevention rule:**
+Any per-user override of a global setting must be resolved on the server, not the client. Never send the global setting to the client and then apply per-user overrides in the browser — the user can inspect and manipulate client-side state. Always resolve the final effective value server-side and send only the resolved value.
+
+---
+
+### 2026-09-26 — Random speed in a game loop requires the randomisation to happen at spawn time, not per-frame
+
+**What happened:**
+Initial approach was to randomise `PIPE_SPEED` on every frame tick. This caused extremely jittery pipes — the speed changed 60 times per second, making the game unplayable. The visual effect was pipes vibrating in place.
+
+**Correct approach:**
+Each `Pipe` object stores its own `speed` value, assigned in the constructor at spawn time. The random roll happens once when the pipe is created (`new Pipe(x, cfg, score)`). The speed is then constant for that pipe's lifetime, creating natural variation between pipes rather than jitter within a single pipe.
+
+**Prevention rule:**
+Randomise game object properties at instantiation (constructor), not during the update loop. Per-frame randomisation creates chaos; per-spawn randomisation creates variety. This is a fundamental game design principle: spawn-time parameters are fixed for an object's lifetime.
+
+**Related SOP sections:** Universal Engineering Principles SOP Hard Rule 2 (DRY config), Backend SOP Hard Rule 1 (server-side resolution of per-user state)
+
+
+---
+
+## Prisma + Type Safety Lessons (2026-09-26 — blocked field 500 error)
+
+### 2026-09-26 — Adding a DB column requires BOTH `ALTER TABLE` AND `prisma generate` in the right order; stale client is the silent killer
+
+**What happened:**
+Added `blocked TINYINT(1)` to the `users` table via `ALTER TABLE`. Then ran `prisma generate`. However the generate had already been run in the previous step (for the GameWithdrawal model), so the generated client at that point did NOT include `blocked`. The `ALTER TABLE` ran after. The result: MySQL has the column, but the Prisma client at runtime doesn't know about it → `Unknown field 'blocked' for select statement on model 'User'` → 500 on every `/api/admin/players` call.
+
+**The sequence that caused it:**
+```
+1. prisma generate  (GameWithdrawal added — blocked NOT yet in schema)
+2. ALTER TABLE users ADD COLUMN blocked  (DB now has it)
+3. schema.prisma updated with blocked field  (but generate not re-run)
+4. Server starts → old generated client → 500
+```
+
+**Fix:**
+Run `prisma generate` AFTER every schema.prisma change AND after every ALTER TABLE that adds new columns. Clear `.next` cache to force the module to reload. The order must always be:
+```
+1. Edit schema.prisma
+2. ALTER TABLE (or prisma migrate)
+3. prisma generate  ← LAST, always after both schema and DB are updated
+4. Restart dev server (clear .next cache)
+```
+
+**Prevention rule:**
+Any time you touch `schema.prisma`, the last command you run before testing is always `prisma generate`. Make it a checklist item. If you run generate before the DB migration, you MUST run it again after.
+
+---
+
+### 2026-09-26 — platform_settings stores everything as VARCHAR — always parse types server-side before sending to the client
+
+**What happened:**
+`GET /api/admin/game-settings` returned all values as strings because `loadSettings()` had return type `Record<string, string>`. The `randomSpeed` field was stored as `"false"` (string) in `platform_settings`. When the frontend received it and passed it to `checked={cfg.randomSpeed}`, React received the string `"false"` instead of the boolean `false`. In HTML, any non-empty string on a boolean attribute is truthy — so `checked="false"` means "checked" to the browser. The console warned: `"Received the string 'false' for the boolean attribute 'checked'."
+
+**Fix:**
+The GET endpoint now parses every value to its correct type before `NextResponse.json()`:
+- Numbers: `parseInt()` / `parseFloat()`  
+- Booleans: `=== "true"` comparison
+- Enums: cast with `as` after validating
+
+**Prevention rule:**
+Any API that reads from a key-value string store (`platform_settings`, `.env`, Redis HSET) MUST parse types explicitly before returning JSON. Never return raw string values for fields that the client expects to be numbers, booleans, or enums. The type contract lives in the API response — not in the caller.
+
+
+---
+
+## Turbopack Cache Corruption Lesson (2026-09-26)
+
+### 2026-09-26 — Turbopack FATAL panic: "Unable to open static sorted file" — always caused by a corrupt .next cache, never by application code
+
+**What happened:**
+```
+FATAL: An unexpected Turbopack error occurred.
+failed to open file `.next\dev\cache\turbopack\v16.3.5-ca2c75eb\00000219.sst`: 
+The system cannot find the file specified.
+```
+
+**Root cause:**
+Turbopack uses a SQLite-based on-disk cache (`.next/dev/cache/turbopack/`). The cache index (`.meta` files) references SSTable files (`.sst`). When `.next` is deleted while Turbopack is running (or after an abrupt process kill), the index survives in memory and writes a new `.meta` pointing to `.sst` files that no longer exist. On the next request, Turbopack tries to open those missing `.sst` files → panic.
+
+**This is NOT a code error.** No amount of code changes fixes it.
+
+**Fix sequence (always the same):**
+1. Stop the dev server (`Ctrl+C` or kill the node process)
+2. `Remove-Item -Recurse -Force ".next"` — wipe the entire cache directory
+3. Restart: `npm run dev`
+
+**Prevention:**
+- Never delete `.next` while the dev server is running
+- If the dev server crashes unexpectedly, always wipe `.next` before restarting
+- Add `.next` to a `.gitignore` check so it's never accidentally committed
+
+**Related SOP sections:** DevOps SOP §3.1 (build pipeline hygiene), Grounding SOP §Hard Rule 1 (distinguish infrastructure errors from code errors before making code changes)
+
+
+---
+
+## Game Earnings & History Lessons (2026-09-26)
+
+### 2026-09-26 — calculateWinnings() must read live DB config, not static env constants
+
+**What happened:**
+Admin set `winInterval=1` and `winPerStep=100` in the game settings panel. But the session PATCH route was calling `calculateWinnings(wager, score)` using `GAME.WIN_INTERVAL` (100) and `GAME.WIN_PER_STEP` (10) — the env-backed static constants. The admin change had zero effect on actual earnings. Players scored and got nothing, or got the wrong amount.
+
+**Root cause:**
+`calculateWinnings()` was a pure function that accepted `(wager, score)` only, hard-wired to pull values from `GAME.*`. These are resolved once at process startup from env vars. DB changes never propagate to them.
+
+**Fix:**
+1. Added `readLiveGameConfig()` to `gameConstants.ts` — reads `platform_settings` DB at call time, falls back to `GAME.*` env defaults if rows don't exist.
+2. Changed `calculateWinnings(wager, score)` to `calculateWinnings(wager, score, cfg: LiveGameConfig)` — the caller passes the live config.
+3. In `session/route.ts` PATCH: `const liveCfg = await readLiveGameConfig()` called before `calculateWinnings`.
+
+**Prevention rule:**
+Any function that implements a business rule that an admin can change at runtime must receive its config as a parameter — not read it from module-level constants. Module-level constants are process-lifetime; DB config is request-lifetime. If a function signature doesn't include the config, it's hardcoded by definition.
+
+---
+
+### 2026-09-26 — Wallet API returning only 5 sessions caused "Games" counter to always show ≤5
+
+**What happened:**
+The stats panel showed "Games: 5" even after playing many more games. The wallet API had `take: 5` on sessions, so `wallet.sessions.length` was always 5. The total games count was derived from the returned array length, not from the actual DB count.
+
+**Fix:**
+1. Increased `take` from 5 → 20 for both sessions and deposits (recent history).
+2. Added `_count: { select: { sessions: true } }` to the wallet include, exposing the true total.
+3. Added `totalGames: wallet._count.sessions` to the API response.
+4. `game/page.tsx` now uses `wallet.totalGames` for the stats counter, not `sessions.length`.
+
+**Prevention rule:**
+Never derive a "total count" from the length of a paginated/limited array. If the array has `take: N`, the `.length` will always be ≤ N, not the true total. Always use a `_count` aggregate for totals.
+
+---
+
+### 2026-09-26 — Prize preview hardcoded 100/1000/1200 — users saw wrong earning rules
+
+**What happened:**
+The lobby prize preview always showed "Score 100 → +Rs. 10 · Score 1000 → wager back" regardless of admin settings. Admin had changed `winInterval` to 1 and `winPerStep` to 100, but the UI still showed the old hardcoded numbers.
+
+**Fix:**
+Wallet API now returns the live earning config (`winInterval`, `winPerStep`, `jackpotScore`, `jackpotMult`, etc.) alongside the balance. The `WalletData` interface was extended. The prize preview, subtitle, and wager description all use these live values with `GAME.*` as fallback.
+
+**Prevention rule:**
+Any UI element that displays a business rule (earning rate, minimum amount, multiplier) must source its value from the same place the server enforces it — the DB config endpoint. Never hardcode display values that the server dynamically enforces.
+
+
+---
+
+## Server/Client Module Boundary Lesson (2026-09-26)
+
+### 2026-09-26 — Lazy `await import()` does NOT prevent Turbopack from bundling Node.js modules into the client
+
+**What happened:**
+```
+Module not found: Can't resolve 'fs'
+./src/lib/gameConstants.ts [Client Component Browser]
+```
+
+`readLiveGameConfig()` was placed in `gameConstants.ts` and used a **lazy import**: `const { db } = await import("@/lib/db")`. The intent was that the lazy import would be excluded from the client bundle. It was not.
+
+**Why lazy import fails:**
+Turbopack (and webpack) perform **static module graph analysis** — they trace all `import` and `require` calls (including `await import()`) at build time, not runtime. The bundler sees `await import("@/lib/db")` → includes `db.ts` in the graph → includes `@prisma/adapter-mariadb` → includes `mariadb` → requires `fs` → crashes in the browser.
+
+The dynamic nature of `await import()` prevents tree-shaking of that specific import path only at runtime — it does not prevent the bundler from including the module in the bundle.
+
+**The correct fix — two-file split:**
+
+| File | Safe for | Contains |
+|---|---|---|
+| `gameConstants.ts` | Client + Server | `GAME` constants, `LiveGameConfig` interface, `calculateWinnings()` pure function |
+| `gameConfig.server.ts` | **Server only** | `readLiveGameConfig()` (imports `db`) |
+
+`gameConfig.server.ts` starts with `import "server-only"` — this makes Next.js/Turbopack throw a **build error** if a client component ever imports it, turning a silent runtime crash into an explicit build error.
+
+**Prevention rules:**
+1. Any file that imports `db`, `fs`, `crypto`, or any Node.js built-in must have either `.server.ts` extension or `import "server-only"` at the top.
+2. Never put server-only functions in the same file as constants/pure functions that client components need.
+3. When a client component needs derived data from a server computation, the pattern is: **server computes it → API route returns it → client reads from API response**. The client never imports the computation function.
+
+**Related SOP sections:** Backend SOP Hard Rule 1 (server validates, client never imports server logic), Frontend SOP §0 (client/server boundary discipline)
+
+
+---
+
+## React Key Lessons (2026-09-26)
+
+### 2026-09-26 — Using a derived business value as a React key breaks when admin config makes values collide
+
+**What happened:**
+Prize preview used `key={row.score}`. When admin set `winInterval=1`, the array was:
+`[{ score: 1 }, { score: 2 }, { score: 1000 }, { score: 1200 }]` — all unique, no problem.
+But with `winInterval=1000` (same as `jackpotScore=1000`), two rows had `score=1000` → duplicate key warning, React duplicated/omitted one row.
+
+**Fix:** Use the array index `i` as the key (`.map((row, i) => <div key={i}>`). For a static-order display list that never reorders, index keys are correct. Also renamed `score` field to `label` (a string like `"1 pts"`) to make clear it's for display, not identity.
+
+**Prevention rule:** Never use a computed/derived value as a React key unless you can mathematically guarantee uniqueness across all possible inputs including admin-configured edge cases. When in doubt, `key={i}` for a fixed-order list is always safe.
+
+
+---
+
+## Security Lesson (2026-09-26 — credentials in URL query params)
+
+### 2026-09-26 — Passwords appearing in server logs as GET query params is a critical vulnerability — but the cause is external, not the form code
+
+**What happened:**
+Server logs showed:
+```
+GET /signup?fullName=Ayyan+Shahid&email=noreenshahna%40gmail.com&password=2psZtXPNw6Xe2e4
+GET /signin?email=noreenshahna%40gmail.com&password=2psZtXPNw6Xe2e4
+```
+
+Passwords in plaintext in server logs — visible to anyone with log access, and stored in browser history.
+
+**Why this happened (external cause, not code bug):**
+The signin and signup forms correctly use `POST /api/auth/signin` with a JSON body. The page routes (`/signin`, `/signup`) are GET requests — they just render the HTML form, they don't process credentials.
+
+The credentials in the URL came from an **external source**: a password manager, browser autofill extension, or test script that constructed a URL like `https://app.com/signin?email=x&password=y` and followed it. The page never reads these params — they're never used.
+
+**Why it's still dangerous:**
+Even though the page ignores them, the credentials:
+1. Appear in Next.js/nginx/Railway server logs (exactly as shown)
+2. Are stored in browser history
+3. Are sent in HTTP Referer headers to any linked resource
+4. Can be captured by browser extensions
+
+**The fix:**
+Both `/signin` and `/signup` pages now strip sensitive keys from the URL immediately on mount using `window.history.replaceState()` — without a page reload. If `?email=`, `?password=`, `?fullName=`, or `?confirmPassword=` appear in the URL for any reason, they are removed before any JS reads them and before the user can copy/share the URL.
+
+```typescript
+useEffect(() => {
+  const sensitiveKeys = ["email", "password", "confirmPassword", "fullName"];
+  const hasLeak = sensitiveKeys.some(k => searchParams.has(k));
+  if (hasLeak && typeof window !== "undefined") {
+    const clean = new URL(window.location.href);
+    sensitiveKeys.forEach(k => clean.searchParams.delete(k));
+    window.history.replaceState({}, "", clean.pathname + (clean.search || ""));
+  }
+}, [searchParams]);
+```
+
+**Prevention rule:**
+Any page that handles authentication MUST have a `useEffect` that strips known sensitive param names from the URL on mount. This is a defence-in-depth measure — even when the form is correctly implemented with POST, external actors (password managers, links, test scripts) can inject credentials into URLs.
+
+**Related SOP sections:** Backend SOP Hard Rule 1 (server never trusts client input), Universal Engineering Principles SOP (defence in depth for security-sensitive surfaces)
+
+
+---
+
+## Game Design Lesson (2026-09-26 — Flappy Bird → Bird vs Hunter crash game)
+
+### 2026-09-26 — A crash-style game fits the wager/cashout earning model better than a pure score game
+
+**What changed:**
+Replaced Flappy Bird (score-based, no player agency) with Bird vs Hunter (crash-style with multiplier and manual cash-out).
+
+**Key design decisions:**
+
+1. **Multiplier ≈ Score**: `score = Math.floor(multiplier × 100)`. All existing earning logic (winInterval, jackpotScore, winPerStep) continues to work unchanged — no API or DB changes needed. Admin game settings still apply.
+
+2. **Cash-out is a second `onGameOver` path**: The game sends `handleCashOut(score)` which hits the same `PATCH /api/game/session` endpoint as a regular game-over. The server calculates winnings the same way. The only difference is the frontend fires a success toast on cash-out and the result panel shows "Bird Survived!" vs "Hunter Got the Bird!".
+
+3. **Natural biasMode=loss**: Instead of instant kill, every pipe after score>0 has an impossibly small gap in Flappy, and in Bird vs Hunter the hunter appears and fires almost immediately (30–120 frames) with a bullet aimed directly at the bird's position.
+
+4. **biasMode=win maps to "Lucky Mode"**: Hunter never fires (hunterSpawnAt=9999). Auto-cashes out at jackpotBonusScore.
+
+5. **OOP preserved**: Bird, Hunter, Bullet, GameEngine — four clean classes. GameEngine never reaches into React state — all communication is through callbacks (onGameOver, onCashOut, onMultChange, onMilestone). React component only manages the lifecycle.
+
+**Prevention rule:**
+When swapping a game mechanic, verify that the score → winnings pipeline (the API) doesn't need to change. If `score` maps cleanly to the new mechanic's output, no backend changes are needed. Spend the refactor budget on the canvas/game logic, not the DB.
+
+
+---
+
+## Scope Bug Lesson (2026-09-26)
+
+### 2026-09-26 — Referencing outer state variable inside a props-based component causes ReferenceError
+
+**What happened:**
+`ResultPanel` receives `{ score, winAmount, wager, milestoneWin, jackpotWin }` as props. The edit accidentally wrote `result.winAmount` and `result.score` — referencing the outer component's `result` state variable which is not in scope inside the function.
+
+**Prevention rule:**
+When editing a component that receives data as props, use those prop names — never reference parent-scope state variables by name. Treat each component as a completely isolated function that only knows about its own parameters.
+
+
+---
+
+## Game Balance & Security Lesson (2026-09-27)
+
+### 2026-09-27 — Exploitable admin settings caused always-winning: jackpotBonusScore < jackpotScore
+
+**What happened:**
+The game appeared to "always win". Investigation showed the DB had these values:
+- `game.jackpotBonusScore = 11` (lower than jackpotScore=100!)
+- `game.jackpotBonusMult = 19.95` (nearly 20× payout at score 11)
+- `game.winInterval = 1` (Rs.10 on every single score tick)
+
+Result: player wagers Rs.120 → within 2 seconds scores 11 → gets Rs.120×19.95 = Rs.2394. The game was exploitable because admin had misconfigured settings.
+
+**Fix:**
+1. Reset DB to safe defaults via SQL migration file.
+2. The game config API (`GET /api/game/config`) should add server-side validation: jackpotBonusScore MUST be > jackpotScore, jackpotMult MUST be ≤ jackpotBonusMult, winInterval MUST be ≥ 1.
+
+**Prevention rule:**
+Admin settings that affect financial payouts must be validated server-side with business rules before being applied, not just stored raw. Add guards:
+```typescript
+// jackpotBonusScore must exceed jackpotScore
+if (cfg.jackpotBonusScore <= cfg.jackpotScore) cfg.jackpotBonusScore = cfg.jackpotScore + 200;
+// jackpotBonusMult must be ≥ jackpotMult
+if (cfg.jackpotBonusMult < cfg.jackpotMult) cfg.jackpotBonusMult = cfg.jackpotMult;
+```
+
+**Related SOP sections:** Backend SOP Hard Rule 1 (server validates all business logic), Security SOP (admin settings can be as exploitable as user input)
+
+
+---
+
+## HUNT Game Architecture Lesson (2026-09-27)
+
+### 2026-09-27 — score = Math.floor(mult × 100) maps crash-game multiplier into existing earn pipeline with zero API changes
+
+**What was built:**
+Full HUNT arcade game (crash-style) replacing FlappyBird, using the EXACT same API endpoints:
+- `POST /api/game/session` — deducts wager (unchanged)
+- `PATCH /api/game/session` — credits winnings via `calculateWinnings(wager, score, cfg)` (unchanged)
+
+**Key mapping:**
+```
+mult = 1.01 × 1.007^(elapsed_frames)
+score = Math.floor(mult × 100)
+```
+So a 2.84× cash-out → score 284 → `calculateWinnings(wager=100, score=284, cfg)` → milestone wins + jackpot evaluated normally.
+
+**Why this works without new APIs:**
+The existing session API was designed around a generic `finalScore` number. Any game mechanic that produces a non-negative integer score can reuse it. The earning formula is config-driven in DB. The crash multiplier maps cleanly: 1× = score 100, 10× = score 1000 (jackpot threshold).
+
+**Prevention rule:**
+Before adding new API endpoints for a new game mode, check: does the existing session API accept a generic `finalScore`? Can the new mechanic's outcome be mapped to an integer? If yes, reuse the existing API.
+
+### 2026-09-27 — MultiplierEngine must be time-based (wall clock), not frame-based
+
+**Spec requirement §13:**
+Never use `mult += 0.01` in a frame loop — this ties game correctness to FPS/monitor refresh rate.
+
+**Implementation:**
+```typescript
+current(): number {
+  const elapsed = performance.now() - this.startTime;
+  const frames  = elapsed / 16.67;  // normalize to 60fps equivalent
+  return Math.round((1.01 * Math.pow(1.007, frames)) * 100) / 100;
+}
+```
+
+**Why:** If a user's browser drops to 30fps, `mult += 0.01 per frame` would make their multiplier grow at half speed — favouring higher-spec machines. Time-based: multiplier is identical regardless of browser performance.
+
+### 2026-09-27 — Duplicate code in canvas files crashes build — always truncate by line count, not by string search
+
+**What happened:**
+The previous `str_replace` edited only the file header but left old class definitions appended. The file grew to 1269 lines with duplicate class names (`CLR`, `Bird`, `Bullet`, `Hunter`, `GameEngine`). TypeScript emitted duplicate identifier errors.
+
+**Fix:**
+```powershell
+$lines = Get-Content "FlappyBird.tsx"; $lines[0..623] | Set-Content "FlappyBird.tsx"
+```
+
+**Prevention rule:**
+When replacing a canvas game file that has grown by appending, always use `fs_write` (complete rewrite) instead of `str_replace`. A game engine file that gains new classes is never safely editable with targeted string replace — write the whole file fresh.
+
+
+---
+
+## Flex Layout + Canvas Lesson (2026-09-27 — game canvas button cut off)
+
+### 2026-09-27 — Canvas inside flex container with overflow:hidden clips the action bar
+
+**What happened:**
+The game rendered the sky scene correctly but the START HUNT / SECURE button was invisible. The layout was:
+```
+fixed inset-0 flex flex-col
+  ├── top HUD bar (flex-shrink-0)
+  └── relative flex-1 overflow-hidden   ← THIS CLIPS THE BOTTOM BAR
+        └── FlappyBird: flex flex-col
+              ├── canvas (flex-1)       ← takes all space
+              └── action bar (flex-shrink-0)  ← pushed OUT of parent overflow bounds
+```
+
+The `overflow-hidden` on the game canvas container clipped the FlappyBird component's internal bottom action bar out of view.
+
+**Fix:**
+1. Removed `overflow-hidden` from the canvas container — changed to `min-h-0` only
+2. Added `overflow-hidden` to the outermost `fixed inset-0` container so nothing bleeds outside the viewport
+3. Added `style={{minHeight:0}}` to the FlappyBird root div to prevent flex-shrink issues
+
+**Prevention rule:**
+When a flex child contains a nested flex column with a fixed bottom bar, do NOT put `overflow-hidden` on the flex child's container — put it on the highest ancestor. The inner flex column needs to freely distribute height, and `overflow-hidden` on the parent clips any content that touches the boundary.
+
+**Also:** auto-start `engine.startRound()` immediately when the engine boots (active=true). The game should start the countdown as soon as the wager is deducted and the fullscreen overlay opens — users shouldn't have to click "START HUNT" twice.
+
+
+---
+
+## Game Asset & Polish Lesson (2026-09-27)
+
+### 2026-09-27 — Canvas game must use real PNG sprites, not programmatic shapes. Shapes look like "noob game".
+
+**What happened:**
+The previous HUNT game drew the bird as an orange ellipse with programmatic wings, the hunter as blue rectangles, and the background as a CSS gradient. Multiplier reached 322× because the escape distribution used `1.01 × 1.007^frames` (frame-based, not time-capped) which grows unboundedly.
+
+**Fixes applied:**
+1. **Real PNG sprites** — AssetLoader.preload() loads all assets once into a Map cache. drawBird() uses `/assets/birds/eagle.png`, drawHunter() uses `/assets/hunter/aiming.png` etc. Fallbacks drawn only if image hasn't loaded.
+
+2. **Fair escape curve** — replaced unbounded frame-based curve with `Math.pow(E, 0.06 × seconds)`. Max escape capped at `escapeMaxMult` (default 12). Median escape ≈ 2.4× (exponential distribution λ=1.2).
+
+3. **Background changes by multiplier tier** — sky.png (<3×), sunset.png (3–6×), night.png (6×+). Visual storytelling without audio.
+
+4. **AssetLoader singleton** — single `Map<src, HTMLImageElement>` cache. Assets preloaded once on component mount, never re-fetched. `.ready()` check prevents drawing incomplete images.
+
+5. **File deduplication** — always use `fs_write` for complete game file rewrites. Never `str_replace` on a file with multiple class/const definitions.
+
+**Prevention rule:**
+Before writing a canvas game, verify the asset directory exists and list all files. Every visual entity must use real image assets when available, with programmatic fallback only when the image hasn't loaded. "Draw it with code" is only acceptable as a loading fallback.
+
+
+---
+
+## Critical Game Engine Bug Lesson (2026-09-27 — multiplier reached 2,765,815×)
+
+### 2026-09-27 — useEffect with [active, cfgLoaded] recreated the engine on every state update, causing unbounded multiplier
+
+**What happened:**
+The multiplier displayed 2,765,815.26×. The escape logic existed and was correct in isolation, but it never fired.
+
+**Root cause chain:**
+1. `useEffect([active, cfgLoaded])` — engine created when either dep changes.
+2. `engine.startRound()` called → `_setPhase("COUNTDOWN")` → calls `onPhaseChange` callback → `setPhase(p)` → React state update → component re-renders.
+3. Re-render doesn't change `active` or `cfgLoaded` — so engine is NOT recreated. ✓
+4. BUT: `onPhaseChange`, `onMultChange` are closures captured at `useEffect` time. When the engine calls `engine.onMultChange(m)`, this updates `setMult(m)` → re-render → the `useEffect` dependency array evaluates again.
+5. **If `cfgLoaded` was set to `true` in a separate `useEffect` that also triggers**, the two effects chain together and the engine useEffect re-runs, destroying the old engine (cancelling its RAF), creating a new one, starting a new round — but the first engine's last RAF callback already queued `requestAnimationFrame(this.loop)` before `destroy()` ran, so BOTH engines run for one extra frame, both call `setMult()`, creating a race condition.
+6. Over many rounds, ghost engines accumulate, each running their own RAF loop, each calling `setMult()` with their own multiplier (never reset). The highest ghost engine's multiplier wins the React state.
+
+**Fix:**
+- Added `bootedRef = useRef(false)` — engine boots exactly once, never recreated.
+- Separated config loading (`cfgLoaded`) from engine boot. Engine only boots when BOTH are ready AND `bootedRef.current === false`.
+- `bootedRef.current = false` only in the cleanup function — so if the component truly unmounts, it can be recreated.
+- `MultiplierEngine.stop()` called on secure/escape — `current()` returns last value, `hasEscaped()` returns false after stop. No runaway possible.
+- Hard cap: `current()` returns `Math.min(this.cap + 0.01, raw)` — mathematically impossible to exceed cap.
+
+**Prevention rule:**
+Any React component that manages a game/animation engine must:
+1. Use `useRef` to store the engine (not state).
+2. Use a `bootedRef` guard to prevent re-creation on re-renders.
+3. The engine's RAF loop must NOT trigger state updates that change useEffect dependencies.
+4. Always call `engine.destroy()` in the cleanup — but verify the cleanup runs exactly when expected (unmount or explicit restart).
+
+
+---
+
+## Pixi.js + GSAP Integration Lesson (2026-09-27)
+
+### 2026-09-27 — Separate rendering concern (Pixi.js) from game logic concern (HuntEngine FSM) strictly
+
+**Architecture decision:**
+The game was split into two independent layers:
+- `HuntEngine` — pure game logic FSM, RAF loop, multiplier math. Zero rendering code. No Pixi imports.
+- `PixiRenderer` — pure rendering. Zero game logic. Wired via callbacks: `onSuccess`, `onEscape`, `onTick`.
+
+**Why this matters:**
+If rendering is mixed with game logic (as in the original), a rendering failure (Pixi init error, missing texture) can crash the game loop. With separation, the game continues running even if Pixi fails to init — only the visuals disappear, not the economy.
+
+**Pixi.js v8 patterns learned:**
+1. `app.init()` is async in v8 — must `await`.
+2. `Assets.load(array)` bulk-preloads all textures in parallel with graceful failure (`.catch(() => {})`).
+3. `Texture.from(src)` is synchronous after `Assets.load` — safe to call every frame.
+4. `app.renderer.resize(w, h)` + `autoDensity: true` handles DPR automatically.
+5. Never call `gsap.killTweensOf(sprite)` per-frame — kill specific tweens only, or kill all on destroy.
+
+**GSAP patterns:**
+- Screen shake: `gsap.to(app.stage, { x: 8, yoyo: true, repeat: 7 })` — animates the whole stage position, more efficient than individual sprite shakes.
+- Asset transitions: fade out → swap texture → fade in.
+- Celebration: scale bounce on hunter sprite.
+
+
+---
+
+## Pixi.js v8 API + TypeScript Lessons (2026-09-27)
+
+### 2026-09-27 — Pixi.js v8: Texture.valid removed, Texture.from() on unloaded asset returns empty texture with width=0
+
+**What happened:**
+`Cannot read properties of null (reading 'orig')` — 60× per second in console. Every RAF frame called `Texture.from(src)` on assets that hadn't finished loading. Pixi v8 returns an empty Texture object whose internal `frame` is null, and the sprite render path tries to read `.orig` from that null frame.
+
+**Fix:**
+1. Create a `tex()` helper that wraps every `Texture.from()` call in try/catch and checks `t.width > 0` (replaces removed `.valid` property from v7).
+2. All phase-transition methods (`onSuccess`, `onEscapeStart`, `onNewRound`) use `this.tex()` and only assign texture if non-null.
+3. `update()` uses a local `safeTexture()` with the same pattern.
+4. `emitParticles()` and `emitTrailDot()` guard early-return on null texture.
+
+**Pixi v8 breaking change from v7:**
+- v7: `texture.valid` — boolean property on Texture
+- v8: `texture.valid` removed → use `texture.width > 0` or `texture.source?.resource != null`
+
+**Prevention rule:**
+With any async asset loader (Pixi Assets, Three.js TextureLoader, etc.): never call Texture.from() or texture accessors until `Assets.load()` promise has resolved. Add a `texturesReady` flag that's set `true` in the `.then()` of `Assets.load()`, and guard all `Texture.from()` calls with that flag at the class level.
+
+### 2026-09-27 — Private class fields accessed via type cast cause TypeScript errors
+
+**What happened:**
+`(engine as HuntEngine & { cdStart: number }).cdStart` — TypeScript TS2339 because `cdStart` is private.
+
+**Fix:**
+Add an `onCountdown: (n: number) => void` callback to `HuntEngine`. The engine fires it inside the COUNTDOWN tick with the current countdown value. React component wires `engine.onCountdown = setCountdown`. No private field exposure needed.
+
+**Prevention rule:**
+Never access private fields via type casts — this breaks encapsulation. If a parent needs to observe an internal value, expose it via a callback (observer pattern) or a getter method. TypeScript private fields exist for a reason.
+
+
+---
+
+## GSAP + Pixi Destroy Lesson (2026-09-27 — Cannot set properties of null)
+
+### 2026-09-27 — GSAP onComplete fires after Pixi sprite is destroyed — always check a destroyed flag
+
+**What happened:**
+```
+TypeError: Cannot set properties of null (setting 'x')
+at Tween.onComplete (FlappyBird.tsx:234)
+  this.bg.texture = newTex;
+```
+
+Background fade-out triggered a GSAP tween with `onComplete` that ran 0.4 seconds later. By that time, `PixiRenderer.destroy()` had been called (user navigated away), which internally null-ified the sprite's `_x` property. The `if (!this.bg)` guard passed because the JS object reference still existed — only the Pixi internals were nullified.
+
+**Fix:**
+1. Added `private _destroyed = false` flag to `PixiRenderer`.
+2. `destroy()` sets `this._destroyed = true` FIRST, before calling `gsap.killTweensOf()` and `app.destroy()`.
+3. Every GSAP `onComplete` checks `if (this._destroyed) return` as the first line.
+4. In `destroy()`, kill tweens on specific sprites (not `gsap.killTweensOf("*")` which is too broad and can kill unrelated tweens on other components).
+5. Capture sprite references in a local variable before the async gap: `const bgRef = this.bg; gsap.to(bgRef, { onComplete: () => { if (this._destroyed || !bgRef) return; ... } })`.
+
+**Prevention rule:**
+Any time you use GSAP `onComplete` with a Pixi sprite that could be destroyed before the tween finishes:
+1. Add a `_destroyed` flag to the renderer class.
+2. Set it `true` as the FIRST line of `destroy()`.
+3. Check it in EVERY `onComplete` callback.
+4. Capture the sprite reference locally (don't use `this.sprite` inside closures — it might be reassigned).
+
+**Related SOP:** Backend SOP §4.3 (guard all async paths against stale state)
+
+
+---
+
+## Game Layout Architecture Lesson (2026-09-27 — HUNT premium layout)
+
+### 2026-09-27 — Separate game canvas from game controls using a canvasOnly prop
+
+**What changed:**
+Previously: `FlappyBird.tsx` owned its own action bar (stake/secure button) inside the Pixi canvas component.
+After: `page.tsx` owns all controls. `FlappyBird` gets `canvasOnly=true` → renders only the Pixi canvas.
+
+**Why this is correct OOP:**
+- Single Responsibility: FlappyBird = renderer. page.tsx = layout + economy.
+- FlappyBird exposes `onMultiplierChange` and `onPhaseChange` callbacks so page.tsx can react to game state.
+- page.tsx can position the canvas anywhere in a layout grid without fighting the built-in bottom bar.
+
+**New layout structure:**
+```
+Header (logo + balance + deposit)
+  ↓
+Multiplier hero (large, colour-coded, ambient glow)
+  ↓
+Pixi canvas (16:9-ish, rounded, border glows with mult colour)
+  ↓
+Controls strip: Stake | Potential Reward | Main Action (3-col grid)
+  ↓
+Recent hunts (colour-coded chips, scrollable)
+```
+
+**Prevention rule:**
+Any game canvas component should expose `canvasOnly` prop to strip its built-in controls. Controls belong in the page layout, not inside the canvas component. This allows the page to use CSS Grid/Flex to position the canvas exactly per the design spec.
+
+
+---
+
+## Pixi.js Texture Safety Lesson (2026-09-27 — permanent fix)
+
+### 2026-09-27 — Never call Texture.from() in a RAF update loop. Cache textures post-load into a Map.
+
+**Pattern that fixes the `Cannot read .orig` crash permanently:**
+
+```typescript
+// After Assets.load() resolves:
+for (const src of Object.values(ASSET_PATHS)) {
+  try {
+    const t = PIXI.Texture.from(src);
+    if (t && t.width > 0) this._tex.set(src, t);
+  } catch { /* skip */ }
+}
+
+// Safe getter — called every frame, never throws:
+private t(src: string): Texture | null {
+  return this._tex.get(src) ?? null;
+}
+```
+
+All RAF-loop code (update, emitTrailDot, emitParticles, background switch, phase transitions) uses `this.t(src)` — never `Texture.from()`. The Map is only populated after `Assets.load()` fully resolves and each texture has `width > 0`. If an asset fails to load, the entry simply isn't in the Map, and `this.t()` returns null which is handled gracefully everywhere.
+
+**Why the previous `tex()` helper with `Texture.from()` inside still crashed:**
+`Texture.from()` itself is synchronous and side-effect-free, but in Pixi v8 it can return a texture object where the internal `frame` property is null if the underlying source hasn't resolved yet. The `width > 0` guard prevented *some* crashes, but the texture object reference was still being set on sprites before the underlying `.orig` frame was populated. Subsequent sprite rendering then dereferenced the null frame.
+
+**The Map approach is fundamentally safer** because textures are only stored once they are fully resolved (`width > 0` at the time of the initial cache-fill), and the Map value never changes after that point.
+
+
+---
+
+## Turbopack Cache Corruption — Permanent Fix (2026-09-27)
+
+### 2026-09-27 — Move Turbopack cache outside .next to prevent recurring SST corruption
+
+**Problem:**
+Deleting `.next` while `npm run dev` is running corrupts the Turbopack SSTable cache. The next startup panics with:
+```
+Unable to open static sorted file referenced from 00000044.meta
+failed to open file .next\dev\cache\turbopack\...\00000043.sst
+```
+
+This happened repeatedly because Kiro's cache-clearing commands delete `.next` while the process was still running.
+
+**Root cause:**
+By default, Turbopack stores its persistent SQLite/SSTable cache at `.next/dev/cache/turbopack/`. The `.meta` index files and `.sst` data files must stay in sync. Deleting `.next` while Turbopack is running leaves orphaned `.meta` files in the process's in-memory state that point to deleted `.sst` files. On the next request, Turbopack tries to read them and panics.
+
+**Permanent fix — `next.config.ts`:**
+```typescript
+turbopack: {
+  root: __dirname,
+  cacheDir: process.env.TURBOPACK_CACHE_DIR
+    ?? path.join(__dirname, ".turbopack-cache"),
+}
+```
+
+This moves the Turbopack cache from `.next/dev/cache/` to `.turbopack-cache/` — a separate directory. Now deleting `.next` never touches the Turbopack cache, so no SST corruption occurs.
+
+**Additional rules:**
+1. `.turbopack-cache/` added to `.gitignore`.
+2. When clearing `.next`, also clear `.turbopack-cache` if doing a full reset.
+3. Always kill node processes BEFORE deleting `.next` or `.turbopack-cache`.
+4. In CI/CD, set `TURBOPACK_CACHE_DIR=/tmp/turbopack-cache` so each build starts fresh.
+
+**Safe restart sequence:**
+```powershell
+Get-Process -Name "node" | Stop-Process -Force   # 1. Kill first
+Remove-Item -Recurse -Force .next                 # 2. Then delete
+npm run dev                                        # 3. Then start
+```
+
+
+---
+
+## Turbopack Cache — Correction (2026-09-27)
+
+### 2026-09-27 — `cacheDir` and `NEXT_TURBOPACK_CACHE_PATH` do NOT exist in Next.js 16.3.5
+
+**What was tried and failed:**
+1. `turbopack: { cacheDir: "..." }` in `next.config.ts` → `Unrecognized key(s): 'cacheDir'`
+2. `NEXT_TURBOPACK_CACHE_PATH` env var → does not exist in this version
+
+**What actually works:**
+The Turbopack cache location cannot be moved in Next.js 16.3.5. The cache always lives at `.next/dev/cache/turbopack/`.
+
+**Real permanent fix:**
+Add `clean` and `dev:clean` npm scripts to `package.json`:
+```json
+"clean": "node -e \"const fs=require('fs');fs.rmSync('.next',{recursive:true,force:true});...\"",
+"dev:clean": "npm run clean && npm run dev"
+```
+
+Use `npm run dev:clean` instead of `npm run dev` whenever you suspect cache corruption. This atomically deletes `.next` and starts fresh in the same command — no manual deletion needed, no risk of leaving a running server with a deleted cache.
+
+**Safe single command:**
+```powershell
+npm run dev:clean
+```
+
+This is now the recommended dev start command when cache issues occur.
+
+
+---
+
+## PowerShell UTF-8 BOM Lesson (2026-09-27)
+
+### 2026-09-27 — PowerShell `Set-Content -Encoding UTF8` writes a BOM — JSON parsers reject it
+
+**What happened:**
+`package.json` was written with a UTF-8 BOM (`\uFEFF`, bytes `EF BB BF`) by PowerShell's `Set-Content`. JSON spec does not allow BOM. Node.js, npm, and Turbopack all threw `SyntaxError: Unexpected token ''`.
+
+**Fix:**
+```powershell
+$bytes = [System.IO.File]::ReadAllBytes($path)
+if ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+    $bytes = $bytes[3..($bytes.Length - 1)]
+    [System.IO.File]::WriteAllBytes($path, $bytes)
+}
+```
+
+**Prevention rule:**
+Never write JSON files with PowerShell's `Set-Content`. Use `[System.IO.File]::WriteAllText($path, $content, [System.Text.Encoding]::UTF8)` which writes UTF-8 WITHOUT BOM. Or better: use the `fs_write` tool which always writes UTF-8 without BOM. PowerShell's default `Set-Content -Encoding UTF8` adds BOM by default on PowerShell 5.x. Only PowerShell 7+ with `-Encoding utf8NoBOM` avoids it.
+
+
+---
+
+## Pixi.js Sprite Destroy + GSAP Race Condition — Definitive Root Cause (2026-09-27)
+
+### Symptom
+`Cannot read properties of null (reading 'orig')` — fires 30-60 times per second in console after pressing SECURE or when a round ends.
+
+### Exact crash site (Pixi.js internals)
+`node_modules/pixi.js/lib/utils/data/updateQuadBounds.js` line 5:
+```js
+const { width, height } = texture.orig;  // texture = null → crash
+```
+Called by `Sprite.updateBounds()` → triggered by `Sprite.onViewUpdate()` → triggered by any GSAP tween writing `.alpha` (or any property) to a destroyed Sprite.
+
+### Root cause
+`Sprite.destroy()` in Pixi.js v8 sets `this._texture = null`. Any GSAP tween that still holds a reference to the sprite and updates a property (e.g. `.alpha`) after destroy triggers the bounds pipeline, which reads `this._texture.orig`, crashing on `null.orig`.
+
+The `PixiRenderer.destroy()` method called `gsap.killTweensOf()` only on **named sprites** (`this.bg`, `this.bird`, etc.) but NOT on:
+1. Dynamically-created trail sprites (one per ~3 frames, living 0.5–0.8s)
+2. Particle sprites
+3. Any second-phase GSAP tweens launched from within a tween's `onComplete`
+
+`app.destroy({ children: true })` destroyed all sprites including the trail/particle sprites, nulling their `_texture`. The surviving GSAP tweens continued firing → crash.
+
+### Fix
+In `PixiRenderer.destroy()`, before calling `app.destroy()`:
+```typescript
+this.trailCont?.children.forEach((c) => gsap.killTweensOf(c));
+this.particleCont?.children.forEach((c) => gsap.killTweensOf(c));
+this.particles.forEach((p) => gsap.killTweensOf(p.sp));
+this.particles = [];
+```
+
+Also guard `emitTrailDot`'s `onComplete` with `if (!sp.destroyed)` and `updateParticles` with a `destroyed` check.
+
+### Rule
+When using Pixi.js + GSAP: before calling `app.destroy()` or any container's `removeChildren().destroy()`, you MUST `gsap.killTweensOf(sprite)` on EVERY sprite that has an active tween — including dynamically-allocated sprites inside containers. `gsap.killTweensOf(container)` does NOT kill tweens on the container's children.
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: `Cannot read properties of null (reading 'split')` in Pixi.js Assets loader
+
+**What happened:**
+`PIXI.Assets.load(Object.values(A))` crashed with `TypeError: Cannot read properties of null (reading 'split')`.
+The crash originated inside Pixi's internal `Resolver.js` / `resolveTextureUrl.js` which calls `.split('?')` on every URL it receives.
+
+**Root cause:**
+`A` is declared `as const` — its values are readonly string literal types at compile time.
+However, `Object.values(A)` returns the runtime array and Pixi does not validate entries before splitting.
+If any entry is falsy (empty string, null, undefined from a misconfigured constant or env variable), Pixi throws immediately.
+A secondary cause: on second game boot, `Assets` may have cached a prior failed resolution as `null` internally.
+
+**What was wrong about it:**
+Passed raw `Object.values(A)` directly to `Assets.load()` with no defensive filter.
+Any future developer adding a new key to `A` with an empty/null value would silently crash the game.
+
+**Correct approach:**
+Cast to `string[]` then filter before passing to the loader:
+```typescript
+const urls = (Object.values(A) as string[]).filter(v => typeof v === "string" && v.length > 0);
+await PIXI.Assets.load(urls).catch(() => {});
+```
+The `as string[]` cast is required because `Object.values()` on an `as const` object returns
+the literal union type (e.g. `"/assets/birds/eagle.png" | ...`), not `string[]`.
+A type predicate (`v is string`) fails because `string` is not assignable to those literal types — use the cast instead.
+
+**TypeScript trap:**
+```typescript
+// WRONG — TS2677: 'string' not assignable to literal union
+Object.values(A).filter((v): v is string => typeof v === "string")
+
+// CORRECT — cast first, then filter
+(Object.values(A) as string[]).filter(v => typeof v === "string" && v.length > 0)
+```
+
+**Prevention rule:**
+Never pass `Object.values()` of an asset/config constant directly to a third-party loader.
+Always cast to the base type and filter for truthiness first.
+Any constant that feeds an external loader must have this pattern — it makes the code robust against
+future additions of optional/env-driven entries that may be empty.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY, defensive by default),
+Frontend SOP §Hard Rule 1 (validate before passing to third-party APIs)
+
+---
+
+### 2026-09-26 — HUNT game: white canvas on game restart (Pixi `app.init` called before CSS layout)
+
+**What happened:**
+On the second game boot (after a round ended and a new one started), the Pixi canvas rendered
+completely white. No scene, no bird, no background.
+
+**Root cause:**
+`canvas.clientWidth` and `canvas.clientHeight` are `0` immediately after a React re-render
+inserts the `<canvas>` element into the DOM. The browser has not yet run its CSS layout pass.
+`app.init({ width: 0, height: 0 })` created a 0×0 Pixi renderer.
+Pixi's WebGL context with a zero-size viewport clears to white (default clear colour behaviour).
+`buildScene()` then positioned all sprites relative to `W=0, H=0` — every sprite landed at (0,0)
+and was invisible off-screen.
+
+**What was wrong about it:**
+`init()` called `canvas.clientWidth` synchronously right after `await import("pixi.js")`,
+which returns from the dynamic import microtask queue — still before the browser's layout tick.
+
+**Correct approach:**
+Poll for real dimensions via `requestAnimationFrame` before calling `app.init`:
+```typescript
+await new Promise<void>(resolve => {
+  const poll = () => {
+    if (canvas.clientWidth > 16 && canvas.clientHeight > 16) { resolve(); return; }
+    requestAnimationFrame(poll);
+  };
+  poll();
+});
+const W = canvas.clientWidth  || canvas.offsetWidth  || 400;
+const H = canvas.clientHeight || canvas.offsetHeight || 300;
+// now safe to call app.init({ width: W, height: H })
+```
+The `|| canvas.offsetWidth || 400` fallback handles edge cases where `clientWidth` is still 0
+(e.g. hidden tabs, SSR hydration timing).
+
+**Prevention rule:**
+Never read `clientWidth`/`clientHeight` from a canvas (or any newly-mounted DOM element) synchronously
+inside an `async` function that was triggered by a React `useEffect`.
+Always wait for layout via `requestAnimationFrame` or `ResizeObserver` first.
+This applies to any WebGL/canvas renderer (Pixi, Three.js, Babylon.js, etc.).
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — "loading/init" state must not produce
+broken UI), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit)
+
+---
+
+### 2026-09-26 — HUNT game: SECURE button rendered but never wired (stale closure + missing onClick)
+
+**What happened:**
+The SECURE button in `page.tsx` (3-column controls strip) was visually displayed during `FLYING` phase
+but pressing it did nothing. The game only continued until the bird escaped on its own.
+
+**Two separate root causes:**
+
+1. **Missing `onClick` handler** — The SECURE button JSX had no `onClick` prop at all.
+   It was a visual-only button. The actual `handleSecure` logic lived inside `FlappyBird.tsx`
+   and was never exposed to `page.tsx`.
+
+2. **Stale closure on `livePhase`** — `livePhase` is React state in `page.tsx`.
+   Any callback that captured it at the time of render would hold the value from that render cycle.
+   By the time a user clicks during `FLYING`, an older closure could still see `"WAITING"`.
+
+**What was wrong about it:**
+- `onPhaseChange={setLivePhase}` was passed to `FlappyBird` but `page.tsx` had no button action.
+- Phase state was read inside callbacks via closure rather than a ref.
+
+**Correct approach:**
+Two changes together:
+
+A. **Sync setter** — replace bare `setLivePhase` with a combined setter that updates both state
+   (for rendering) and a ref (for click handlers) atomically:
+```typescript
+const livePhaseRef = useRef("WAITING");
+const setPhase = useCallback((p: string) => {
+  livePhaseRef.current = p;  // synchronous — available immediately in any handler
+  setLivePhase(p);           // triggers re-render
+}, []);
+// Pass setPhase everywhere setLivePhase was used
+onPhaseChange={setPhase}
+```
+
+B. **Wire the button** — dispatch a synthetic Space `KeyboardEvent` to `document.body`.
+   `FlappyBird` already listens for `Space` on `window` and checks `e.target === document.body`
+   (to avoid firing when a button has keyboard focus). Dispatching to `document.body` satisfies
+   that existing guard without duplicating the secure logic:
+```typescript
+const handleSecurePage = useCallback(() => {
+  if (livePhaseRef.current !== "FLYING" || securingRef.current) return;
+  document.body.dispatchEvent(
+    new KeyboardEvent("keydown", { code: "Space", bubbles: true, cancelable: true })
+  );
+}, []);
+// <button onClick={handleSecurePage}>SECURE Rs. ...</button>
+```
+
+**Prevention rule:**
+Any button that triggers a time-sensitive action (cashout, secure, stop) MUST:
+1. Have an explicit `onClick` — never leave a call-to-action button without a handler.
+2. Read live state from a `useRef` in the handler, not from a state variable in a closure.
+3. Be tested with the following scenario: click the button 0.5 s into `FLYING`, then again
+   immediately (double-click guard), then on second game boot.
+
+When a child component owns the action logic and the parent owns the button, use one of:
+- `useImperativeHandle` + `forwardRef` (exposes a method from child to parent)
+- Synthetic event dispatch to a shared DOM event the child already listens to (used here)
+- Lift the action logic into the parent (only if it doesn't bloat the parent)
+
+Never duplicate the action logic in both parent and child.
+
+**Related SOP section:** Frontend SOP §6.1 (all interactive states must be wired and tested),
+Universal Engineering Principles §Hard Rule 2 (DRY — action logic in one place),
+UI/UX SOP §Hard Rule 1 (four states — "active/clickable" state must produce the expected result)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: resize() crashes with undefined 'width' when ResizeObserver fires before buildScene() completes
+
+**What happened:**
+`Cannot set properties of undefined (setting 'width')` at `PixiRenderer.resize()` line 529 (`this.bg.width = w`). The crash happened consistently on game start, before any visuals appeared.
+
+**Root cause:**
+`PixiRenderer.init()` is `async`. The sequence inside it is:
+1. `await PIXI dynamic import` — async gap
+2. `await rAF poll` — async gap (waiting for canvas layout)
+3. `await app.init()` — async gap (WebGL context creation)
+4. `await PIXI.Assets.load()` — async gap (texture network fetch)
+5. `this.buildScene()` — synchronous, sets `this.bg`, `this.hunter`, etc.
+
+The `ResizeObserver` is wired to the canvas element **before** `rend.init()` is awaited. If the container resizes during any of the four async gaps above (which happens on first mount as the browser lays out the page), `resize()` is called when `this.bg` is still `undefined` (class field declared as `!` — asserted non-null, but not yet assigned).
+
+The guard `if (!this.app) return` only caught the case where the Application wasn't created yet. `this.app` is assigned after step 3, but `this.bg` is only assigned in step 5. So the resize could crash in the step 3 → step 5 window.
+
+**Correct fix:**
+Add `this.bg` to the early-return guard:
+```typescript
+resize(w: number, h: number) {
+  // Guard: buildScene() may not have run yet if ResizeObserver fires
+  // during the async init() gap between app.init and buildScene().
+  if (!this.app || !this.bg) return;
+  // ... rest of resize
+}
+```
+
+**Prevention rule:**
+Any method that accesses sprite properties (`this.bg`, `this.hunter`, etc.) declared with `!` (non-null assertion) MUST guard against the window between the Application being created (`app.init`) and the scene being built (`buildScene()`). The guard pattern is `if (!this.app || !this.bg) return` — not just `if (!this.app)`. This applies to every method that touches scene objects: `update()`, `resize()`, `onNewRound()`, etc.
+
+More broadly: class fields declared with `!` (non-null assertion) are only safe after the specific method that assigns them completes. Never assume synchronous initialization when `init()` is `async`.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 4 (async timing must be explicit), Frontend SOP §Hard Rule 1 (guard all async state access)
+
+---
+
+### 2026-09-26 — HUNT game: PIXI.Cache.remove() over-clears — causes 'Asset not found in Cache' on second boot
+
+**What happened:**
+After fixing the Assets global cache strategy by calling both `Assets.unload(u)` AND `Cache.remove(u)` in `PixiRenderer.destroy()`, the second game boot showed 21 Pixi warnings: `[Assets] Asset id /assets/... was not found in the Cache`. The second game then crashed with `null.split` again.
+
+**Root cause — Cache.remove() interferes with Assets.load():**
+
+Pixi v8 maintains two separate caches:
+1. **Assets async-resolver cache** (`PIXI.Assets` internal promise map) — stores the resolved Promise for each URL. `Assets.unload(url)` removes from this cache.
+2. **TextureCache** (`PIXI.utils.TextureCache` / `PIXI.Cache`) — stores the actual `Texture` objects, keyed by URL. `Cache.remove(url)` removes from this cache.
+
+The correct cleanup sequence is:
+1. Call `Assets.unload(url)` — removes the async promise cache entry. ✓
+2. Do NOT call `Cache.remove(url)`.
+
+Why: `Assets.load(url)` on the second boot sees the URL as not in the async cache (we unloaded it), so it fetches it fresh from the network and re-adds it to **both** caches. This works correctly.
+
+But if you also call `Cache.remove(url)` during destroy:
+- TextureCache entry is deleted.
+- On second boot, `Assets.load(url)` completes successfully and adds back to TextureCache.
+- However, if any `Texture.from(url)` call happens in the window **after** `Cache.remove()` but **before** the second `Assets.load()` completes, it finds nothing → returns a stub texture with null internals → `null.split` crash.
+
+More critically: when `Cache.remove()` runs **after** `app.destroy()` (which itself removes textures), the cache is already in an inconsistent state. Calling `Cache.remove()` on an already-inconsistent entry can corrupt the internal URL key to `null`.
+
+**Correct fix:**
+Only call `Assets.unload()`, never `Cache.remove()`. Use `void Promise.allSettled()` to fire-and-forget without making `destroy()` async:
+```typescript
+void Promise.allSettled(urls.map(u => this.PIXI.Assets.unload(u)));
+this._tex.clear();
+// Do NOT call this.PIXI.Cache.remove(u) — it over-clears and causes null.split
+```
+
+**The rule:**
+- `Assets.unload()` = correct cleanup for Pixi v8 assets. Use this.
+- `Cache.remove()` = low-level manual cache manipulation. Do NOT use for cleanup — it bypasses the Assets lifecycle and leaves the cache in a state that Assets.load() doesn't expect.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (use the library's own lifecycle API, not internal caches directly), Universal Engineering Principles §Hard Rule 2 (don't duplicate what the framework already manages)
+
+---
+
+### 2026-09-26 — Turbopack stale HMR cache reports false 'identifier defined multiple times' error after partial edit
+
+**What happened:**
+After removing a duplicate `const app` block from `FlappyBird.tsx`, Turbopack continued reporting `Error: the name 'app' is defined multiple times` for many subsequent page loads, even though `Select-String` confirmed only one `const app` existed in the source.
+
+**Root cause:**
+Turbopack's HMR (Hot Module Replacement) caches compiled module graphs in `.next/`. When a file is edited, Turbopack may serve a stale compiled version from the HMR cache rather than recompiling from source — especially if a previous compilation errored before the corrected file was saved, leaving a broken module graph cached.
+
+**Fix:**
+```powershell
+Remove-Item -Recurse -Force ".next"
+```
+This forces Turbopack to recompile from source on the next request. After clearing `.next`, the error disappeared.
+
+**Prevention rule:**
+Whenever a syntax or identifier error persists in the browser after the source file has been corrected (verified with grep/Select-String), the first action is always:
+```powershell
+Remove-Item -Recurse -Force ".next"
+```
+Never spend time debugging source code for errors that are actually stale compiled artifacts. If `tsc --noEmit` passes but the browser still shows the error, it's a Turbopack cache issue, not a source issue.
+
+**Related SOP section:** DevOps SOP §cache-invalidation (stale build artifacts must be cleared before debugging), Grounding SOP §Hard Rule 5 (verify against the real running state, not assumptions)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: PIXI.Assets.unload() is async — fire-and-forget in a sync destroy() races against app.destroy() causing "not found in Cache" warnings and null.split crash on 3rd+ boots
+
+**What happened:**
+After replacing the per-URL `Cache.remove()` calls with `void Promise.allSettled(urls.map(u => Assets.unload(u)))`, the game showed Pixi warnings on the second boot:
+```
+[Assets] Asset id /assets/birds/eagle.png was not found in the Cache
+```
+And the `null.split` crash returned on the third boot.
+
+Also Turbopack emitted a parse error:
+```
+Error: await isn't allowed in non-async function
+```
+pointing at the `await` form of `Assets.unload` that had briefly been in `destroy()`.
+
+**Root cause — `Assets.unload()` is async, `destroy()` is synchronous:**
+`PIXI.Assets.unload(url)` returns a `Promise`. Firing it with `void Promise.allSettled(...)` inside a synchronous `destroy()` starts the async unload work but immediately continues to `app.destroy()` which runs synchronously. The sequence becomes:
+1. `void Promise.allSettled(unload promises)` → async work queued on microtask queue
+2. `app.destroy({ children: true })` → synchronously nulls all `_texture` references
+3. Microtasks resolve → Assets resolver tries to remove URLs from cache, but the textures are already destroyed
+
+The race leaves the Assets resolver in a half-cleared state — some URL entries removed, others still pointing to destroyed objects. On the next `Assets.load()`, the resolver finds partial cache entries, calls `.split('?')` on whatever is stored there, and crashes if any entry is now null.
+
+**Why `await` in `destroy()` is not the fix:**
+`destroy()` is a synchronous method (no `async` keyword). Adding `await` produces a parse error. Making `destroy()` async would require every caller to `await rend.destroy()` — including the React `useEffect` cleanup function, which cannot be async.
+
+**Correct fix — `PIXI.Assets.reset()` is synchronous:**
+`PIXI.Assets.reset()` (Pixi v8 API) clears the entire Assets singleton state synchronously in one call:
+- Wipes the URL → Promise resolver map
+- Clears all loaded bundle records
+- Resets the base-path
+- Leaves `PIXI.utils.TextureCache` untouched (that gets cleared by `app.destroy()`)
+
+```typescript
+destroy() {
+  // ...kill GSAP tweens...
+
+  try {
+    if (this.PIXI) {
+      this.PIXI.Assets.reset();  // synchronous — safe to call before app.destroy()
+      this._tex.clear();
+    }
+  } catch { /* PIXI not imported if init() never completed */ }
+
+  this.app?.destroy(false, { children: true });
+  this.app = null;
+}
+```
+
+On the next `init()`, `Assets.load(urls)` finds nothing in the resolver cache and fetches all textures fresh from the network/browser cache.
+
+**Why BEFORE `app.destroy()`:**
+The resolver map holds URL strings (not texture objects), so calling `Assets.reset()` while textures are still valid is safe. After `app.destroy()`, some texture-related objects are already in a destroyed/null state — operating on them even indirectly (through cache cleanup) risks further corruption. Call `reset()` first, then destroy.
+
+**Prevention rules:**
+1. Never call async APIs fire-and-forget in a synchronous cleanup/teardown method — the async work will race against the synchronous cleanup that follows.
+2. For Pixi.js: use `PIXI.Assets.reset()` (synchronous) in `destroy()`, never `Assets.unload()` (async) fire-and-forget.
+3. `destroy()` on a renderer class must always be fully synchronous. If cleanup genuinely needs async work, make it a separate `teardown(): Promise<void>` and document it clearly. Do not silently make a sync method async to fit in an `await`.
+4. After editing code that a bundler (Turbopack, webpack) caches aggressively, always clear the build cache (`.next`) before concluding a fix is not working. Stale build artifacts can show errors that no longer exist in source.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (async/sync boundaries must be explicit), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit — fire-and-forget is never acceptable in teardown paths)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: WebGL context lost on canvas reuse → logPrettyShaderError null.split crash on second boot
+
+**What happened:**
+After pressing SECURE (or letting the bird escape), the second game showed a grey canvas with no bird or hunter. The browser console showed:
+
+```
+Uncaught TypeError: Cannot read properties of null (reading 'split')
+    at logPrettyShaderError (logProgramError.ts:9)
+    at generateProgram (generateProgram.ts:56)
+    at GlShaderSystem._createProgramData
+    at _Application.render (Application.ts:155)
+```
+
+This is a completely different crash site from the `Resolver.js` null.split fixed earlier. The call stack goes through Pixi's **WebGL shader compiler**, not the asset loader.
+
+**Root cause — dead WebGL context on reused canvas:**
+
+`app.destroy(false, { children: true })` — the **first argument `false`** means "do NOT remove the canvas element from the DOM." The `<canvas>` element stays mounted in React's tree, but its **WebGL context is destroyed** by the call.
+
+When the second game starts, React sees the same `<FlappyBird>` component instance (no `key` change), so it reuses the same DOM subtree including the same `<canvas>` element. `PIXI.Application.init({ canvas: sameElement })` receives a canvas whose WebGL context is dead. Pixi attempts to compile shaders for the new render pipeline, `getShaderSource()` returns `null` for the dead context's program, and `logPrettyShaderError` calls `shaderSource.split('\n')` → crash.
+
+**The misleading prior fix:**
+The `Assets.reset()` call in `destroy()` was correct (clears the global texture cache) but did not address this separate issue. The null.split crash was appearing from two different code paths:
+1. `Resolver.js` — null URL key in the Assets cache (fixed by `Assets.reset()`)
+2. `logProgramError.ts` — null shader source from dead WebGL context (this crash)
+
+**Correct fix — two changes working together:**
+
+**1. `PixiRenderer.destroy()` — pass `true` (removeView) to `app.destroy()`:**
+```typescript
+// WRONG — keeps dead canvas in DOM
+this.app?.destroy(false, { children: true });
+
+// CORRECT — removes canvas from DOM, React re-creates it on next mount
+this.app?.destroy(true, { children: true });
+```
+
+**2. `page.tsx` — `gameKey` counter forces React to remount `FlappyBird` fresh each session:**
+```typescript
+const [gameKey, setGameKey] = useState(0);
+
+// Inside startGame, before setGameActive(true):
+setGameKey(k => k + 1);   // new key → React unmounts old FlappyBird, mounts fresh one
+setGameActive(true);
+
+// On the component:
+<FlappyBird key={gameKey} ... />
+```
+
+**Why both changes are needed:**
+- `destroy(true)` removes the canvas so the old dead WebGL context is gone from the DOM.
+- `key={gameKey}` ensures React fully unmounts the old `FlappyBird` subtree (running `useEffect` cleanup → `rend.destroy()` → `engine.destroy()`) and mounts a fresh instance with a new `<canvas>` element that has no prior WebGL history.
+- Without the `key` change, React would reuse the `FlappyBird` component instance and its `canvasRef` would point to the new (Pixi-removed) canvas, which React would try to reuse by re-inserting — still stale.
+- Without `destroy(true)`, the dead canvas remains in the DOM even if React tries to remount.
+
+**Why `destroy(false)` was ever there:**
+The original intent was to keep the canvas for a "smooth" transition between rounds (no canvas flash). But once the WebGL context is destroyed, the canvas is useless as a rendering surface — keeping it only creates the dead-context reuse bug. The correct way to avoid canvas flash is to use the `key` pattern with a fast re-mount, not to preserve a dead canvas.
+
+**Prevention rule:**
+When wrapping a WebGL renderer (Pixi, Three.js, Babylon.js) in React:
+1. ALWAYS pass `removeView = true` (or equivalent) when destroying the renderer.
+2. ALWAYS use a `key` prop on the wrapper component that increments each time a new renderer session starts.
+3. NEVER reuse a `<canvas>` element across two `Application.init()` calls — WebGL contexts are not resettable; only a fresh DOM element guarantees a fresh context.
+4. Watch the full call stack of any `null.split` error: if it goes through `logPrettyShaderError` or `GlShaderSystem`, the bug is a dead WebGL context, not an asset URL issue.
+
+**Files changed:**
+- `FlappyBird.tsx` — `app.destroy(true, { children: true })`
+- `page.tsx` — `gameKey` state + `setGameKey(k => k + 1)` in `startGame` + `key={gameKey}` on `<FlappyBird>`
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — init state must be clean and fully fresh), Universal Engineering Principles §Hard Rule 3 (teardown must be complete — leaving a dead resource in the DOM is an incomplete teardown)
+
+---
+
+## UI/UX Lessons (continued)
+
+### 2026-09-26 — HUNT rebrand: extracting a design token system from a logo image
+
+**What happened:**
+The platform launched with an electric-blue token system (`--brand-500: #3b82f6`) that had no connection to the actual game brand. The HUNT logo is a gold eagle esports badge — deep amber, bright gold, dark brown-black background. Every button, active state, glow, and gradient on the site was blue, creating a jarring visual disconnect between the brand asset and the UI.
+
+**Root cause:**
+The original token system was written before the logo was finalised. Once the logo was created, nobody went back to re-derive the token palette from it. The tokens and the brand drifted apart silently.
+
+**What was done:**
+1. Loaded the logo image and extracted the exact palette:
+   - Primary gold: `#F5A623` (logo letter fill)
+   - Bright gold: `#FFD700` (logo rim highlight)
+   - Deep amber: `#B8730A` (logo shadow/depth)
+   - Fire orange: `#E05A00` (wing glow, danger zone)
+   - Dark void bg: `#0D0800` (logo outline color → perfect canvas bg)
+2. Rebuilt every CSS token in `globals.css` from these five values:
+   - `--brand-500: #F5A623` (was `#3b82f6`)
+   - `--bg-base: #0D0800` (was `#050510`)
+   - `--text-primary: #fdf0d0` (warm near-white with gold tint, was cool blue-white)
+   - All `--shadow-brand` glows updated to gold rgba
+   - Added `--gold-bright`, `--fire-400/500`, `--gold-rgb` tokens for game-specific states
+3. Updated every component that had hardcoded blue-derived values:
+   - Logo.tsx: `hunt-icon.png`, HUNT wordmark, gold `gradient-text`
+   - NavBar.tsx: hover states → `brand-400` (gold), CTA glows → gold
+   - Sidebar.tsx: active link → `bg-gradient-to-r from brand-600 to brand-500` (gold), text → `text-inverse` (dark on gold)
+   - DashboardHeader.tsx: avatar gradients → `brand-600 → brand-500`
+   - Landing page: hero uses `hunt-logo.png` with gold drop-shadow, all copy changed from "FlappyWin/Flappy Bird" to "HUNT/eagle/hunt", prize chips use gold/fire tokens
+   - Footer: brand name "FlappyWin" → "HUNT", description updated
+
+**Key decisions:**
+- Active sidebar link uses `text-[var(--text-inverse)]` (dark text on gold bg) not `text-white` — the gold background is light enough that white-on-gold fails WCAG AA. `--text-inverse: #0D0800` on `--brand-500: #F5A623` gives 4.8:1 contrast ✓
+- `--bg-base: #0D0800` (dark brown-black) instead of pure `#000000` — matches the dark outline in the logo, feels warmer and more "gold-themed" than cold black
+- `--text-primary: #fdf0d0` (warm near-white) instead of `#f0f0ff` (cool blue-white) — blue-white on brown-black creates a mixed-temperature clash; warm gold-tinted white feels cohesive
+
+**Prevention rule — Brand Token Derivation Process:**
+When the final logo/brand asset is delivered, immediately run this process BEFORE writing any component:
+1. Load the logo image and identify: primary colour, secondary colour, highlight colour, shadow/depth colour, background colour.
+2. Map those to: `--brand-500`, `--accent-500`, `--gold-bright` (if applicable), `--accent-700`, `--bg-base`.
+3. Derive the full scale (50–950) from the primary using a consistent lightness progression.
+4. Check: does `--text-inverse` (text on `--brand-500` buttons) pass WCAG AA (≥4.5:1)? If `--brand-500` is light (gold, yellow, lime), use dark `--text-inverse`. If dark (navy, forest), use white `--text-inverse`.
+5. NEVER write a single component colour until step 4 is complete.
+
+**Typography/copy rule:**
+Every piece of copy on the landing page must match the game's identity. After a brand rename or rebrand:
+- Search for the old brand name in ALL `.tsx` and `.ts` files under `src/app` and `src/components`.
+- Replace every instance: page titles, section headers, CTA text, footer copyright, `<title>` metadata, OpenGraph tags.
+- Check `layout.tsx` metadata separately — it's easy to miss because it's not a visible component.
+
+**Related SOP section:** UI/UX SOP §4.1 (tokens not values — every colour defined once, derived from brand), UI_MASTER_SKILL §2 (Color Systems: 60-30-10, choose palette from product/industry), Universal Engineering Principles §Hard Rule 2 (DRY — no colour duplicated anywhere)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: scene was visually illogical — hunter floating in sky, bird not rising, wrong PNGs used
+
+**What happened:**
+The game scene had the hunter positioned mid-canvas at `y = H * 0.80` with no ground context, making it appear as if the hunter was floating in clouds. The bird flew horizontally rather than upward, which made no narrative sense for a "hunting" game (birds flee upward, not sideways). Several available asset PNGs were unused (`binoculars.png`, `idle.png`, `falcon.png`, `golden-eagle.png`, `legendary-eagle.png`, `forest.png`, `jungle.png`, `mountains.png`, `chest.png`, `trophy.png`). The asset manifest also referenced `/assets/ui/coin.png` which did not exist in the public folder.
+
+**Root causes — three separate issues:**
+
+1. **Missing ground layer**: no Graphics layer created to represent the ground. Hunter was anchored to a raw `y` coordinate with no visual surface beneath it. The fix is to draw a `groundLayer` Graphics strip at the bottom of the canvas so the hunter has a surface to stand on.
+
+2. **Bird trajectory wrong**: bird moved horizontally and slightly up (`tarX` grew right, `tarY` decreased slowly). In a bird-hunting game the bird should flee vertically — starting near ground level and rising steeply as the multiplier grows. The formula was changed to: `tarY = H * (0.75 - rise)` where `rise` grows from 0 to 0.67, so the bird moves from `H*0.75` (ground) to `H*0.08` (sky) as the multiplier increases.
+
+3. **Asset manifest referenced non-existent file**: `/assets/ui/coin.png` was listed in `A` but the actual file is at `/assets/rewards/coin.png`. Pixi's `Assets.load()` silently fails on 404s (the `.catch(()=>{})` swallowed them), but `Texture.from()` in the loop would return an error texture. All asset paths must be verified against the actual `/public` directory before listing them in the manifest.
+
+**Correct architecture for scene layering (z-order matters):**
+```
+bg            → full-canvas background sprite
+bgOverlay     → danger red tint (alpha 0→0.45)
+cloudLayer    → Graphics parallax cloud blobs (above horizon)
+particleCont  → Container for burst particles (behind bird)
+trailCont     → Container for trail dot sprites (behind bird)
+flightPath    → Graphics dashed line (bird's trajectory history)
+birdGlowSp    → Sprite glow halo (centred on bird)
+bird          → main bird sprite
+groundLayer   → Graphics ground strip (in FRONT of bird — bird flies above ground)
+hunter        → Sprite anchored to ground layer bottom-right
+multGlowSp    → multiplier glow (top-centre, behind UI overlay)
+targetLock    → rotating crosshair centred on bird
+```
+The ground layer must be ABOVE the bird in z-order so the hunter visually stands on it and the bird appears to fly above the terrain, not through it.
+
+**Pattern: tier-progression pure functions (OOP + DRY):**
+Rather than inline `if` chains in `update()`, extract pure helper functions at module scope:
+```typescript
+function birdTexKey(m: number): keyof typeof A {
+  if (m >= 8)  return "birdLegendary";
+  if (m >= 5)  return "birdGolden";
+  if (m >= 3)  return "birdFalcon";
+  return "bird";
+}
+function bgTexKey(m: number): keyof typeof A {
+  if (m >= 12) return "bgStorm";
+  if (m >= 10) return "bgNight";
+  // ...
+}
+```
+These are pure functions with zero side effects — trivially testable, reusable, and keep `update()` clean. Return type `keyof typeof A` provides compile-time safety: if a key is removed from the manifest, tsc catches it immediately.
+
+**Pattern: state-change-only texture swap (polymorphic helper):**
+```typescript
+private _setHunter(key: keyof typeof A) {
+  if (key === this._hunterStateKey) return;   // no-op if same state
+  const t = this.t(A[key]);
+  if (t) { this.hunter.texture = t; this._hunterStateKey = key; }
+}
+```
+Without the `=== this._hunterStateKey` guard, every `update()` frame sets `hunter.texture` — even when the texture is already correct. This is redundant GPU work. The guard makes swaps O(1) amortized over the frame loop.
+
+**Prevention rules:**
+1. Before adding any path to an asset manifest (`A` constant), verify the file physically exists with `ls` in the public folder. A non-existent path silently degrades to an error texture — no crash, but broken visuals.
+2. Any character that stands on a surface must have that surface drawn as a Graphics layer in the scene. Never position a character by a raw `y` coordinate without a visible surface reference.
+3. Bird/projectile trajectory must match the game's narrative. Birds flee UP from hunters on the ground — always verify the axis of movement matches the story before coding the interpolation formula.
+4. Export tier-progression logic as pure module-scope functions, not inline ternaries — they are easier to read, test, and extend when adding new tiers.
+
+**Related SOP section:** Frontend SOP §6.1 (UI must match the narrative — "active/clickable" state must produce the expected visual), UI/UX SOP §Hard Rule 1 (four states: visual state must match game state), Universal Engineering Principles §Hard Rule 2 (no duplicated values — tier logic in one place)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: bird sprite too large — hardcoded proportional fraction too high + spawn animation animated to wrong target scale
+
+**What happened:**
+The bird appeared enormous on game start, filling most of the canvas height even though the width was set proportionally (`W * 0.18`).
+
+**Root causes (two separate issues):**
+
+1. **Fraction too large for a wide canvas:**
+   `W * 0.18` on a `900×430` canvas = 162px wide sprite. The eagle asset has a very wide wingspan relative to body height, so at 18% of canvas width, the bird's vertical span was ~37% of canvas height — visually dominant and overwhelming.
+
+2. **Spawn/reset animation targeted `scale(1, 1)` not `_birdBaseScale`:**
+   ```typescript
+   this.bird.scale.set(0.35);  // start small
+   gsap.to(this.bird.scale, { x: 1, y: 1, ... });  // animate to scale 1
+   ```
+   This worked only when `buildScene()` happened to produce `scale.x === 1` after setting width proportionally. With `autoDensity: true` and `resolution: devicePixelRatio`, Pixi's internal scale after `sprite.width = W * 0.18` is NOT 1 — it is `(W * 0.18) / texture.width`. Animating to `scale(1,1)` overrides the proportional sizing and causes the sprite to render at its natural texture resolution.
+
+**Correct approach:**
+```typescript
+// Set proportional size first
+this.bird.width  = this.W * 0.12;  // 12% of canvas width
+this.bird.height = this.bird.width * (84 / 110);
+this._birdBaseScale = this.bird.scale.x;  // save the REAL scale after proportional sizing
+
+// Spawn animation — start from fraction of _birdBaseScale, animate back to it
+this.bird.scale.set(this._birdBaseScale * 0.35);
+gsap.to(this.bird.scale, { x: this._birdBaseScale, y: this._birdBaseScale, ... });
+```
+`_birdBaseScale` is the source of truth for "correct size". Every animation that changes scale must return to `_birdBaseScale`, not to `1`.
+
+**Prevention rules:**
+1. Never target `scale(1, 1)` in a GSAP tween after setting `sprite.width` proportionally — Pixi's scale after a width assignment is rarely `1`. Always store the post-assignment scale in a `_baseScale` property and use that as the tween target.
+2. For canvas-rendered sprites, size should be `W * fraction` where fraction is ≤ 0.15 for a character that must coexist with background and UI. Fractions above 0.15 risk the sprite visually dominating the scene.
+3. `onNewRound()` and any reset path must re-apply the proportional sizing, not assume the prior scale is still valid (texture may have changed during the round).
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (verify rendered result, not just code intent), UI/UX SOP §5 Layout (proportional sizing must account for actual aspect ratios, not just one axis)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: bird looked static — position math produced < 2% canvas movement at early multipliers
+
+**What happened:**
+The bird barely moved from its starting position at 1.0×–1.5× multiplier. Screenshots confirmed it stayed bottom-left while the multiplier was climbing. The game looked frozen, not like a crash game.
+
+**Root cause — two compounding errors:**
+
+1. **`rise` formula produced near-zero movement at low multipliers:**
+   ```typescript
+   const rise = Math.min(0.67, (m - 1) * 0.055);
+   ```
+   At `m = 1.28`, rise = `0.28 * 0.055 = 0.0154` — `1.5% of canvas height`. Invisible.
+   
+   Horizontal formula was similarly weak:
+   ```typescript
+   const tarX = W * (0.18 + Math.min(0.34, (m - 1) * 0.028));
+   ```
+   At `m = 1.28`: `tarX = W * (0.18 + 0.007)` — 0.7% rightward drift. Also invisible.
+
+2. **Lerp factor `0.055` (5.5%/frame) made movement sluggish:**
+   Even if the target position was correct, interpolating at 5.5% per frame means the bird takes ~30–40 frames (~0.5s at 60fps) to visibly move. At low multipliers where the target barely changed, this created the appearance of zero movement.
+
+3. **`drawFlightPath` drew only recorded `pathPoints`** (last 90 frames of real bird positions). At low speed these 90 points were clustered in a tiny area — the path showed as a dot, not a curve.
+
+**Correct approach — position driven directly from normalised multiplier progress:**
+
+```typescript
+// Map m → [0,1] progress over the full expected range
+const progress = Math.min(1, Math.max(0, (m - 1.0) / (12.0 - 1.0)));
+// Power curve matches graph shape (slow start, accelerating rise)
+const eased = Math.pow(progress, 0.55);
+// Full screen traversal: x 15% → 75%, y 82% → 8%
+const tarX = W * (0.15 + eased * 0.60);
+const tarY = H * (0.82 - eased * 0.74);
+// Fast lerp so bird responds immediately
+birdX += (tarX - birdX) * 0.14;
+birdY += (tarY - birdY) * 0.14;
+```
+
+At `m = 1.28` with this formula: `progress = 0.025`, `eased = 0.156` → tarX = W×0.244, tarY = H×0.704 — already a visible rightward/upward shift from start (W×0.15, H×0.82).
+
+**`drawFlightPath` rewrite — theoretical curve, not recorded points:**
+Instead of drawing accumulated `pathPoints` (which cluster at slow speeds), compute the full curve analytically using the same formula as the bird position. Sample 60 points from `m=1.0` to current `m` → always shows the full arc shape regardless of speed.
+
+**Prevention rule:**
+In any crash-game / multiplier game, the visual object's position must be a **deterministic function of the multiplier value**, not an accumulated drift from the previous position. The formula:
+```
+screenX = f(normalise(m))
+screenY = g(normalise(m))
+```
+guarantees the object is always at the correct position on the curve, even if the game is sped up, restarted, or the tick rate varies. Accumulated drift (+=) only works when the underlying speed itself is correctly calibrated — it breaks as soon as the step size is wrong.
+
+**Related SOP section:** Frontend SOP §6.1 (all states visible and correct), Universal Engineering Principles §Hard Rule 4 (position = f(state), not f(Σ delta))
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: Pixi canvas felt flat — visual depth requires layered post-processing even on 2D scenes
+
+**What happened:**
+The canvas showed a real background image, bird, and hunter but felt flat and low-quality compared to a premium game experience. The sky background was bright and washed out the bird; the multiplier number was floating with no visual anchor; the bird was too small at 12% of canvas width.
+
+**Root cause:**
+2D game canvases look flat without post-processing layers that real games use. The missing elements were:
+1. **Vignette** — dark rounded edges focus the eye on the centre action and add cinematic depth
+2. **Scanline/grid overlay** — thin horizontal lines at low opacity give a "tactical camera" texture
+3. **Bird size** — at 12% canvas width the eagle was too small to be readable across viewport sizes; 16% is the minimum for immediate visual impact
+4. **Trail emission probability** — set at 0.55 base meant ~45% of frames had no trail at 1.0×, making the bird look static at low multipliers
+5. **Multiplier HUD** — the number was floating without a backdrop panel, making it hard to read against bright background imagery
+
+**Correct approach:**
+Add Pixi Graphics layers at the TOP of the z-order (drawn AFTER all sprites) for post-processing effects:
+- `_drawVignette(intensity)` — four large semi-transparent dark ellipses at the corners + a top-centre dark band for text readability; intensity driven by `(m - 1) * 0.07`
+- `_drawScanlines()` — horizontal 1px rects every 4px at alpha 0.08; redrawn on resize only (static), alpha slightly increased at high m for tension
+- Both layers re-created on `resize()` and reset on `onNewRound()`
+
+For the React overlay, wrap the multiplier in a frosted-glass HUD chip (`backdrop-filter: blur`) with a live border color that matches the multiplier tier color.
+
+**Sizing rule for game sprites:**
+Minimum readable sprite width = 14% of canvas width for the primary gameplay element. Below that, the asset gets lost on busy backgrounds. Use proportional sizing (`W * 0.16`) not hardcoded pixels so the game works at all viewport sizes.
+
+**Trail emission rule:**
+Trail/smoke effects should emit at ≥0.85 probability per frame (every frame effectively) at the lowest multiplier tier. The visual purpose is to show motion — if emission is probabilistic at 55%, the effect only appears ~half the time, which reads as "broken" rather than "subtle."
+
+**Prevention rule:**
+For any WebGL/canvas game: define a visual layer stack before building the scene, from background to UI. Post-processing layers (vignette, scanlines, grain, glow overlays) belong at the TOP of the stack, drawn over all gameplay sprites. Add them in `buildScene()` as the last `stage.addChild()` calls. Drive their intensity from the game state (multiplier, phase) in `update()`.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (verify visuals match intent), UI/UX SOP §Hard Rule 3 (contrast — dark vignette ensures text is readable over bright imagery)
+
+---
+
+### 2026-09-26 — Incomplete class refactor left stale property references causing 11 TS errors
+
+**What happened:**
+A `PixiRenderer` class was refactored to remove the background sprite (`this.bg`) and replace it with a solid canvas `backgroundColor`. The refactor was applied to `buildScene()` and `update()` correctly, but three methods were left using the old API:
+- `onNewRound()` still referenced `A.bgForest`, `this.bg.texture`, and `this._bgKey`
+- `resize()` still had `if (!this.app || !this.bg) return` and `this.bg.width = w`
+- `destroy()` still called `gsap.killTweensOf(this.bg)`
+
+Also, a GSAP `_successLoop` tween was introduced with a `_killSuccessLoop()` call in `onSuccess()`, but `_killSuccessLoop()` was never defined as a method.
+
+Result: 11 TypeScript errors on next `tsc --noEmit` run, all in the same file.
+
+**Root cause:**
+Partial refactor — the new design was applied to the "hot" code paths (build, update, init) but the "cold" paths (reset, resize, destroy) were missed. The missing method `_killSuccessLoop` was called but never declared.
+
+**Correct approach:**
+- Remove all `this.bg` references from `resize()` and `destroy()`.
+- Remove `A.bgForest` and `this._bgKey` from `onNewRound()`.
+- Define `_killSuccessLoop()` as a private method before its first call site.
+- Call `_killSuccessLoop()` in both `onNewRound()` (to stop the loop before bird resets) and `destroy()` (to prevent GSAP from ticking on a destroyed sprite).
+
+**Prevention rule:**
+When removing a class property (e.g. `this.bg`), run a global search for the property name across the entire class before committing. Every method — including teardown, reset, and resize — must be updated. Never assume only the "main" methods use a property.
+
+After any class property refactor, run `tsc --noEmit` immediately. TypeScript will catch every missed reference. Do not defer this check.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — a property that is removed must be removed everywhere), Grounding SOP §Hard Rule 5 (verify before asserting it works — run tsc after every structural change)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: ResizeObserver fires before buildScene() completes — resize() crashes on undefined Graphics layers
+
+**What happened:**
+`TypeError: Cannot read properties of undefined (reading 'clear')` at `PixiRenderer.resize()` line `this.bgOverlay.clear()`.
+The crash happened on the first frame after the game canvas mounted — before any SECURE or escape action.
+
+**Root cause:**
+The `ResizeObserver` was attached with `obs.observe(canvas)` **before** `await rend.init(canvas)` resolved. `init()` is async — it awaits the rAF dimension poll, then `await app.init(...)`, then `await PIXI.Assets.load(...)`, then `buildScene()`. The total async time is 50–200ms.
+
+`ResizeObserver` fires synchronously on the first tick after `observe()` is called (browsers fire an initial "layout" notification immediately). This initial `resize()` call hit `PixiRenderer.resize()` while `this.bgOverlay`, `this.groundLayer`, `this.scanlines`, and `this.vignette` were still `undefined` (declared as `private bgOverlay!: Graphics` — the `!` means TS trusts they'll be assigned, but they only are inside `buildScene()`).
+
+**The registration was in this order:**
+```typescript
+rend.init(canvas).then(() => {          // async — fires after 50–200ms
+  engine.start();
+  engine.startRound(...);
+});
+
+const obs = new ResizeObserver(() => {  // registered SYNCHRONOUSLY
+  rend.resize(r.width, r.height);       // fires before init() resolves
+});
+obs.observe(canvas);                    // ← initial notification fires here
+```
+
+**Correct fix — null-guard all scene layers in `resize()`:**
+```typescript
+resize(w: number, h: number) {
+  if (!this.app || !this.bgOverlay || !this.groundLayer || !this.scanlines || !this.vignette) return;
+  // ... rest of resize logic ...
+}
+```
+
+This makes `resize()` a no-op if called before `buildScene()` has run. The next `resize()` call (from a real window resize) will succeed because by then `init()` has completed. The canvas dimensions are already correct from the rAF poll in `init()`, so skipping the early resize causes no visual issue.
+
+**Alternative fix (also valid):** Move `obs.observe(canvas)` inside the `.then()` callback, after `engine.start()`. This prevents the initial notification entirely. The null-guard approach is preferred because it makes `resize()` defensively safe regardless of call order — any future refactor that calls `resize()` early won't crash.
+
+**Prevention rule:**
+Any method on a class that manages Pixi/WebGL/canvas objects MUST guard against being called before the async `init()` completes. The pattern is:
+1. For methods that use scene objects: `if (!this.app || !this.firstSceneObject) return;`
+2. For methods that are safe before init: no guard needed, but document it.
+3. Never use TypeScript's non-null assertion (`!`) for scene objects that are assigned asynchronously — it suppresses the compile-time warning but does nothing at runtime.
+
+Any observer (ResizeObserver, IntersectionObserver, MutationObserver) registered before an async init completes WILL fire before the init resolves. Always guard or defer.
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — loading/init state must not crash), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit, not assumed)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: result screen skipped — canvas destroyed before SUCCESS/ESCAPED animation played
+
+**What happened:**
+After pressing SECURE (or letting the bird escape), the game immediately jumped from the playing state back to the idle "START A HUNT" screen. The SUCCESS overlay with the hunter celebrating and the bird looping, and the ESCAPED overlay with feather particles, were never visible. Balance was credited correctly, but the player saw no visual result at all.
+
+**Root cause:**
+`endSession()` in `page.tsx` called `setGameActive(false)` as its **first synchronous line**, before the PATCH API call or any animation delay. `gameActive=false` caused React to pass `active={false}` to `<FlappyBird>`, which triggered the boot `useEffect` cleanup, which called `engine.destroy()` and `rend.destroy()`. The Pixi canvas was torn down in the same render cycle that the SECURE button was pressed — well before the 2.5s animation window.
+
+The two concerns were incorrectly coupled:
+- **Visual teardown** (`setGameActive(false)`, return to idle) — should be delayed.
+- **API teardown** (PATCH session, credit balance, toast) — must fire immediately.
+
+Both were merged into one `async/await` block that treated them as sequential, with `setGameActive(false)` first.
+
+**Correct approach — two-phase teardown:**
+
+Split `endSession` so the API fires immediately (non-blocking `.then`/`.catch`) and the visual teardown is delayed by a configurable hold duration:
+
+```typescript
+const RESULT_HOLD_MS = 2500;   // named constant, not a magic number
+
+const endSession = useCallback(async (finalScore: number, cashout: boolean) => {
+  const sid = sessionRef.current;
+  if (!sid) return;
+  sessionRef.current  = null;
+  securingRef.current = false;
+
+  // Phase label (SUCCESS/ESCAPED) is already set by FlappyBird's onPhaseChange.
+  // We preserve it during the hold — do NOT call setPhase("DONE") yet.
+
+  // 1. API — fire immediately, don't await
+  safeFetch("/api/game/session", { method: "PATCH", body: ... })
+    .then(d => {
+      // credit balance, toast, update recent hunts
+    })
+    .catch(e => toast.error(...));
+  fetchWallet();   // refresh balance in background
+
+  // 2. Visual — delayed so animation plays out
+  if (resultHoldRef.current) clearTimeout(resultHoldRef.current);
+  resultHoldRef.current = setTimeout(() => {
+    resultHoldRef.current = null;
+    setGameActive(false);   // NOW we kill the canvas
+    setPhase("DONE");
+  }, RESULT_HOLD_MS);
+}, [toast, fetchWallet, setPhase]);
+```
+
+Also remove the `!gameActive` gate from the SUCCESS/ESCAPED overlays in the canvas wrapper — they must be visible **during the hold** (when `gameActive` is still `true`):
+```tsx
+// WRONG — overlay only shows after canvas is already dead
+{livePhase === "SUCCESS" && !gameActive && <SuccessOverlay />}
+
+// CORRECT — overlay shows as soon as phase changes, regardless of gameActive
+{livePhase === "SUCCESS" && <SuccessOverlay />}
+```
+
+**Cleanup rules for the hold timer:**
+The `resultHoldRef` timeout must be cleared in three places to prevent stale callbacks:
+1. When a **new game starts** — so a fast-restart doesn't kill the new game after 2.5s.
+2. In the wallet `useEffect` **cleanup return** — so page unmount doesn't try to call `setGameActive` on an unmounted component.
+3. (Implicit) It clears itself via `resultHoldRef.current = null` inside its own callback.
+
+**Design pattern — "result hold":**
+Any game that needs a visual result phase before returning to idle should use this pattern:
+- `sessionRef.current = null` fires immediately (prevents double API call).
+- API PATCH fires immediately (non-blocking, credited to player right away).
+- `setGameActive(false)` fires after a hold timer.
+- The hold duration is a named constant (`RESULT_HOLD_MS`), not a magic number.
+- The hold timer ref is stored, cleared on new game start and on unmount.
+
+**Prevention rule:**
+Any `endSession`-style function in a game component MUST ask: "Does the player need to see something before the UI resets?" If yes, `setActive(false)` is NOT the first line — it is the last line, called after a delay. The API call is always decoupled from the visual lifecycle and never awaited before the result screen shows.
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — "result" state is a distinct state that must be visible before reset), UI/UX SOP §Hard Rule 1 (every user action must produce a visible response before the next state), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit — visual teardown != API teardown)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: post-SECURE bird kept flying in infinite loop + multiplier HUD looked like live growth
+
+**What happened:**
+After pressing SECURE at e.g. 2×, the player saw the bird continue flying in an animated loop and the multiplier HUD overlay (`2.00×`, tier label `"EAGLE"`) remained visible — making it look like the game was still running and the multiplier was still growing, even though the round was secured and won.
+
+**Two separate root causes:**
+
+**1. `_successLoop` — infinite GSAP tween running after SECURE:**
+`onSuccess()` launched a `gsap.to(proxy, { repeat: -1, ... })` that drove the bird in a continuous figure-8 oval path, updating `birdX/birdY` and calling `bird.scale.set()` every tick:
+```ts
+this._successLoop = gsap.to(proxy, {
+  t: 1, duration: 2.8, repeat: -1, yoyo: true,
+  onUpdate: () => {
+    // bird kept moving indefinitely
+    this.birdX = startX + Math.sin(t * Math.PI) * loopW;
+    this.bird.scale.set(flap, 1/flap);  // wing-flap kept running
+  }
+});
+```
+The intent was to make the canvas "feel alive" during the result-hold period. The effect was the opposite: the bird flying in a loop after SECURE was confusing — it looked like the round hadn't ended.
+
+**Fix:** Replace the infinite loop with a single one-shot celebratory hop (bird rises slightly then settles), then freezes. Wings stop flapping, rotation snapped to neutral `-0.12` (slight nose-up "soaring frozen" pose):
+```ts
+gsap.killTweensOf(this.bird.scale);
+gsap.killTweensOf(this.bird);
+this.bird.scale.set(this._birdBaseScale);   // freeze wings
+this.bird.rotation = -0.12;                 // frozen soaring angle
+gsap.to(this.bird, {
+  y: this.birdY - this.H * 0.06,
+  duration: 0.35, ease: "power2.out",
+  onComplete: () => {
+    if (this._destroyed) return;
+    gsap.to(this.bird, { y: this.birdY - this.H * 0.02, duration: 0.5, ease: "power1.in" });
+  },
+});
+```
+
+**2. Multiplier HUD overlay shown during SUCCESS and ESCAPED:**
+The overlay condition was:
+```tsx
+{(phase === "FLYING" || phase === "SUCCESS" || phase === "ESCAPED") && (
+  <span>{mult.toFixed(2)}×</span>
+  <span>{mult >= 8 ? "LEGENDARY" : ...}</span>
+)}
+```
+Even with `mult` frozen (engine stopped, `onMultChange` no longer fires), the HUD was still visible showing the final multiplier with its tier label and glow effects. To a player who doesn't know the internal state, this looks identical to the live-flight HUD — "is the game still running?"
+
+**Fix:** Show the HUD only during active flight:
+```tsx
+{phase === "FLYING" && (
+  // multiplier display
+)}
+```
+During SUCCESS and ESCAPED, the result overlays in `page.tsx` (gold "HUNT SECURED" card and red "BIRD ESCAPED" card) already display the final multiplier in the correct visual context. The canvas HUD overlay is redundant and misleading in these phases.
+
+**Additional: fade active-flight effects in SUCCESS `update()` block:**
+The `update()` loop kept running during SUCCESS (it's driven by the engine's rAF tick). The multiplier glow (`multGlowSp`) and target lock (`targetLock`) remained at their last FLYING values — large bright glow at the bird's position made it look active. Fixed by fading them out each frame in the SUCCESS block:
+```ts
+if (phase === "SUCCESS") {
+  this.drawFlightPath(m);
+  if (this.targetLock.alpha > 0) this.targetLock.alpha = 0;
+  if (this.multGlowSp.alpha  > 0)
+    this.multGlowSp.alpha = Math.max(0, this.multGlowSp.alpha - 0.02);
+}
+```
+
+**Prevention rule:**
+Any GSAP tween with `repeat: -1` (infinite) that is created in response to a game event MUST:
+1. Have a matching kill in `destroy()` AND `onNewRound()` AND the very next phase-transition handler.
+2. Be stored in a class field so it can be killed by reference.
+3. Be reviewed with the question: "Does an infinite animation make sense when the game has ended?" If the answer is no, use a one-shot tween instead.
+
+For game result overlays:
+- The parent page owns the result display (gold card, red card) — it already shows the frozen multiplier in the correct visual context.
+- The in-canvas HUD overlay should only be active during FLYING. Showing it in SUCCESS/ESCAPED creates visual redundancy that reads as "game still running."
+- Rule: `phase === "FLYING"` is the only correct gate for a live-game HUD overlay.
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — each state must have a distinct, unambiguous visual), UI/UX SOP §Hard Rule 1 (users must always be able to tell which state they are in), Universal Engineering Principles §Hard Rule 4 (infinite loops must have an explicit kill path)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: demo/preview mode — idle canvas shows continuous looping flights with no session or API calls
+
+**What happened:**
+When no game was active, the canvas showed a static dark screen with a logo overlay. The user wanted the canvas to feel alive — bird taking off, flying a random arc, getting hunted or escaping, then resetting and repeating indefinitely. No money, no API calls, no session.
+
+**Approach — `DemoEngine` class (OOP composition, DRY):**
+
+The key insight: `DemoEngine` does NOT duplicate any rendering or multiplier logic. It reuses `MultiplierEngine` via composition and fires the same `onTick`/`onPhaseChange`/`onEscape`/`onSuccess` callbacks as `HuntEngine` — driving the existing `PixiRenderer` without any new renderer code.
+
+```
+MultiplierEngine  ←── composed by ──  HuntEngine   (real game)
+                  ←── composed by ──  DemoEngine   (preview loop)
+                                           ↓
+                                      PixiRenderer  (same renderer)
+```
+
+`DemoEngine` differences from `HuntEngine`:
+- Never calls `onGameOver` — no session, no score
+- Auto-resets after 2.2 s hold: fires `onPhaseChange("DONE")` → `rend.onNewRound()` → `_startRound()`
+- 50/50 random SUCCESS/ESCAPED so both outcomes are visible in the preview
+- 1.5 s countdown instead of 4 s — snappier demo pacing
+- Uses `randCfg()` static method — returns `DEFAULT_CFG` with `biasMode:"none"` and a modest `escapeMax:8` so demo flights are watchable length
+
+**React wiring — separate ref set:**
+```typescript
+const demoRendRef  = useRef<PixiRenderer | null>(null);
+const demoEngRef   = useRef<DemoEngine   | null>(null);
+const demoBootRef  = useRef(false);
+```
+A dedicated `useEffect([active])` boots the demo when `active===false` and destroys it the moment `active` becomes `true`. This ensures demo state never bleeds into a real game session — they use completely separate `PixiRenderer` and engine instances on the same `<canvas>` element (the real game boots after the demo is fully torn down via `key={gameKey}` forcing a canvas remount).
+
+**Idle overlay removed:**
+The page.tsx idle overlay (`absolute inset-0, background rgba(6,9,16,0.42)`) was blocking the canvas view. Replaced with a small `DEMO` badge in the top-right corner (`pointer-events-none`, `z-10`) — minimal, unobtrusive, communicates "this is preview" without obscuring the flight.
+
+**Prevention rule — "alive idle" pattern:**
+Any game or animation canvas that sits idle for extended periods should show a demo/preview loop rather than a static screen. The pattern is:
+1. Create a lightweight "demo engine" that reuses all existing logic classes via composition.
+2. Never share mutable state (refs, phase, session IDs) between demo and real game modes.
+3. Use a separate `useEffect` with a dedicated boot flag — do NOT add a `demo` branch inside the real game boot effect (violates SRP).
+4. Tear down demo synchronously at the top of the real boot effect, before the real game initialises.
+5. Visual: replace any opaque idle overlay with a non-blocking badge or subtle indicator.
+
+**OOP pattern used:** Composition over inheritance — `DemoEngine` and `HuntEngine` both compose `MultiplierEngine`. They share the callback interface (`onTick`, `onPhaseChange`, `onEscape`, `onSuccess`) which drives `PixiRenderer`. This is an implicit interface contract (duck typing in TypeScript) — a formal `interface IEngine` could be extracted in the future if a third engine type is needed.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — reuse existing logic, don't duplicate), Frontend SOP §6.1 (all four states — idle state must be designed, not left as a blank screen), OOP principles — Composition over Inheritance, Single Responsibility Principle
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: app.destroy(true) destroys the React-owned canvas DOM node → null._texture on second boot
+
+**What happened:**
+`Cannot read properties of null (reading 'orig')` returned after pressing SECURE, even after the PIXI.Assets cache-clear fix. The crash only happened on the second game boot, not the first.
+
+**Root cause:**
+`PIXI.Application.destroy()` takes two arguments: `(removeView?: boolean, options?)`.
+The code had:
+```typescript
+this.app?.destroy(true, { children: true });
+```
+`removeView: true` tells Pixi to call `canvas.parentNode.removeChild(canvas)` and delete the canvas DOM element. React owns the `<canvas ref={canvasRef}>` element — it created it and expects it to survive between renders. When the real game boots for the second time, `canvasRef.current` points to the same DOM node that Pixi already destroyed, so Pixi's internal renderer has a null WebGL context → every texture lookup returns `null` → `.orig` crash.
+
+The first game worked because the canvas was freshly mounted. The second game crashed because the canvas DOM node was gone.
+
+**Correct fix:**
+```typescript
+// WRONG — destroys the DOM canvas element React owns
+this.app?.destroy(true, { children: true });
+
+// CORRECT — only destroys Pixi's internal objects, preserves the DOM canvas
+this.app?.destroy(false, { children: true });
+```
+`removeView: false` (or omitting the argument, default is `false`) tells Pixi to leave the `<canvas>` DOM element in place. React continues to own it, and the next `app.init({ canvas })` call reuses the same DOM node cleanly.
+
+**Prevention rule:**
+When Pixi is used inside React with `ref={canvasRef}`:
+- **Never** pass `removeView: true` (first arg `true`) to `app.destroy()`.
+- React creates and destroys DOM nodes on its own schedule. Any library that removes a React-ref'd DOM node is fighting React's reconciler.
+- The only safe first argument is `false` or omitted.
+
+This applies to any WebGL library (Three.js, Babylon.js, etc.) — never let the library destroy a DOM element that a React ref is pointing to.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (external libraries must not mutate React-owned DOM nodes), Universal Engineering Principles §Hard Rule 4 (async/lifecycle timing must be explicit — destroy sequence must preserve React-owned resources)
+
+---
+
+### 2026-09-26 — HUNT game: dark overlay layers (vignette, scanlines, bgOverlay) blocked PNG sprite visibility
+
+**What happened:**
+PNG sprites (bird, hunter, effects) were barely visible because three stacked semi-transparent dark overlays covered the entire canvas:
+1. `bgOverlay` — red danger tint starting at m=6, up to 0.45 alpha
+2. `scanlines` — horizontal black lines at 0.08–0.17 alpha over the full canvas
+3. `vignette` — four large dark ellipses at corners at 0.38–0.68 alpha, plus a top-centre dark band at 0.35 alpha
+
+Together these made the canvas look like a grey/dark rectangle with faint shapes behind them. The scanlines and vignette specifically created a uniform grey wash that turned the canvas background from `#060910` (near-black) to visible grey, while simultaneously dimming all sprites underneath.
+
+**Correct approach:**
+- `vignette` and `scanlines`: removed entirely from `buildScene()` and `update()`. Kept as empty `Graphics()` nodes to avoid null-guard updates downstream, but never drawn.
+- `bgOverlay` (red danger tint): threshold raised from m=6 → m=9, max alpha reduced from 0.45 → 0.18. At these values it adds atmospheric tension at extreme multipliers without washing out sprites.
+
+**Prevention rule:**
+Before adding any full-canvas overlay (vignette, tint, scanlines, blur, etc.):
+1. Test it by rendering a clearly-visible PNG sprite underneath it first.
+2. Measure the effective contrast of the overlay at maximum intensity.
+3. If the overlay is more than 0.20 alpha at any point during normal gameplay, it is too heavy — sprites won't be readable.
+4. Atmospheric effects (vignette, grain) should be ≤0.08 alpha per layer and never stacked more than 2 deep over sprite-bearing areas.
+
+**Related SOP section:** UI/UX SOP §Hard Rule 3 (contrast ≥4.5:1 — sprites have a contrast requirement too, not just text), Frontend SOP §6.1 (visual states must be testable — test with real assets under the final overlay stack)
+
+---
+
+### 2026-09-26 — HUNT game: idle demo showed modest 1–8× values; user bait requires 8–25× display
+
+**What happened:**
+The demo engine used `escapeMin: 1.2, escapeMax: 8` and alternated 50/50 between SUCCESS (hunter secures) and ESCAPED (bird flies off). Users on the idle screen saw unremarkable 3–6× numbers and no strong reason to start playing.
+
+**Correct design — bait mechanics:**
+1. **Always escape in demo** — the bird always flies off to the maximum cap. Users never see the hunter succeed (that's the FOMO trigger: "if I had played that, I would have won"). The demo is never a success story — it shows what the player missed.
+2. **High cap cycle** — caps cycle through `[8, 12, 15, 20, 25, 10, 18]` so the idle screen shows numbers like `18.42×`, `24.91×` in sequence. These numbers correspond to real potential winnings that bait the player into wanting those returns.
+3. **Live overlay number** — `demoMult` state is updated via `demo.onMultChange` and rendered as a large colour-coded number on top of the canvas during the demo flight. The user watches the number climb in real time.
+4. **Tier labels** — `"LEGENDARY RUN"` at 10×+, `"GOLDEN FLIGHT"` at 5×+, etc. make the multiplier feel like an achievement the user can unlock.
+
+**Prevention rule:**
+Idle/demo states on a gambling/game product are a marketing surface. Design them to:
+1. Show the maximum possible outcome (not the average).
+2. Always end on the "missed it" state (escape/loss), not success — creates FOMO, not satisfaction.
+3. Display a live animated number so the screen is never static.
+4. Cycle through varied outcomes so repeat views feel fresh.
+
+This is a UX pattern, not a bug — but skipping it leaves significant conversion on the table.
+
+**Related SOP section:** UI/UX SOP §6.1 (four states — idle/demo is a distinct state that must be actively designed, not left as a placeholder), Frontend SOP §Hard Rule 1 (every visible state must be tested with the intended user in mind)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: ghost eagle PNG copies appearing as trail effect
+
+**What happened:**
+During gameplay the canvas showed multiple translucent eagle PNG images trailing behind the bird — each frame produced what looked like ghost copies of the bird sprite at various sizes and opacities.
+
+**Root cause:**
+`emitTrailDot()` used `PIXI.Sprite` with `A.goldTrail` (`/assets/effects/golden-trail.png`) as the texture, falling back to `A.trail` (`/assets/effects/speed-trail.png`). Both asset files were missing from `/public/assets/effects/`. When `PIXI.Texture.from()` cannot find an asset, Pixi v8 returns a fallback texture — in this build that fallback resolved to the most recently loaded texture in the cache, which happened to be the bird's eagle PNG. Every `emitTrailDot` call therefore created a large, partially-transparent eagle sprite at the bird's current position, producing the ghost image trail.
+
+**What was wrong about it:**
+The trail implementation had a hard dependency on external PNG assets that were not guaranteed to exist. The `if (!trailTex) return;` guard should have protected against a null texture, but `PIXI.Texture.from()` never returns null — it returns a fallback texture instead. The guard was therefore bypassed silently, and the wrong texture was used without any indication of the problem.
+
+**Correct approach — use `PIXI.Graphics` for procedural trail dots:**
+```typescript
+private emitTrailDot(m: number) {
+  if (!this.app || !this.PIXI || !this.trailCont) return;
+  const g   = new this.PIXI.Graphics();
+  const r   = 4 + Math.min(8, (m - 1) * 0.8);
+  const col = m >= 5 ? TRAIL_GLOW : TRAIL_COLOR;
+  g.circle(0, 0, r).fill({ color: col, alpha: 0.6 });
+  g.x = this.birdX + (Math.random() - 0.5) * 8;
+  g.y = this.birdY + (Math.random() - 0.5) * 8;
+  this.trailCont.addChild(g);
+  gsap.to(g, {
+    alpha: 0,
+    x: g.x - r * 3.5 * Math.cos(this.bird.rotation || 0),
+    y: g.y + r * 1.2,
+    duration: 0.4 + Math.random() * 0.2, ease: "power1.out",
+    onComplete: () => {
+      if (!g.destroyed) {
+        try { this.trailCont?.removeChild(g); g.destroy(); } catch { /* gone */ }
+      }
+    },
+  });
+}
+```
+`PIXI.Graphics` has zero external dependencies — it always renders correctly regardless of which PNG assets are present. The visual result (coloured dot fading behind the bird) is indistinguishable from a well-designed trail sprite.
+
+**Key distinction between `Texture.from()` and `tex()` (pre-populated cache):**
+- `PIXI.Texture.from(url)` — NEVER returns null. If the URL is not cached, Pixi creates a placeholder texture or returns the last known texture. Use only in safe contexts where a wrong texture is acceptable.
+- `this.tex(url)` (pre-populated Map, populated only after `Assets.load()`) — returns `null` if the asset didn't load. This is the correct pattern for per-frame update logic. But the `if (!trailTex) return;` guard still relies on the asset actually being loaded — if Pixi populates the cache with a fallback, `tex()` will return that fallback.
+
+**Prevention rule:**
+Any visual effect that runs every frame (trail, particle, glow) MUST NOT depend on optional PNG assets. Use `PIXI.Graphics` for procedural effects. Only use `Sprite` for complex art assets (character sprites, background panels) that are explicitly pre-loaded and verified. Before shipping a `Sprite`-based per-frame effect, verify the asset file actually exists in `/public`.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (validate preconditions — asset existence is a precondition), Universal Engineering Principles §Hard Rule 3 (don't assume external dependencies exist at runtime)
+
+---
+
+### 2026-09-26 — HUNT game: cloud layer caused white blobs obscuring sprites
+
+**What happened:**
+White ellipse "cloud" shapes were drawn on a `PIXI.Graphics` cloud layer each frame, overlapping the bird and hunter sprites. The clouds used `fill({ color: 0xffffff, alpha: 0.15–0.55 })` — on the dark canvas these appeared as large bright-grey blobs covering the game scene.
+
+**Root cause:**
+The cloud layer was drawn using white (`0xffffff`) fill at increasing alpha as the multiplier grew (`alpha = 0.15 + (m - 1) * 0.02`). At `m = 15×`, alpha reached `0.43` — nearly half-opaque white. The cloud layer sat in the z-order between the background and the sprites, so clouds partially covered the bird and hunter at high multipliers.
+
+Additionally the `_cloudOffset` scroll created 4 ellipses per frame, which at `m >= 10` rendered as prominent grey circles obscuring most of the upper canvas.
+
+**Correct approach:**
+Remove the cloud layer entirely. The dark canvas with gradient overlays, gold trail dots, and bird glow effects provides sufficient visual depth. Clouds added noise, not value.
+
+**What was removed:**
+- `private cloudLayer!: PIXI.Graphics` — field declaration
+- `private _cloudOffset = 0` — scroll state
+- `buildScene()`: removed `this.cloudLayer = new Graphics(); stage.addChild(this.cloudLayer)`
+- `_drawClouds(m)` — method body replaced with `{ /* clouds removed */ }`
+- `update()` FLYING block: removed `this._drawClouds(m)` call
+- `update()` ESCAPED block: removed `this.cloudLayer.clear()` call
+- `onNewRound()`: removed `this.cloudLayer?.clear()` and `this._cloudOffset = 0`
+
+**Prevention rule:**
+Before adding any overlay Graphics layer that fills with a light/white color on a dark canvas, test it at the maximum expected multiplier value. `alpha = 0.15` looks invisible at `m = 2×` but becomes `0.43` at `m = 15×` — always compute the worst-case alpha at `escapeMax` before shipping. If the effect is purely atmospheric and not essential to gameplay communication, omit it.
+
+**Related SOP section:** UI/UX SOP §Hard Rule 3 (contrast — foreground elements must remain readable at all states), Frontend SOP §6.1 (all four states — design must be tested at maximum value state, not just initial)
+
+---
+
+### 2026-09-26 — HUNT game: live multiplier counter kept ticking in hero area after SECURE/ESCAPE
+
+**What happened:**
+After pressing SECURE (or after the bird escaped), the large multiplier number in `page.tsx`'s hero section continued showing the same frozen value with its pulsing glow animation still active, giving the visual impression that the game was still running.
+
+**Root cause:**
+The hero multiplier section rendered `{liveMult.toFixed(2)}×` inside `{gameActive && (` — meaning it was visible for any phase while the game session was active: FLYING, COUNTDOWN, SUCCESS, and ESCAPED. The live-counter styling (animated glow, color transition) was applied unconditionally, so even a frozen value looked "live."
+
+**Correct approach — phase-gated display:**
+```tsx
+{isFlying ? (
+  // Live animated counter with "SECURE NOW" warning
+  <span style={{ color: clr, textShadow: `0 0 28px ${clr}88` }}>
+    {liveMult.toFixed(2)}×
+  </span>
+) : livePhase === "SUCCESS" ? (
+  // Frozen gold — communicates "secured, not running"
+  <span style={{ color: "#fbbf24", textShadow: "0 0 28px #fbbf2488" }}>
+    {liveMult.toFixed(2)}×
+  </span>
+) : livePhase === "ESCAPED" ? (
+  // Frozen red — communicates "lost, not running"
+  <span style={{ color: "#ef4444", textShadow: "0 0 28px #ef444488" }}>
+    {liveMult.toFixed(2)}×
+  </span>
+) : (
+  <p style={{ color: "rgba(200,215,255,0.3)" }}>Tracking…</p>
+)}
+```
+
+The visual distinction between a live counter (FLYING) and a result display (SUCCESS/ESCAPED) comes from:
+1. **Absence of color-transition animation** on the result — the value was already at the right color when it froze, so no CSS `transition` runs.
+2. **Fixed color** — gold for SUCCESS, red for ESCAPED, independent of `liveMult` tier.
+3. **No "SECURE NOW" warning badge** — removed from non-FLYING branches.
+
+**Prevention rule:**
+Any UI element that displays a "live" value (counter, ticker, progress bar) MUST have a distinct visual state for "frozen/result" mode. Never use the same styling for an updating value and a final result — users cannot tell if the game is still running. The states to design for: RUNNING (animating), SECURED (gold freeze), ESCAPED (red freeze), IDLE (hidden or dimmed).
+
+**Related SOP section:** UI/UX SOP §Hard Rule 1 (four states — each state must be visually distinct), Frontend SOP §6.1 (all async states must be designed, not just the happy path)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: Aviator-style filled area + axis labels on flight path graph
+
+**What was built:**
+The HUNT flight path was upgraded from a plain stroked line to an Aviator-style filled graph:
+1. **Filled area under the curve** — a closed polygon (path points → baseline → back) filled with semi-transparent brand gold at two depths (0.18α body + 0.14α lower-half overlay) to simulate a gradient fade.
+2. **X-axis baseline** — a faint gold horizontal rule at `H * 0.87`.
+3. **X-axis tick marks + multiplier labels** (`1×`, `2×`, `3×`…) — tick positions computed by inverting the eased-progress formula so each label aligns with where the curve crosses that multiplier value.
+
+**Key design decisions:**
+
+**Filled polygon technique:** Pixi v8 `Graphics.fill()` operates on the last path drawn before calling `.fill()`. The closed polygon is: `moveTo(tail.x, baseY)` → all curve points via `lineTo` → `lineTo(tip.x, baseY)` → `closePath()` → `fill()`. Two overlapping fills at different alphas simulate a gradient without requiring a `FillGradient` shader.
+
+**Text label pool (object reuse):** `PIXI.Text` objects are expensive to create (they trigger canvas 2D text layout). Creating one per axis tick per frame (~60× per second × up to 12 ticks = 720 Text objects/second) would cause severe GC pressure. Solution: a `_axisLabels: Text[]` pool on the renderer, grown on demand (`while pool.length < tick`) and reused — only `text`, `x`, `y`, `visible` are updated each frame. Pool is destroyed in `PixiRenderer.destroy()`.
+
+**Tick position formula:** Each integer multiplier `tick` maps to a canvas X position via the same eased-progress formula used by the curve:
+```typescript
+const prog  = (tick - MULT_MIN) / (MULT_MAX - MULT_MIN);
+const eased = Math.pow(prog, 0.55);   // same exponent as curve
+const tx    = this.W * (0.15 + eased * 0.60);
+```
+This guarantees label alignment with the curve at all canvas sizes — no hardcoded pixel offsets.
+
+**Responsive font size:** `Math.max(9, Math.min(13, this.W * 0.022))` — scales proportionally between 9–13px based on canvas width.
+
+**Prevention rule:**
+When drawing graph elements (fills, axes, labels) that update every frame in a WebGL canvas:
+- Never create display objects (Sprite, Text, Graphics) inside the frame loop — always reuse from a pool.
+- Fill areas by drawing a closed polygon, not by calling `fill()` on the stroke path.
+- Align axis labels using the same mathematical formula as the curve, not by eyeballing pixel offsets.
+- Always clean up pooled objects in the renderer's `destroy()` method.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (no per-frame allocations), Universal Engineering Principles §Hard Rule 2 (DRY — position formula defined once, used by both curve and axis)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: demo renderer white canvas after SECURE — destroyed WebGL context reused on same canvas element
+
+**What happened:**
+After pressing SECURE, the result animation played (SUCCESS overlay for 2.5 s), then the canvas went completely white when the idle/demo mode resumed. The demo multiplier number and "EAGLE FLIGHT" tier label were visible as HTML overlays but the Pixi canvas behind them was white.
+
+**Root cause — destroyed WebGL context reused by demo renderer:**
+
+The `page.tsx` component uses a `gameKey` state that increments on `startGame()` to remount `FlappyBird` with a fresh `<canvas>` element for each real game. However, `gameKey` was NOT incremented when the game ended — it was only incremented at the start of the next game.
+
+The sequence that caused the white canvas:
+
+1. Real game runs → `active=true` → `PixiRenderer.init()` creates a WebGL context on the `<canvas>`.
+2. SECURE pressed → `endSession()` called → `RESULT_HOLD_MS` (2500ms) timeout set.
+3. After 2500ms → `setGameActive(false)` fires → `active` prop to `FlappyBird` becomes `false`.
+4. React re-renders: `FlappyBird` is **not remounted** (key unchanged) — same component instance, same `<canvas>` DOM node.
+5. The boot effect cleanup fires (synchronously, in the same React flush): `rend.destroy()` calls `app.destroy(false, {children:true})` — this calls `gl.getExtension('WEBGL_lose_context')?.loseContext()` internally in Pixi, **destroying the WebGL context** on that canvas element.
+6. In the same React flush, the demo `useEffect([active])` fires with `active=false`. It creates a new `PixiRenderer` and calls `rend.init(canvas)` on the **same canvas whose WebGL context was just destroyed**.
+7. Pixi creates a new `PIXI.Application` and calls `app.init()` on the destroyed canvas. The browser either refuses to create a second WebGL context on a context-lost canvas, or creates one that renders white until the next full repaint cycle.
+8. Demo appears white.
+
+**Why this is NOT a PIXI.Assets cache issue here:**
+The `key={gameKey}` remount on `startGame()` already cleared the Assets cache correctly (via `PixiRenderer.destroy()` which now calls `Assets.unload()`). The white canvas on game END was purely a WebGL context lifecycle issue on the shared canvas element — a different failure mode with the same visible symptom.
+
+**Correct fix — increment `gameKey` on game END, not just on game START:**
+```typescript
+// In endSession() visual teardown timeout:
+resultHoldRef.current = setTimeout(() => {
+  resultHoldRef.current = null;
+  setGameActive(false);
+  setPhase("DONE");
+  setGameKey(k => k + 1);  // ← NEW: remount FlappyBird with fresh canvas for demo
+}, RESULT_HOLD_MS);
+```
+
+React 18 batches all three state updates in the same `setTimeout` callback into a single render. The result:
+- `FlappyBird` unmounts completely (key changed) — real renderer destroyed, WebGL context released, Assets cache cleared.
+- `FlappyBird` remounts with `active=false` — brand new `<canvas>` element in the DOM with no prior WebGL context.
+- Demo `useEffect([active])` fires, creates `PixiRenderer`, calls `init(canvas)` on the clean canvas — succeeds.
+
+**Why `setGameKey` in `startGame()` alone was insufficient:**
+`startGame()` increments the key to get a clean canvas for the **real game**. But it happens at the start of the next game — meaning the demo (which runs between game end and next game start) was always running on the old canvas with a destroyed context.
+
+The key must be incremented at **both ends** of a game session:
+- On game START: fresh canvas for real renderer.
+- On game END: fresh canvas for demo renderer.
+
+**Prevention rule:**
+When a component owns a `<canvas>` element and transitions between multiple `PIXI.Application` instances (real game renderer → demo renderer → real game renderer), each transition must use a fresh canvas DOM node. The correct pattern is:
+
+```typescript
+// Mount a fresh <canvas> by incrementing a key:
+<FlappyBird key={gameKey} ... />
+
+// Increment on game START (gives real renderer a clean canvas):
+setGameKey(k => k + 1);
+setGameActive(true);
+
+// Increment on game END (gives demo renderer a clean canvas):
+setGameKey(k => k + 1);
+setGameActive(false);
+```
+
+Never call `new PIXI.Application().init()` on a canvas that has previously had a WebGL context destroyed via `app.destroy()`. The WebGL spec does not guarantee a new context can be created on a context-lost canvas within the same browser frame. Always use a new canvas element.
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — teardown state must not corrupt the next init state), Universal Engineering Principles §Hard Rule 3 (state owned by one module must not leak into another module's lifecycle), Frontend SOP §Hard Rule 1 (clean up shared resources before handing off to the next owner)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: canvas height used vw instead of vh — too short on narrow screens inside sidebar layout
+
+**What happened:**
+The Pixi game canvas container used `height: "clamp(220px, 42vw, 460px)"`. On a 390px-wide phone the value evaluated to `max(220px, 42×3.9px) = max(220px, 163px) = 220px`. The canvas appeared at the floor value — 220px — which looked reasonable in isolation. But inside the dashboard layout (which has a 130px sidebar on tablet), the actual content area was ~260px wide, making `42vw` = ~163px — well below the 220px floor. This caused the canvas to look disproportionately short/stubby on small phones.
+
+**Root cause:**
+`vw` measures the full browser viewport width, not the available content area. In a dashboard layout with a sidebar, the game canvas sits inside a narrower content column. `42vw` on a 390px phone = 163px regardless of the sidebar. Using `vw` for height is only correct when the component spans the full viewport width.
+
+**What was wrong about it:**
+Height was coupled to viewport width (`vw`) instead of viewport height (`vh`). A canvas game should scale with available vertical space, not horizontal viewport width — especially inside a sidebar layout.
+
+**Correct approach:**
+Use `vh`-based clamp: `height: "clamp(180px, 38vh, 340px)"`.
+- On iPhone 12 (844px tall): `38vh = 320px` — proportional and fills the screen nicely.
+- On small Android (680px tall): `38vh = 258px` — still usable.
+- Floor of 180px prevents collapse on extreme cases.
+- Ceiling of 340px prevents the canvas dominating on large tablets.
+
+**Prevention rule:**
+When sizing a canvas or media container that must remain visually proportional across screen sizes, choose the correct viewport unit:
+- `vw` — correct when the element spans the full width (hero sections, full-bleed banners).
+- `vh` — correct when the element height must fit the screen regardless of layout columns (game canvas, modal content areas, sticky panels).
+- `svh` / `dvh` — preferred on mobile to account for browser chrome (address bar) hide/show; use as a progressive enhancement fallback.
+
+In a dashboard layout with a sidebar: always use `vh` (or `%` of a flex parent), never `vw`, for height values.
+
+**Related SOP section:** UI/UX SOP §5 Layout & Responsive (`canvas-responsive`: "canvas dimensions must use vh/dvh not vw when inside a columnar layout"), Universal Engineering Principles §Hard Rule 2 (no hardcoded values — use viewport-relative tokens)
+
+---
+
+### 2026-09-26 — HUNT game: idle overlay PNG (hunt-logo.png) flashed over live game canvas during game start
+
+**What happened:**
+When the player pressed START HUNT, the hunt-logo.png (idle state image) was briefly visible overlaid on top of the just-starting Pixi canvas. This happened for approximately one render cycle — visible as a flash of the logo PNG on top of the dark background at game start.
+
+**Root cause:**
+The `FlappyBird` WAITING/DONE overlay had this condition:
+```tsx
+{(phase === "WAITING" || phase === "DONE") && (
+  <div className="absolute inset-0 ...">
+    <img src={A.logo} ... />
+  </div>
+)}
+```
+
+When `active` becomes `true` in `page.tsx`, React re-renders `FlappyBird` with `active=true`. However, `phase` inside `FlappyBird` is still `"WAITING"` (it was reset to `"WAITING"` in the `active → false` effect). The new game's engine hasn't started yet — `rend.init()` is still awaiting the rAF layout poll. So for one or more render cycles, `active=true` AND `phase==="WAITING"` are both true simultaneously, causing the overlay to render on top of the initializing canvas.
+
+**Correct fix:**
+Add `&& !active` to the overlay condition:
+```tsx
+{(phase === "WAITING" || phase === "DONE") && !active && (
+  // logo/demo overlay
+)}
+```
+When `active=true`, the overlay is never rendered — even if `phase` hasn't transitioned yet. The Pixi canvas background colour (`0x060910`) fills the container immediately on mount, so there is no visible gap.
+
+**Prevention rule:**
+Any overlay that represents an "idle/waiting" state MUST be gated on BOTH the phase state AND the `active` prop. A component can be in `phase="WAITING"` while `active=true` during the async initialization window. Never rely on phase state alone to determine whether an idle overlay should render — always AND it with the `active` prop.
+
+Pattern:
+```tsx
+// WRONG — phase can be WAITING while active=true during init
+{phase === "WAITING" && <IdleOverlay />}
+
+// CORRECT — suppress idle overlay the moment the game becomes active
+{phase === "WAITING" && !active && <IdleOverlay />}
+```
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — loading/init state must not flash wrong UI), UI/UX SOP §Hard Rule 1 (four states: loading, empty, error, populated — each must be explicitly designed)
+
+---
+
+### 2026-09-26 — HUNT game: mobile controls strip used 3-col grid causing cramped layout on small phones
+
+**What happened:**
+The controls strip (Stake | Potential Reward | Main Action) used `grid grid-cols-1 sm:grid-cols-3`. On mobile this stacked all three cards vertically, requiring the user to scroll past a tall Stake card (with all preset buttons + input) plus a Reward card plus an Action card. The total height of the controls strip exceeded the available space below the canvas on a 390px phone, pushing the START HUNT button off-screen without scrolling.
+
+**Root cause:**
+The 3-col to 1-col collapse is a standard responsive pattern but works best when cards are equal-height and compact. The Stake card contains 7 preset buttons + a number input — it's inherently taller than the other two. Stacking three cards with different heights created visual imbalance and required more scroll.
+
+**Correct approach — mobile-first split layout:**
+Instead of collapsing 3 columns to 1, use a two-tier layout on mobile:
+1. Stake card — full-width (needs all the space for the preset buttons)
+2. Reward + Action — side-by-side in a 2-col flex row (both are compact single-value displays)
+
+```tsx
+{/* Mobile only: Stake full-width */}
+<div className="sm:hidden ..."><StakeCard /></div>
+
+{/* Mobile only: Reward + Action 2-col row */}
+<div className="flex gap-2 sm:hidden">
+  <div className="flex-1 ..."><RewardCard /></div>
+  <div className="flex-1 ..."><ActionButton /></div>
+</div>
+
+{/* Desktop: original 3-col grid */}
+<div className="hidden sm:grid sm:grid-cols-3 gap-2.5">
+  <StakeCard /><RewardCard /><ActionCard />
+</div>
+```
+
+This keeps the Action button (START HUNT / SECURE) always visible without scrolling on mobile, which is critical for a time-sensitive game where "SECURE" must be tapped instantly.
+
+**DRY note:** Both mobile and desktop versions render the same data and call the same handlers. The duplication is display-only (layout variant), not logic duplication — this is acceptable per DRY principles. If the button logic changes, it changes in one place (the handler function), not in the JSX.
+
+**Prevention rule:**
+For game interfaces, the primary action button (CTA) must ALWAYS be visible without scrolling on the smallest supported screen (320px width, 568px height). Before shipping a game page, check: on iPhone SE (375×667), can the user see the action button without scrolling? If not, restructure the layout.
+
+**Related SOP section:** UI/UX SOP §5 Layout & Responsive, §Hard Rule 1 (four states — active/in-game state must have the CTA immediately reachable)
+
+---
+
+## Backend Lessons
+
+### 2026-09-26 — HUNT game: wrong payout formula — milestone math instead of wager × multiplier
+
+**What happened:**
+Players investing Rs. 120 at 2.00× expected Rs. 240 back. The actual payout was Rs. 20 (two milestones at Rs. 10 each). `calculateWinnings()` used a Flappy Bird milestone system: every N score points → +winPerStep PKR, with a jackpot multiplier only at high scores. For a crash game the formula is completely different.
+
+**Root cause — mismatched economy model:**
+The game was rebuilt from Flappy Bird (milestone payout) into a crash game (multiplier payout) but the backend `calculateWinnings` function was never updated. The score encoding was correct (`score = Math.floor(mult × 100)`) but the payout function ignored the multiplier relationship entirely.
+
+**Correct crash-game formula:**
+```
+multiplier = finalScore / 100
+winAmount  = Math.round(wager × multiplier)
+```
+Examples:
+- wager=120, score=200 (2.00×) → Rs. 240
+- wager=120, score=150 (1.50×) → Rs. 180
+- wager=500, score=350 (3.50×) → Rs. 1750
+
+**Implementation — DRY: new function, old function kept:**
+```typescript
+// gameConstants.ts — added alongside calculateWinnings (not replacing it)
+export function calculateCrashWin(
+  wager: number,
+  score: number,
+  minWinScore = 100,
+): { winAmount: number; multiplier: number } {
+  if (score < minWinScore) return { winAmount: 0, multiplier: score / 100 };
+  const multiplier = score / 100;
+  const winAmount  = Math.round(wager * multiplier);
+  return { winAmount, multiplier };
+}
+```
+Session PATCH route imports `calculateCrashWin` and removes the now-unused `readLiveGameConfig` import.
+
+**Prevention rule:**
+When changing a game's economy model, immediately search for ALL payout/scoring functions and verify each one against the new formula. Write the formula as a comment in the function: `// winAmount = wager × (score/100)` so future developers understand the intent without reading the game spec. Never carry over a payout function from a previous game model without explicitly reviewing it.
+
+**Related SOP section:** Backend SOP §Hard Rule 1 (server-side financial logic must be explicitly correct — not assumed from prior version), Universal Engineering Principles §Hard Rule 2 (formula defined once in gameConstants.ts)
+
+---
+
+### 2026-09-26 — HUNT game: Math.random() in multiplier cap generation is predictable and repeating
+
+**What happened:**
+`MultiplierEngine` used `Math.random()` to generate the escape cap (the multiplier at which the bird escapes). `Math.random()` in V8 uses a pseudorandom algorithm (xorshift128+) with a 128-bit state — it produces statistically uniform output but is deterministic and theoretically predictable given enough samples. In a gambling game this creates a security vulnerability: a sufficiently determined attacker could sample enough outputs to predict the seed state and the next escape cap before betting.
+
+**Correct approach — crypto.getRandomValues():**
+```typescript
+function cryptoRand(): number {
+  try {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return buf[0] / (0xFFFFFFFF + 1);   // [0, 1) uniform
+  } catch {
+    return Math.random();               // SSR / test environment fallback
+  }
+}
+```
+`crypto.getRandomValues()` uses the OS CSPRNG (e.g. `/dev/urandom` on Linux) which is not predictable from output samples. The `try/catch` with `Math.random()` fallback handles SSR contexts (Next.js server-side rendering) where `crypto` may not be available in the execution environment.
+
+**Why a Uint32Array(1) and not Float64:**
+`getRandomValues` only accepts integer typed arrays. Dividing by `0xFFFFFFFF + 1` (= 4294967296) maps the full uint32 range to `[0, 1)` with the same distribution as `Math.random()` — a uniform float. This is a standard CSPRNG-to-float conversion pattern.
+
+**Prevention rule:**
+Any function that generates a financial outcome (escape cap, jackpot, bonus trigger) MUST use `crypto.getRandomValues()`, never `Math.random()`. Add a lint comment `/* CSPRNG required */` above every call to make the intent explicit and prevent future developers from "simplifying" it back to `Math.random()`.
+
+**Related SOP section:** Backend SOP §Hard Rule 1 (never trust predictable values for money-sensitive operations), Security — RNG must be cryptographically secure for gambling/financial outcomes
+
+---
+
+### 2026-09-26 — HUNT game: balance credit delayed by PATCH response latency (~50ms) causing UX flicker
+
+**What happened:**
+When a player pressed SECURE, the balance in the header only updated after the PATCH `/api/game/session` response arrived. At ~50ms this created a noticeable flicker: the player saw their old balance for half a second before the win appeared.
+
+**Root cause:**
+`endSession()` fired the PATCH as a fire-and-forget promise and only called `setWallet(w => {..., balance: w.balance + d.winAmount})` inside `.then()`. The `.then()` runs after the network round-trip.
+
+**Correct approach — optimistic update at the point of action:**
+```typescript
+const onCashOut = useCallback((s: number) => {
+  if (securingRef.current) return;
+  securingRef.current = true;
+  // Optimistic credit: mirrors server formula (wager × multiplier)
+  const optimisticWin = Math.round(wager * liveMultRef.current);
+  setWallet(w => w ? { ...w, balance: w.balance + optimisticWin } : w);
+  endSession(s, true);
+}, [endSession, wager]);
+```
+`liveMultRef.current` holds the live multiplier as a ref (not state), so it always reads the value at the exact moment SECURE is pressed — no stale closure. After `endSession` resolves, `fetchWallet()` is called which overwrites the optimistic value with the real server balance, correcting any rounding difference.
+
+**Pattern: optimistic update + server reconciliation:**
+1. Apply the locally-computed result immediately (optimistic update).
+2. Fire the API call in the background.
+3. On success, apply the real server value (reconcile).
+4. On error, revert the optimistic update (or show a toast and reconcile).
+
+This pattern is correct when the local formula exactly mirrors the server formula. Since both use `Math.round(wager × multiplier)`, the optimistic and real values will always match (within ±1 due to floating point rounding, reconciled by `fetchWallet()`).
+
+**Prevention rule:**
+Any button that the user clicks to claim a financial result should apply an optimistic balance update immediately. The server call reconciles afterward. Never make the user wait for a network round-trip to see the result of an action they just took. Always use a ref (not state) to read the live value at click time to avoid stale closures.
+
+**Related SOP section:** Frontend SOP §6.1 (all four states — "success" state must be instant and visible), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit)
+
+---
+
+### 2026-09-26 — Admin config fields missing for crash-game parameters (escapeMin/escapeMax)
+
+**What happened:**
+The admin game-settings page had three sections (Earning Rules, Physics & Speed, Bias Mode) but no controls for the crash-game-specific parameters: `escapeMin` (minimum escape multiplier) and `escapeMax` (maximum escape multiplier). Admins had no UI to change the multiplier range — it was effectively hardcoded at the frontend default (1.1–12).
+
+**Root cause:**
+The admin settings page was built when the game was a Flappy Bird physics game. The crash-game parameters (`escapeMin`, `escapeMax`) were added to `FlappyBird.tsx` as part of the model change but not propagated to:
+1. The admin API defaults map (`/api/admin/game-settings/route.ts`)
+2. The player config API (`/api/game/config/route.ts`)
+3. The admin UI (`/admin/game-settings/page.tsx`)
+4. The config fetch in `FlappyBird.tsx` (was reading `d.escapeMinMult` — wrong key name)
+
+**Correct approach — trace the full config chain:**
+For any new admin-configurable setting, ALL four layers must be updated in the same commit:
+1. **Admin API defaults** — add `"game.escapeMin"` to `DEFAULTS` map and `GET` response
+2. **Player config API** — add field to `GET` response with server-side safety clamp
+3. **Admin UI** — add `SectionCard` with `FieldRow` inputs and a `SaveRow`
+4. **Client config fetch** — map the correct key name from the API response
+
+**Prevention rule:**
+When adding a new game configuration parameter, use this checklist:
+- [ ] `gameConstants.ts` — add env-backed default if applicable
+- [ ] `/api/admin/game-settings/route.ts` — add to `DEFAULTS` and `GET` response
+- [ ] `/api/game/config/route.ts` — add to player-facing `GET` response (with safety clamps)
+- [ ] `/admin/game-settings/page.tsx` — add UI field and save button
+- [ ] Client component — read the correct key name from the config fetch response
+
+Never add a parameter to the game logic without completing all five layers. A missing layer means the parameter is effectively hardcoded and unchageable without a code deploy.
+
+**Related SOP section:** Backend SOP §Hard Rule 2 (never swallow config silently — missing fields must have explicit fallbacks), Universal Engineering Principles §Hard Rule 2 (DRY — config defined once, propagated consistently)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: PIXI.Assets.reset() / Assets.unload() blocked by browser Permissions Policy → use Cache.remove() instead
+
+**What happened:**
+`PixiRenderer.destroy()` called `this.PIXI.Assets.reset()` to clear the global Assets singleton cache before `app.destroy()`. This triggered the browser violation:
+```
+[Violation] Permissions policy violation: unload is not allowed in this document.
+```
+The crash continued on second boot because `Assets.reset()` internally delegates to `Assets.unload()` for each cached entry, which is blocked by the document's Permissions Policy. The call threw silently (caught by the surrounding `try/catch`) and the cache was never actually cleared — the `null.split` crash continued unchanged.
+
+**Root cause:**
+`PIXI.Assets.reset()` and `PIXI.Assets.unload()` are async operations that Pixi v8 internally maps to the browser's `navigator.locks` or `unload`-event-adjacent APIs in some builds. When the document's `Permissions-Policy` header forbids `unload` (common on pages using `bfcache` optimizations), Pixi silently fails.
+
+**Correct fix — use `PIXI.Cache.remove()` instead:**
+```typescript
+// WRONG — blocked by Permissions Policy in many deployment contexts:
+this.PIXI.Assets.reset();
+this.PIXI.Assets.unload(url);
+
+// CORRECT — synchronous, policy-safe, evicts from TextureCache directly:
+for (const u of urls) {
+  try { this.PIXI.Cache.remove(u); } catch { /* already evicted */ }
+}
+this._tex.clear();   // also clear the local Map
+```
+`PIXI.Cache.remove(url)` evicts the URL from Pixi's synchronous `TextureCache` keyed map. This is what the Assets resolver reads when it checks for a cached entry. Removing here ensures the next `Assets.load()` call resolves the URL fresh rather than returning a stale/null entry.
+
+**Prevention rule:**
+Before calling any Pixi method that contains "unload", "reset", or "clear" at the Assets level, check: does the current document have a `Permissions-Policy: unload` restriction? On any production deployment using HTTP/2 push, `bfcache`, or modern hosting providers (Vercel, Railway, Cloudflare), `unload` is routinely blocked. Use `PIXI.Cache.remove()` exclusively — it's always safe.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (validate assumptions about third-party APIs against the actual browser environment), DevOps SOP §Security headers (Permissions-Policy is set at deployment level — frontend code must be resilient to it)
+
+---
+
+### 2026-09-26 — HUNT game: two PIXI.Application instances on same canvas (demo→real race) → WebGL uniform location crash
+
+**What happened:**
+The component ran a `DemoEngine` + `PixiRenderer` pair for the idle preview screen. When `active` went `true`, the demo teardown effect fired synchronously (`demoRendRef.current.destroy()`) and then the real boot effect also fired in the same React batch (both had `[active]` in their dep array).
+
+`PixiRenderer.destroy()` is synchronous from JavaScript's perspective, but `app.destroy()` internally submits WebGL teardown commands to the GPU driver queue asynchronously. The real `PixiRenderer.init()` immediately created a new `PIXI.Application` on the same `<canvas>` — while the prior GL context's teardown was still in flight in the driver. This caused:
+```
+WebGL: INVALID_OPERATION: uniformMatrix3fv: location is not from the associated program
+WebGL: too many errors, no more errors will be reported to the console for this context.
+```
+The new GL context's shader programs had "location" handles from the old context, which the driver rejected as invalid.
+
+**Correct fix — module-level destroy fence (`Promise<void>`):**
+```typescript
+// Module-level (outside the class):
+let _rendererDestroyFence: Promise<void> = Promise.resolve();
+
+// Inside PixiRenderer.destroy():
+let _resolve!: () => void;
+_rendererDestroyFence = new Promise<void>(r => { _resolve = r; });
+// ... all teardown ...
+this.app?.destroy(false, { children: true });
+this.app = null;
+_resolve();   // fence fulfilled — next init() may proceed
+
+// Inside PixiRenderer.init() — BEFORE new PIXI.Application():
+await _rendererDestroyFence;   // zero cost on first boot (already resolved)
+const app = new PIXI.Application();
+await app.init({ ... });
+```
+
+**Why module-level, not instance-level:**
+The fence must be visible to the NEW `PixiRenderer` instance that is created after the old one is destroyed. Instance properties on the destroyed renderer are no longer accessible from the new renderer. A module-level variable survives the instance lifecycle.
+
+**Why this is zero-cost on first boot:**
+`_rendererDestroyFence` is initialized to `Promise.resolve()`. The `await` on an already-resolved promise yields to the microtask queue for one tick — harmless and not measurable.
+
+**Pattern name:** Module-level sequential resource fence. Use this pattern whenever two instances of a class must NEVER hold the same exclusive resource (WebGL context, camera, microphone, file handle) simultaneously, and the class is instantiated/destroyed by external lifecycle management (React effects).
+
+**Prevention rule:**
+Any class that wraps an exclusive hardware or browser resource (WebGL context, `getUserMedia`, `AudioContext`, IndexedDB transaction) MUST have a module-level fence that the constructor/init awaits. Never assume `destroy()` + `new Instance()` in the same synchronous block is safe. The underlying resource may have async teardown even if the JS call appears synchronous.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (client-side resource lifecycle must be explicit), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit, not assumed)
+
+---
+
+### 2026-09-26 — HUNT game: PIXI.Assets.load() called with already-cached URLs on second boot → resolver null.split crash
+
+**What happened:**
+Even after `PIXI.Cache.remove()` was called in `destroy()`, the second boot's `Assets.load(urls)` still crashed with `null.split` intermittently. The race condition: `Cache.remove()` removes from the synchronous `TextureCache`, but `PIXI.Assets` maintains a separate internal `Promise`-based resolver cache (`_promiseCache`). This cache holds the original `Promise<Texture>` for each URL. When `Cache.remove()` clears the `TextureCache` but NOT the `_promiseCache`, `Assets.load()` returns the cached `Promise` (which resolves to the now-destroyed texture), then `Texture.from(url)` reads from `TextureCache` (now empty) and falls back to the resolver — which may have a null entry.
+
+**Correct defensive fix — check cache before loading:**
+```typescript
+const allUrls = (Object.values(A) as string[])
+  .filter(v => typeof v === "string" && v.length > 0);
+
+// Only load URLs not already in the Assets cache
+const toLoad = allUrls.filter(u => {
+  try { return !PIXI.Assets.cache.has(u); } catch { return true; }
+});
+if (toLoad.length > 0) await PIXI.Assets.load(toLoad).catch(() => {});
+
+// Populate local _tex from ALL urls (cache.has() may return true for
+// entries loaded in prior sessions that are still valid)
+for (const src of allUrls) {
+  try {
+    const t = PIXI.Texture.from(src);
+    if (t && t.width > 0) this._tex.set(src, t);
+  } catch { /* skip */ }
+}
+```
+
+**Why `PIXI.Assets.cache.has(u)` is the right check:**
+`PIXI.Assets.cache` (`AssetCache`) is the canonical source of truth Pixi uses internally to decide whether a URL is "already loaded." If it returns `true`, the asset is already in a usable state. Calling `Assets.load()` on a URL where `cache.has()` is `true` may be a no-op, or may trigger an internal re-resolution path that corrupts the resolver state — either way, skip it.
+
+**On first boot:** `cache.has()` returns `false` for all 22 URLs → all are loaded normally.
+**On second boot:** the `Cache.remove()` in `destroy()` cleared them → `cache.has()` returns `false` again → loaded fresh. If for any reason `Cache.remove()` was a no-op (policy block on a specific URL), `cache.has()` returns `true` → that URL is skipped → no double-resolution → no crash.
+
+**This is defence in depth** — the fence prevents the race, `Cache.remove()` clears the cache, and `cache.has()` acts as the final guard. Three independent layers, any one of which is sufficient to prevent the crash.
+
+**Prevention rule:**
+Never call `PIXI.Assets.load(urls)` unconditionally in a class that has a `destroy()` + re-`init()` lifecycle. Always filter with `!PIXI.Assets.cache.has(url)` first. The Assets singleton survives component remounts and the check is O(1).
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — don't repeat work the runtime already did), Frontend SOP §Hard Rule 1 (defensive guards on all third-party singleton APIs)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Static asset path referenced a folder that doesn't exist (/assets/ui/coin.png → 404)
+
+**What happened:**
+The game header balance pill rendered an `<img src="/assets/ui/coin.png">` that returned 404.
+The coin image was never visible in the header — it silently fell back to `onError → display:none`.
+
+**Root cause:**
+The `public/assets/` folder has no `ui/` subdirectory.
+The coin asset lives at `/assets/rewards/coin.png` (confirmed by listing `public/assets/`).
+The `ui/` path was copied from an earlier design iteration that used a different folder structure.
+
+**What was wrong about it:**
+No verification was done that the path actually existed when the `<img>` tag was written.
+The `onError` handler hid the failure silently — the 404 still appeared in the browser console
+and wasted a network request on every page load.
+
+**Correct approach:**
+Before writing any `src="/assets/..."` path in JSX:
+1. Run `Get-ChildItem -Recurse public/assets` (or equivalent) to see what actually exists.
+2. Use the confirmed path. Never guess or copy from memory.
+
+**Prevention rule:**
+Static asset paths are a contract between code and the filesystem.
+Treat them the same as import paths — if the file doesn't exist, the code is broken.
+`onError → display:none` is a UX fallback for production asset failures, NOT a substitute for
+verifying the path is correct at dev time. Always confirm the path exists before shipping.
+
+**Related SOP section:** Frontend SOP §13 Change Management (paths are contracts),
+Universal Engineering Principles §Hard Rule 5 (verify before asserting it works)
+
+---
+
+### 2026-09-26 — "Permissions policy violation: unload is not allowed" is a browser/devtools warning, not our code
+
+**What happened:**
+The browser console showed:
+```
+[Violation] Permissions policy violation: unload is not allowed in this document.
+```
+This appeared at every page load alongside our game errors, which caused confusion about whether
+our `PIXI.Assets.unload()` call was the culprit.
+
+**Root cause (confirmed by code audit):**
+`PIXI.Assets.unload()` had already been removed from `PixiRenderer.destroy()` in a prior session
+and replaced with `PIXI.Cache.remove()`. The `unload` text only appeared in a comment.
+
+The actual warning comes from **Next.js Turbopack's dev overlay infrastructure** (`inspector.b9415ea5.js`)
+which attaches to the browser's `unload` event for HMR/fast-refresh teardown. Modern browsers
+(Chrome 117+) block the `unload` event by default via the back/forward cache Permissions-Policy.
+This is a framework-level warning that cannot be fixed in application code.
+
+**Diagnostic method used:**
+1. Searched entire game folder for `Assets.unload` and `.unload(` — found only in a comment.
+2. Identified the warning source as `inspector.b9415ea5.js` (Turbopack dev bundle, not user code).
+3. Confirmed the warning disappears in production builds (`npm run build`) where dev overlay is absent.
+
+**Prevention rule:**
+When a console warning names a specific JS file in the stack trace, inspect that file name first.
+A file named `inspector.*.js`, `hmr-*.js`, or `_next/static/...` is a framework/bundler file —
+the fix (if any) belongs to the framework version, not application code.
+Do not spend time searching application code for a warning that originates in a bundler file.
+
+**Related SOP section:** Grounding SOP §Hard Rule 1 (verify source before acting),
+Universal Engineering Principles §Hard Rule 4 (distinguish framework noise from application errors)
+
+---
+
+### 2026-09-26 — WebGL "uniformMatrix3fv: location is not from associated program" — cause and fix
+
+**What happened:**
+`WebGL: INVALID_OPERATION: uniformMatrix3fv: location is not from associated program` appeared in
+the console after game rounds. This is a WebGL error meaning: shader uniform location was obtained
+from Program A but is being set on an active Program B — the two GL programs don't match.
+
+**Root cause:**
+Two `PIXI.Application` instances briefly shared the same `<canvas>` element.
+When `rend.destroy()` is called (React effect cleanup), it calls `app.destroy()` which tears down
+the WebGL context asynchronously. If a new `PixiRenderer.init()` calls `new PIXI.Application()`
+and `app.init({ canvas })` before the prior GL context fully tears down, both programs exist
+simultaneously on the same canvas. Any GSAP tween from the dying renderer that fires during
+this window tries to set uniform locations on the wrong active program → the error.
+
+**Fix — module-level async fence (`_rendererDestroyFence`):**
+```typescript
+let _rendererDestroyFence: Promise<void> = Promise.resolve();
+
+// In destroy():
+let _resolve!: () => void;
+_rendererDestroyFence = new Promise<void>(r => { _resolve = r; });
+// ... kill tweens, clear cache ...
+this.app?.destroy(false, { children: true });
+this.app = null;
+_resolve();   // ← fence resolves AFTER app.destroy() completes
+
+// In init():
+await _rendererDestroyFence;   // ← new app.init() only after prior GL context is gone
+const app = new PIXI.Application();
+await app.init({ canvas, ... });
+```
+
+**Why a module-level Promise (not a React ref):**
+- The fence must outlive any single React component instance.
+- Multiple `FlappyBird` component instances (old being unmounted, new being mounted) exist
+  simultaneously during the React commit phase.
+- A module-level variable is shared across all instances in the same browser tab — exactly
+  the scope needed for GL context serialisation.
+
+**Key timing constraint:**
+`_resolve()` must be called AFTER `app.destroy()` returns, not before.
+`app.destroy()` synchronously tears down the GL context in Pixi v8 — calling `_resolve()` after
+it returns guarantees the context is fully gone before the fence resolves.
+
+**Prevention rule:**
+Any time a WebGL renderer is destroyed and a new one is created on the same canvas element,
+there must be an explicit serialisation mechanism (fence, lock, or cleanup await) between them.
+Never assume React's `useEffect` cleanup + mount cycle provides sufficient timing guarantees
+for WebGL context lifecycle — it does not. The GL context teardown and the new init() can
+overlap within the same rAF/microtask batch.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (async timing must be explicit),
+Universal Engineering Principles §Hard Rule 4 (shared state — canvas GL context — must be
+protected against concurrent access)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: loss mechanic was silent — no amount shown, wrong framing of outcome
+
+**What happened:**
+When the bird escaped (user failed to press SECURE in time), the game showed "Bird escaped. Better luck next hunt!" as a toast and "Round lost" in the canvas overlay. The user had no idea how much money was deducted. The wallet balance decreased silently with no clear attribution.
+
+**What was wrong about it:**
+Two separate problems:
+
+1. **Framing mismatch** — "Bird escaped" implies the game ended naturally. The actual mechanic is that the *hunter kills the bird when it reaches the escape multiplier*. The correct framing is "HUNTER GOT THE BIRD" — which communicates consequence (the hunter wins, the player loses) rather than ambiguity.
+
+2. **Missing loss amount** — The toast said nothing about how much was lost. The wager is deducted at `startGame` — this is the correct place for the debit (it prevents players from cancelling mid-flight). But without explicit confirmation of the deduction in the result message, players are confused about why their balance dropped.
+
+**Correct approach:**
+- Toast on loss: `toast.error("Hunter got the bird! Rs. X lost.")` — uses `wager` which is in scope via the `useCallback` closure.
+- Canvas overlay (page.tsx): rebuild to show heading "HUNTER GOT THE BIRD", final multiplier, and `−Rs. {wager} lost` line.
+- Canvas overlay (FlappyBird.tsx): heading "HUNTER GOT THE BIRD", subtext "Wager lost — secure next time".
+- Action state label: "Wager Lost" instead of "Bird Escaped" / "Escaped".
+
+**Economy rule confirmed:**
+The wager debit at `startGame` is correct and intentional:
+```typescript
+// page.tsx startGame — debit immediately on session start
+setWallet(w => w ? { ...w, balance: w.balance - wager } : w);
+```
+On escape, `endSession(score, cashout=false)` runs. The PATCH response `winAmount === 0` means no credit is applied. `fetchWallet()` reconciles the server-side balance. The money is correctly gone — only the messaging was missing.
+
+**Do NOT** move the debit to the result phase — that would allow balance to show incorrectly (too high) during the flight and would enable a race condition where a user could start two games before the first debit hits.
+
+**Prevention rule:**
+Any time a financial consequence occurs in a game or transaction UI:
+1. The consequence (debit/credit) must be shown to the user with the exact amount.
+2. Use `toast.error()` for losses, `toast.success()` for wins — never `toast.info()` for a financial loss.
+3. The overlay/result screen must show the amount as `−Rs. X` (loss) or `+Rs. X` (win) — never just "Round lost" or "Better luck next time".
+4. The framing must match the game mechanic (hunter kills bird ≠ bird escaped).
+
+**Files changed:**
+- `src/app/dashboard/game/page.tsx` — `endSession` loss toast, ESCAPED overlay, mobile + desktop action labels
+- `src/app/dashboard/game/FlappyBird.tsx` — ESCAPED flash overlay, built-in action bar ESCAPED label
+
+**Related SOP section:** UI/UX SOP §6.2 (content realism — copy must reflect what actually happened),
+Frontend SOP §6.1 (all four states — result/outcome state must clearly communicate financial consequence),
+Universal Engineering Principles §Hard Rule 1 (never silently change user-visible financial state)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: GSAP onComplete spawns orphan inner tweens that survive destroy() sweep
+
+**What happened:**
+`Cannot set properties of null (setting 'y')` fired repeatedly in the browser console after pressing SECURE or letting the bird escape. The crash happened inside GSAP's animation loop, setting `.y` on a Pixi sprite that had been destroyed by `app.destroy({ children: true })`.
+
+**Root cause — the "orphan inner tween" pattern:**
+
+`onSuccess()` contained this nested tween structure:
+```typescript
+gsap.to(this.bird, {
+  y: this.birdY - this.H * 0.06,
+  duration: 0.35,
+  onComplete: () => {
+    if (this._destroyed) return;
+    // ↓ This creates a NEW tween AFTER the first kill sweep already ran
+    gsap.to(this.bird, { y: this.birdY - this.H * 0.02, duration: 0.5 });
+  },
+});
+```
+
+The `destroy()` method ran `gsap.killTweensOf(this.bird)` to stop all animations. **However**, the outer tween's `onComplete` fired between the first kill sweep and `app.destroy()`. Inside that callback, `this._destroyed` was already `true` but the guard `if (this._destroyed) return` was the old code — it was `if (this._destroyed) return` which **passed** because `_destroyed` was being checked as a truthy skip, but the logic was inverted in some callers.
+
+More critically: even with a correct `_destroyed` check, the **inner `gsap.to(this.bird, ...)` was created inside the `onComplete` callback** — which fires *after* `gsap.killTweensOf(this.bird)` already ran. The first kill sweep cannot kill a tween that doesn't exist yet. The inner tween is therefore an **orphan** — never killed — and GSAP fires it after `app.destroy()` has nulled `this.bird`'s internal Pixi state, making `this.bird.y = value` crash.
+
+**Why `_destroyed = true` alone doesn't protect the inner tween:**
+`_destroyed = true` is set at the top of `destroy()`. The `onComplete` callback checks `this._destroyed` and returns early — **but only when `_destroyed` is checked correctly**. In the old code `if (this._destroyed) return` was correct but the nested `gsap.to` was spawned before the return in some code paths.
+
+The real failure is architectural: **you cannot kill a tween that hasn't been created yet**. A first `gsap.killTweensOf()` sweep cannot know that an `onComplete` is about to spawn a new tween.
+
+**Two-part fix:**
+
+1. **Correct guards in every `onComplete`** — check both the renderer flag AND the sprite's own `destroyed` state:
+```typescript
+// WRONG — only checks renderer flag, not sprite nullity
+onComplete: () => { if (!this._destroyed) this.hunter.y = ...; }
+
+// CORRECT — checks renderer flag AND sprite destroyed state
+onComplete: () => {
+  if (this._destroyed || !this.hunter || this.hunter.destroyed) return;
+  this.hunter.y = ...;
+}
+
+// CORRECT for nested tween spawn
+onComplete: () => {
+  if (this._destroyed || !this.bird || this.bird.destroyed) return;
+  gsap.to(this.bird, { y: ..., duration: 0.5 });
+}
+```
+
+2. **Second GSAP kill sweep immediately before `app.destroy()`** — catches any orphan tweens that `onComplete` callbacks spawned after the first sweep:
+```typescript
+destroy() {
+  this._destroyed = true;
+  // ... first sweep ...
+  gsap.killTweensOf(this.bird);
+  gsap.killTweensOf(this.hunter);
+
+  // ... cache clear, axis text destroy ...
+
+  // Second sweep — catches tweens spawned by onComplete callbacks
+  // between the first sweep and app.destroy()
+  gsap.killTweensOf(this.bird);
+  gsap.killTweensOf(this.hunter);
+  if (this.app?.stage) gsap.killTweensOf(this.app.stage);
+
+  this.app?.destroy(false, { children: true }); // nulls all sprite internals
+}
+```
+
+The second sweep is a zero-cost no-op if no orphans exist, and a safety net when they do.
+
+**Prevention rule:**
+Any GSAP `onComplete` callback that creates a NEW tween must:
+1. Check `this._destroyed` (renderer lifecycle flag).
+2. Check `sprite.destroyed` (Pixi object lifecycle flag) — these are independent.
+3. Never assume `gsap.killTweensOf(sprite)` called before the callback ran will also kill tweens the callback creates.
+
+In a class with a `destroy()` method that calls `app.destroy()`, always add a second `gsap.killTweensOf()` sweep immediately before `app.destroy()`. The cost is negligible; the safety is complete.
+
+**GSAP target reference rule:**
+Never pass a live Pixi sprite as a GSAP target if that sprite may be destroyed before the tween completes. Use a plain object `{ value: sprite.y }` as the tween target and apply to the sprite in `onUpdate`, with a guard inside `onUpdate`:
+```typescript
+// Safer pattern for long-running tweens on destroyable sprites
+const proxy = { y: this.bird.y };
+gsap.to(proxy, {
+  y: targetY,
+  onUpdate: () => {
+    if (!this.bird || this.bird.destroyed) return;
+    this.bird.y = proxy.y;
+  },
+});
+```
+This ensures GSAP never directly owns the sprite reference and cannot set properties on a destroyed object.
+
+**Related SOP section:** Frontend SOP §6.1 (cleanup must be complete — all async operations must be cancellable), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit — onComplete creates a new async operation that must be tracked)
+
+---
+
+## Backend Lessons
+
+### 2026-09-26 — HUNT game: bird escape incorrectly paid out wager × multiplier — score alone cannot gate a payout
+
+**What happened:**
+When the hunter killed the bird (player did NOT press SECURE), the server still credited the player's wallet with `wager × multiplier`. A player who wagered Rs. 10,000 and let the bird escape at 3× received Rs. 30,000 — a payout they never earned.
+
+**Root cause — the server had no cashout signal:**
+The PATCH handler received `{ sessionId, finalScore }`. `finalScore` encodes the multiplier as `Math.floor(mult × 100)` — the same encoding for both a successful cashout and an escape. `calculateCrashWin(wagerAmount, finalScore)` returned a positive `winAmount` whenever `finalScore >= 100` (≥ 1.00×), regardless of whether the player had actually pressed SECURE.
+
+The prior comment in the code said:
+> "Bird escaped before cashout (score <= 100) → winAmount = 0"
+
+This assumption was **wrong**. The bird escape cap is configured in the admin (`escapeMax`, default 12×). A bird that escapes at `escapeMin` (1.1× by default, score = 110) would trigger `calculateCrashWin` to return `winAmount > 0`. And a bird that escapes at any multiplier above 1.00× would pay out.
+
+**Why `score < 100` was insufficient:**
+The escape threshold in `MultiplierEngine` is a configured cap (`cfg.escapeMin` to `cfg.escapeMax`), not fixed at 1.00×. The server cannot infer intent from the score value — score 230 could mean "player secured at 2.3×" OR "bird escaped at 2.3×". These are indistinguishable without an explicit signal.
+
+**Correct fix — explicit `cashout: boolean` in the PATCH body:**
+```typescript
+// PATCH body: { sessionId, finalScore, cashout }
+const { sessionId, finalScore, cashout } = await req.json();
+
+// Validate cashout is an explicit boolean — never optional, never omittable
+if (typeof cashout !== "boolean") {
+  return NextResponse.json({ message: "cashout (boolean) is required." }, { status: 400 });
+}
+
+// Payout gate: only pay when player explicitly secured
+const totalWin = cashout
+  ? calculateCrashWin(session.wagerAmount, finalScore).winAmount
+  : 0;   // bird escaped → wager forfeited regardless of finalScore
+```
+
+**Security note — why `cashout` must be validated as `boolean`, not truthy:**
+- `cashout: undefined` → `typeof undefined !== "boolean"` → 400, blocked.
+- `cashout: 1` → `typeof 1 !== "boolean"` → 400, blocked.
+- `cashout: "true"` → `typeof "string" !== "boolean"` → 400, blocked.
+- Only `cashout: true` or `cashout: false` pass validation.
+
+A client that omits `cashout` entirely (old client code, API fuzzing) gets a 400, not a free win.
+
+**DRY principle applied:**
+`calculateCrashWin` was NOT changed — it is correct as a pure math function. The business rule "only pay on cashout" lives in the route handler, not in the math function. Single responsibility.
+
+**Prevention rule:**
+In any game or financial API where the same numerical result (score, amount) can mean different things depending on user intent (cashout vs. escape, refund vs. charge), **always require an explicit intent boolean in the request body**. Never infer intent from the magnitude of a number. The rule: *a score value describes how far the game went; only an explicit `cashout` flag describes what the player chose to do*.
+
+**Files changed:**
+- `src/app/api/game/session/route.ts` — PATCH handler: added `cashout` param, validation, payout gate
+- `src/app/dashboard/game/page.tsx` — `endSession`: sends `cashout` in PATCH body (`cashout=true` on secure, `cashout=false` on escape)
+
+**Related SOP section:** Backend SOP §Hard Rule 1 (never trust client input for money-sensitive values — server re-derives payout from stored `wagerAmount`, not client-sent `winAmount`), §5.2 (price/amount always looked up server-side), §6.2 (resource-level ownership check on every mutation)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Admin settings page had Flappy Bird physics fields that don't exist in HUNT crash game
+
+**What happened:**
+`/admin/game-settings` showed fields for `baseSpeed`, `gravity`, `jumpVel`, `pipeGap`, `randomSpeed`, `randomThreshold`, `randomSpeedMin`, `randomSpeedMax` — all Flappy Bird physics. HUNT is a crash/multiplier game: it has no pipes, no gravity, no jump velocity. These fields were displayed to the admin, saved to the DB, and also returned from `/api/game/config` to players — none of them were ever read by the HUNT engine.
+
+**What was wrong about it:**
+The settings page was copied from a Flappy Bird admin panel and never pruned when the game mechanic changed to a crash/multiplier format. Dead fields in the admin UI create confusion, waste DB rows, and bloat the public config API response with keys that mean nothing to the running game.
+
+**Correct approach:**
+1. Identify which config keys the actual game engine (`FlappyBird.tsx`) reads — only `escapeMin`, `escapeMax`, `biasMode`, `winInterval`, `winPerStep`, `jackpotScore`, `jackpotMult`, `jackpotBonusScore`, `jackpotBonusMult`, `minWager`, `maxWager`, `minDeposit`.
+2. Remove all other keys from both the admin UI and the public `/api/game/config` GET response.
+3. Keep them in the admin route `DEFAULTS` map only if they might be needed in future (they were removed entirely since the game mechanic won't revert to Flappy Bird).
+
+**Prevention rule:**
+When a game mechanic changes, audit all three layers simultaneously:
+- Admin UI page (what fields are shown)
+- Admin API route (what keys are in DEFAULTS and GET response)
+- Public config API (what keys are returned to the client)
+
+Never leave "legacy" config keys in the public API — they inflate response size and create false surface area for enumeration.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — no dead code/config), Backend SOP §Hard Rule 1 (never expose keys that serve no purpose to the caller)
+
+---
+
+### 2026-09-26 — maxWager not implemented — platform had no upper bet limit
+
+**What happened:**
+The game had `minWager` (minimum bet) but no `maxWager`. Players could wager any amount above the minimum, including the entire wallet balance. A player with Rs. 384,276 balance could wager the full amount on a single session.
+
+**What was wrong about it:**
+No upper wager limit = unbounded platform liability on a single session. If a player wagered Rs. 300,000 at 12× and the bias mode was "win" (or they were simply lucky), the platform would owe Rs. 3,600,000 from a single round. This is a financial risk and a regulatory concern.
+
+**Correct fix:**
+Added `game.maxWager` to:
+1. `DEFAULTS` in `/api/admin/game-settings/route.ts` — env-backed default `GAME_MAX_WAGER ?? "10000"`
+2. GET response from the admin route (so admin UI can read and edit it)
+3. GET response from `/api/game/config` (so the player-facing UI can enforce it client-side)
+4. Admin UI with a FieldRow explaining the purpose and the financial rationale
+
+**Why env-backed default:**
+`process.env.GAME_MAX_WAGER ?? "10000"` means: at deploy time the operator can set a different ceiling via `.env.local`/Railway env without touching the DB. Once an admin overrides it via the settings UI, the DB value wins. This is the correct DRY hierarchy: env = install-time default, DB = runtime override.
+
+**Prevention rule:**
+Every numeric input with a minimum (`minWager`, `minDeposit`, `minBet`) must also have a corresponding maximum unless the domain explicitly has no ceiling. For financial inputs, always pair `min` with `max` in:
+- The DB settings (both keys)
+- The admin UI (both fields, with cross-validation: max > min enforced in the `input[min]` attribute)
+- The API (both returned in GET, both accepted in PUT)
+- The env defaults (both `GAME_MIN_*` and `GAME_MAX_*`)
+
+**Related SOP section:** Backend SOP §Hard Rule 1 (server-side validation — never trust that clients won't send exploitative values), Universal Engineering Principles §Hard Rule 3 (financial inputs are paired min/max by default)
+
+---
+
+### 2026-09-26 — TypeScript TS2322: local Icon primitive missing `style` prop
+
+**What happened:**
+`admin/game-settings/page.tsx` defined a file-local `Icon` component with `{ d, className }` props. When rendering the icon inside an `InfoBox` and a warning banner, a `style={{ color: "var(--brand-400)" }}` prop was passed to give the icon a CSS-variable colour. TypeScript reported TS2322: `Property 'style' does not exist on type 'IntrinsicAttributes & { d: string; className?: string }'`.
+
+**What was wrong about it:**
+The `Icon` interface was too narrow — it only declared `d` and `className`, but not `style`. Any time a CSS-variable colour is needed without a Tailwind class, `style` is the correct approach, so the type must include it.
+
+**Correct fix:**
+```typescript
+function Icon({ d, className = "w-4 h-4", style }: {
+  d: string; className?: string; style?: React.CSSProperties;
+}) {
+  return <svg className={className} style={style} ...>
+```
+
+**Prevention rule:**
+File-local primitive components (`Icon`, `Badge`, `Chip`) that wrap a DOM element should always include `style?: React.CSSProperties` in their interface. These components are used in varied contexts where Tailwind classes are insufficient (dynamic CSS variable colours, calculated transforms, etc.). Adding `style` costs nothing and prevents repeated TS errors when contexts vary.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (component interfaces must be wide enough for their intended usage contexts), Universal Engineering Principles §Hard Rule 2 (primitive components should not be re-opened for each minor prop addition — design them complete once)
+
+---
+
+## Architecture Lessons (continued)
+
+### 2026-09-26 — Game settings page was removed but its route + API still existed, causing a dead link and orphaned code
+
+**What happened:**
+`/admin/game-settings` had its page file deleted at some point but the route key in `routes.ts` was kept with a comment saying "page removed, config embedded in overview." The API (`/api/admin/game-settings`) remained fully functional. The admin panel had no way to control game flight range or wager limits through the UI, forcing hardcoded env values.
+
+**What was wrong about it:**
+- A route key in `routes.ts` with a "page removed" comment is a code smell — if the route is dead, remove the key; if the feature is needed, create the page. Half-states are confusing.
+- Wager limits (`minWager`, `maxWager`) were hardcoded to 120/10000 in `gameConstants.ts` as env-var fallbacks, but had no UI for the admin to change them — the DB-backed live values existed but were unreachable from the admin panel.
+- The admin/page.tsx used `GameConfig` type but never defined or imported it, causing a pre-existing `TS2304: Cannot find name 'GameConfig'` error that had been silently present.
+
+**Correct approach:**
+1. The API already existed and was correct — no backend changes needed.
+2. Created `page.tsx` with three independent save sections (Flight Range, Wager Limits, Outcome Bias), each with its own `SaveState` and validation.
+3. A single generic `save(payload, setSaveState)` callback handles all three sections — DRY, no duplicated fetch logic.
+4. Defined `GameConfig` interface locally in `admin/page.tsx` to match the API response shape, ending the TS error.
+5. Updated `routes.ts` comment from "page removed" to a real description.
+6. Added the route to `ADMIN_NAV` in `Sidebar.tsx` and to `EXACT_ONLY` set.
+
+**Prevention rules:**
+
+**On route keys:** A route in `routes.ts` must have exactly one of two states: (a) a working `page.tsx` file at that path, or (b) the key removed entirely. A "kept for API compat" comment on a UI route is always wrong — API routes use their own path strings, they do not depend on `routes.ts`.
+
+**On shared interfaces:** If multiple files use the same data shape (e.g. `GameConfig`), define it once in a shared `types/` file or in the relevant `lib/` module and import it. Never leave a `useState<GameConfig>` in a component without a corresponding type definition visible in the same file or an explicit import.
+
+**On component prop types:** Any SVG/icon component that needs dynamic colour should either:
+- Accept a `className` prop and use Tailwind color utilities (`text-[var(--color-success)]`)
+- Accept an explicit `color` prop typed as `string`
+- Be wrapped in a `<span style={{ color: '...' }}>` at the call site
+
+Never pass `style` to a component that doesn't declare it in its prop interface — TypeScript will catch this but only at compile time, not at authoring time if you're moving fast.
+
+**Related SOP section:** Architecture SOP §0 (produce correct blueprints — dead routes have no place in the routes file), Universal Engineering Principles §Hard Rule 2 (DRY — shared types defined once), Frontend SOP §13 Change Management (route is a contract — either the page exists or the key doesn't)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Duplicate `DepositModal` definition in page.tsx caused Turbopack compile error
+
+**What happened:**
+`DepositModal` was defined as both an inline function in `page.tsx` AND as an imported component from `@/components/game/DepositModal`. Turbopack (Next.js 16 bundler) threw:
+
+```
+Error: the name `DepositModal` is defined multiple times
+```
+
+The page failed to compile entirely.
+
+**Root cause:**
+A prior AI session correctly extracted `DepositModal` into its own reusable component at `src/components/game/DepositModal.tsx` and added the import line at the top of `page.tsx`. However, it did NOT remove the original inline function body from `page.tsx`. Both names lived in the same module scope, causing a binding conflict.
+
+**Why grep missed it initially:**
+`grep` was run with `^function DepositModal` (line-start anchor) which correctly found the inline definition. The import appeared as `import DepositModal from ...` — a different line pattern. The presence of two definitions only became obvious when both patterns were searched together. Always search for ALL occurrences of a symbol name, not just the `function` declaration, before concluding it appears once.
+
+**Correct fix:**
+Remove the inline function body (and its associated `PaymentAccount` interface that the inline owned). Keep only the import. The extracted component is strictly superior — it has better error handling (`acctErr` state), accessibility (`aria-label`), and handles the `address` field.
+
+**Prevention rule — DRY enforcement checklist when extracting a component:**
+1. Extract the component to its own file. ✓
+2. Add the import in the consuming file. ✓
+3. **Remove the inline definition from the consuming file.** ← the step that was missed
+4. Remove any types/helpers that were only used by the inline definition (e.g. `PaymentAccount` interface).
+5. Run `tsc --noEmit` immediately after extraction to catch any remaining references.
+
+Never leave an inline component body in a file that also imports the same name. The bundler will always catch this — better to catch it in the same commit.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — each piece of logic exists in exactly one place), Frontend SOP §13 Change Management (component extraction is a two-step operation: add + remove)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Deposit button routed to game page instead of opening DepositModal
+
+**What happened:**
+The "Deposit" button on `/dashboard/wallet` and the "Deposit" / "Top Up" buttons on `/dashboard` navigated users to `/dashboard/game` instead of opening the deposit form. Users pressing Deposit from the wallet page were silently dropped into the game.
+
+**Root cause:**
+All four buttons used `href={ROUTES.game}` — the game page route — rather than opening the `DepositModal`. The likely intent was "the user can deposit from the game page", but this produced a confusing redirect with no explanation and forced the user to find the deposit button again inside the game UI.
+
+A fully-implemented `DepositModal` component already existed at `src/components/game/DepositModal.tsx` and was correctly used in `game/page.tsx`. The wallet and dashboard pages simply never imported it.
+
+**What was wrong about it:**
+Routing to a different page as a proxy for a modal is a UX anti-pattern — it breaks navigation context, loses any state the user had on the source page, and confuses users who expected a form overlay.
+
+**Correct approach:**
+1. Import `DepositModal` from the shared component (DRY — already exists, never duplicate).
+2. Add a `depositOpen` boolean state.
+3. Convert each `href={ROUTES.game}` deposit button to `onClick={() => setDepositOpen(true)}` (no `href` → `Button` renders as `<button>`, not `<Link>`).
+4. Render `{depositOpen && wallet && <DepositModal minDeposit={wallet.minDeposit} onClose={...} onSuccess={...} />}` at the end of the page JSX.
+5. In `onSuccess`: close the modal AND refresh wallet data so the balance updates immediately.
+
+**Files fixed:**
+- `src/app/dashboard/wallet/page.tsx` — added `DepositModal` import, `depositOpen` state, fixed 2 buttons, added modal render
+- `src/app/dashboard/page.tsx` — added `DepositModal` import, `depositOpen` state, fixed 2 buttons, added modal render
+
+**Prevention rule:**
+Before writing `href={ROUTES.x}` on any button labelled "Deposit", "Top Up", "Add Balance", or similar — ask: is there already a modal component for this action? If yes, use it via local state. Never route to another page as a proxy for a modal. Check `src/components/` before building new flows.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — shared component exists, import it), Frontend SOP §6.1 (UX state: user should stay in context for modal actions), UI/UX SOP §Hard Rule 1 (four states — never leave the user on a wrong page without feedback)
+
+---
+
+## UI/UX Lessons (continued)
+
+### 2026-09-26 — AuthLayout left panel retained old brand colours after platform pivot to HUNT gaming theme
+
+**What happened:**
+The signin and signup pages showed a blue-to-teal gradient left panel (`#073dba → #1565ff → #00c9a7`) while the rest of the application (dashboard, game page, global tokens) used a gold/amber/dark gaming palette (`--brand-500: #f5a623`, `--bg-base: #0d0800`). The left panel was visually disconnected from every other screen in the product.
+
+**Root cause:**
+`AuthLayout.tsx` had a hardcoded `style={{ background: "linear-gradient(145deg, #073dba 0%, #1565ff 40%, #00c9a7 100%)" }}` that was written during an earlier blue-brand phase of the project and never updated when the palette pivoted to gold/gaming. The same stale raw hex values infected:
+- The two animated blob `radial-gradient` colours (blue/teal RGBA)
+- The dot grid colour (`white 1px`)
+- The logo pill background (`bg-white/20`)
+- The wordmark (`text-white`)
+- All heading/body text (`text-white/75`, `text-white/90`)
+- Feature check-bullet rings (`bg-white/20`, `text-white`)
+- Testimonial quote mark (`text-white/20`)
+- Testimonial avatar (`bg-white/25`, `text-white`)
+
+**What was wrong about it:**
+UI/UX SOP §4.1 (tokens, not values): colour values defined in `globals.css` as tokens must be the single source of truth. When raw hex values are hardcoded directly in a component `style={{}}`, they bypass the token system and become invisible to any future brand update. This is the exact pattern that made the pivot from blue to gold miss the left panel entirely.
+
+**Why CSS var tokens weren't used directly in this case:**
+The left panel has `data-theme="dark"` pinned on it so it always renders in dark mode. CSS token vars like `var(--brand-500)` work inside it, but the inline `style={{}}` on a React element evaluates the CSS var string at render time — so `var(--brand-500)` in a `style` prop does resolve correctly. However, the left panel is a purely decorative surface with a custom layered gradient that doesn't map 1:1 to any single token. The correct approach is to use the token's *resolved value* in the gradient, not the var() reference, because CSS `linear-gradient()` with `var()` inside `style={{}}` has browser-inconsistent behaviour at gradient stop positions.
+
+**Correct pattern for always-dark decorative surfaces:**
+Use the raw hex values from the token definitions, but document the token mapping inline so future maintainers know which token each value corresponds to:
+```tsx
+// gradient: --bg-base → --accent-600 → --accent-500 (dark void → deep amber → amber)
+background: "linear-gradient(145deg, #0d0800 0%, #3a1a00 45%, #7c4d00 100%)"
+//           ↑ --bg-base              ↑ --gray-700     ↑ --accent-600
+
+// blob: --brand-500 glow
+background: "radial-gradient(circle, rgba(245,166,35,0.7) 0%, transparent 70%)"
+//                                    ↑ --brand-rgb
+
+// dot grid: --brand-rgb
+backgroundImage: "radial-gradient(circle, rgba(245,166,35,1) 1px, transparent 1px)"
+```
+
+**Prevention rule (two-part):**
+1. After any brand/palette pivot, run a search across ALL component files for the OLD hex values:
+   ```
+   grep -r "#073dba\|#1565ff\|#00c9a7" src/
+   ```
+   Any hit is a stale hardcoded colour that missed the pivot. Fix it in the same commit as the token update.
+
+2. For decorative surfaces that MUST use hardcoded hex (complex gradients, `radial-gradient` blobs), add a comment directly above the value mapping it to the token it represents:
+   ```ts
+   // --brand-500 = #f5a623
+   rgba(245, 166, 35, 0.7)
+   ```
+   This makes future pivots a find-and-replace with known source values, not a hunt.
+
+**Files fixed:**
+- `src/components/AuthLayout.tsx` — left panel gradient, 2 blob gradients, dot grid, logo pill, wordmark, heading, body text, feature bullet rings + icons, quote mark, testimonial avatar bg/border/text.
+
+**Related SOP section:** UI/UX SOP §4.1 (tokens not values), UI_MASTER_SKILL §2 (Color Systems — extract palette from brand, define once, reference everywhere), Process Log SOP §5 (correction workflow — after pivot, audit ALL hardcoded values)
+
+---
+
+## Architecture Lessons (continued)
+
+### 2026-09-26 — Brand name scattered as string literals across auth pages — no central constant
+
+**What happened:**
+The platform was rebranded from "RozeDesk" → "FlappyWin" but the brand name was hardcoded as raw string literals in six separate files. `AuthLayout.tsx` hardcoded "FlappyWin" in three places (DEFAULT_ROLE constant, desktop logo wordmark, mobile wordmark). `signin/page.tsx` and `signup/page.tsx` each passed `quoteRole="Player — FlappyWin"` as a prop. `forgot-password/page.tsx` and `reset-password/page.tsx` still had "RozeDesk" holdover text — never updated during the rebrand.
+
+**What was wrong about it:**
+Universal Engineering Principles §Hard Rule 2 (DRY): a value that appears more than once must live in exactly one place. A brand name is a value. Changing "FlappyWin" → anything required editing 6 files and finding all occurrences manually — a process that broke twice (RozeDesk holdovers in forgot/reset pages were missed on the first pass).
+
+**Correct approach — `BRAND` constant as single source of truth:**
+```typescript
+// src/lib/gameConstants.ts — safe for client, env-backed
+export const BRAND = {
+  name:    process.env.NEXT_PUBLIC_BRAND_NAME     ?? "RozeDesk",
+  logoSrc: process.env.NEXT_PUBLIC_BRAND_LOGO_SRC ?? "/logo-3.png",
+  logoAlt: process.env.NEXT_PUBLIC_BRAND_NAME     ?? "RozeDesk",
+  tagline: process.env.NEXT_PUBLIC_BRAND_TAGLINE  ?? "Play HUNT. Earn real PKR.",
+} as const;
+```
+
+All six files import `{ BRAND }` and use template literals:
+- `quoteRole={`Player — ${BRAND.name}`}`
+- `<img src={BRAND.logoSrc} alt={`${BRAND.name} logo`} />`
+- `aria-label={`Create ${BRAND.name} account`}`
+
+Changing the brand now requires updating one env var or one default string in one file.
+
+**Why env-backed:**
+Staging environments can use a different brand name without code changes (`NEXT_PUBLIC_BRAND_NAME=RozeDesk-Staging`). The default value is the production brand — code works correctly even without the env var set.
+
+**Where the constant lives — `gameConstants.ts`:**
+This file is already imported by every game-related page and is safe for client-side rendering (no Node.js imports, no DB access). Adding `BRAND` here avoids creating a new file for a trivial constant, following the rule: don't create a new file unless it has more than one responsibility.
+
+**Prevention rule:**
+Before hardcoding any string that identifies the platform (name, domain, logo path, tagline, support email), ask: will this string ever appear in more than one file? If yes, define it as a constant in `src/lib/` first, then import it everywhere. This includes: `aria-label`, `alt` attributes, testimonial text, email subjects, and localStorage key prefixes.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — no value duplicated across files), Architecture SOP §2.1 (gather constraints — brand identity is a constraint that must be established before building auth UI)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: PIXI.Assets has THREE separate caches — Cache.remove() per URL only clears one
+
+**What happened:**
+`null.split` crash persisted even after adding `PIXI.Cache.remove(url)` per URL in `PixiRenderer.destroy()`. The fix cleared the TextureCache (`cache #3`) but left two other internal caches intact, causing the crash on second boot.
+
+**Root cause — three caches, only one was cleared:**
+
+Inspecting `node_modules/pixi.js/lib/assets/Assets.js` and `Resolver.js` revealed that `PIXI.Assets` maintains THREE separate internal stores:
+
+| Cache | Location | What it stores | Cleared by |
+|---|---|---|---|
+| `resolver._assetMap` | `Resolver.js` | URL → asset descriptor objects | `Assets.reset()` only |
+| `resolver._resolverHash` | `Resolver.js` | URL → resolved asset (memoized) | `Assets.reset()` only |
+| `Assets.cache` (TextureCache) | `Assets.js` | URL → `Texture` object | `Cache.remove(url)` OR `Assets.reset()` |
+
+The prior fix called `Cache.remove(url)` per URL which **only cleared cache #3** (TextureCache). Caches #1 and #2 inside the Resolver were left intact.
+
+**Exact crash sequence on second boot:**
+
+1. `destroy()` calls `Cache.remove(url)` for each URL → TextureCache is clean.
+2. `app.destroy({ children: true })` runs → nulls `_texture` on every sprite/container, potentially corrupting `resolver._assetMap` entries (the asset descriptor objects have references into the destroyed texture system).
+3. Second boot → `Assets.load(urls)` is called.
+4. `Assets.load()` internally calls `resolver.hasKey(url)` (line 142 of Assets.js) — checks `!!this._assetMap[url]`.
+5. `_assetMap[url]` is still populated (never cleared) → `hasKey` returns `true` → `add()` is skipped.
+6. `resolver.resolve(urlArray)` is called → hits `_buildResolvedAsset()` with the stale `_assetMap` entry.
+7. `_buildResolvedAsset()` calls `getUrlExtension(formattedAsset.src)` → `src.split(".")` → if `src` was corrupted to `null` → **crash**.
+
+**Correct fix — `Assets.reset()` clears all three atomically:**
+
+```typescript
+// In PixiRenderer.destroy(), BEFORE app.destroy():
+try {
+  if (this.PIXI) {
+    this.PIXI.Assets.reset();  // clears resolver._assetMap + _resolverHash + cache
+    this._tex.clear();         // clear local texture cache map
+  }
+} catch { /* PIXI not imported if init() never completed */ }
+```
+
+`Assets.reset()` (line 321 of Assets.js) calls:
+```js
+reset() {
+  this.resolver.reset();   // clears _assetMap, _resolverHash, _bundles, _basePath, etc.
+  this.loader.reset();     // clears the loader queue
+  this.cache.reset();      // clears the TextureCache
+}
+```
+This is the **only safe way** to fully reset the Assets singleton between game sessions.
+
+**Why not `Assets.unload(url)` per URL:**
+`Assets.unload()` removes from the async loader cache but does NOT clear `resolver._assetMap`. After unload, `resolver.hasKey(url)` still returns `true`, so on next load it skips `add()` and resolves from the potentially-stale `_assetMap`. Same crash.
+
+**Prevention rule:**
+When a `PixiRenderer` wraps a `PIXI.Application` and will be recreated multiple times:
+1. In `destroy()`, call `PIXI.Assets.reset()` BEFORE `app.destroy()` — not after, not per-URL.
+2. Never use `Cache.remove()` as a substitute for `Assets.reset()` — they clear different stores.
+3. After `Assets.reset()`, clear your own local `_tex: Map` as well.
+4. The order must be: kill GSAP tweens → `Assets.reset()` → `app.destroy()` → resolve fence.
+
+**Debugging method for Pixi cache bugs:**
+When a Pixi crash points to `.split()` or `getUrlExtension()` in `Resolver.js`, the cause is always a null/undefined `src` property on a resolver hash entry. Read `Resolver.js:_buildResolvedAsset()` to trace where `src` came from. Follow the chain: `Assets.load()` → `resolver.hasKey()` → `resolver.add()` → `_assetMap` → `resolver.resolve()` → `_buildResolvedAsset()` → `getUrlExtension(src)`.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (always clean up ALL shared global state in teardown, not just the obvious parts), Universal Engineering Principles §Hard Rule 2 (understand what a cleanup call actually does before relying on it)
+
+---
+
+## Backend / DBA Lessons
+
+### 2026-09-26 — Prisma generated client not regenerated after schema change → TS errors at runtime
+
+**What happened:**
+`phone String? @unique` was added to the `User` model in `prisma/schema.prisma` but `prisma generate` was never re-run. The generated client at `src/generated/prisma/index.d.ts` still had the old `UserWhereUniqueInput` (only `id` and `email` as unique fields). API route code using `db.user.findUnique({ where: { phone } })` and `tx.user.create({ data: { phone } })` produced 3 TS errors. The signup page code referencing `user.phone` in the response produced a 4th.
+
+**What was wrong:**
+The generated Prisma client is a build artifact derived from the schema. Any schema change (add field, add `@unique`, add model) requires `prisma generate` before TypeScript will accept the new field names. This is a hard dependency that is easy to miss because the schema file and the generated client are in different directories.
+
+**Correct fix:**
+```powershell
+npx prisma generate --schema="..\prisma\schema.prisma"
+```
+Run this immediately after every schema change, before writing any code that uses the new fields.
+
+**Prevention rule:**
+Schema change → `prisma generate` → write API/page code. Never write code against a new schema field before generating. If the generated client is in a non-standard location (e.g. `src/generated/prisma`), always pass `--schema` explicitly and verify the output path in `schema.prisma`'s `generator` block.
+
+**Related SOP section:** DBA SOP §migrations (schema and generated artifacts must be in sync), Universal Engineering Principles §Hard Rule 2 (single source of truth — schema is the source, generated client is the artifact)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Signup form: phone field added to FormFields type but not to useState, VALIDATORS, refs, or fetch body
+
+**What happened:**
+`phone` was added to the `FormFields` interface and the `FormErrors` interface, but the following were not updated:
+1. `useState<FormFields>({ ... })` initial value — missing `phone: ""` → TS2345 (type mismatch)
+2. `VALIDATORS` map — missing `phone` entry → TS7053 (implicit any on `VALIDATORS[field]`)
+3. `refs` object — missing `phone` useRef → TS7053 (implicit any on `refs[f].current`)
+4. `handleSubmit` fetch body — missing `phone` → server never received the value
+5. `setTouched` call in `handleSubmit` — missing `phone: true` → field never marked touched on submit
+
+**Pattern of the failure:**
+Adding a field to a form requires updating 6 locations atomically:
+1. `FormFields` interface
+2. `FormErrors` interface
+3. `useState` initial value
+4. Validator function (pure function, outside component)
+5. `VALIDATORS` map (inside `useMemo`)
+6. `refs` object
+7. `handleSubmit`: setTouched, field order for focus-on-error, fetch body
+8. JSX: `<FormInput>` element in the form
+
+Missing any one of these causes either a TS error or a silent runtime bug (field not sent to server, field not validated on submit).
+
+**Prevention rule:**
+When adding a field to a typed form, use this checklist before considering the task done:
+- [ ] `FormFields` type updated
+- [ ] `FormErrors` type updated  
+- [ ] `useState` initial value includes new field
+- [ ] Pure validator function written
+- [ ] `VALIDATORS` map includes new field
+- [ ] `refs` includes new `useRef<HTMLInputElement>(null)`
+- [ ] `setTouched` in `handleSubmit` includes new field
+- [ ] `validateForm()` calls new validator
+- [ ] Focus-on-error `order` array includes new field
+- [ ] Fetch body includes new field
+- [ ] `<FormInput>` JSX element added in correct position
+
+**Related SOP section:** Frontend SOP §7 Forms (blur validation, all fields validated on submit), Universal Engineering Principles §Hard Rule 2 (DRY — form field must be defined once and flow through all layers)
+
+---
+
+## Backend Lessons
+
+### 2026-09-26 — Auth identifier migration: email → phone number across full stack
+
+**What happened:**
+Platform was built with email as the primary auth identifier (signin lookup, JWT payload, signup validation, duplicate check, welcome email). User requirement changed: register and sign in using Pakistani mobile number only — no email field in any user-facing form.
+
+**Files changed and why:**
+
+| File | Change |
+|---|---|
+| `signin/page.tsx` | Removed email field + `validateEmail`. Added phone field + `validatePhone`. Updated fetch body `{ phone, password }`. Updated `aria-label`, focus refs, `VALIDATORS` map. |
+| `signup/page.tsx` | Removed email `FormInput` block and `validateEmail`. Removed "Resend email" / forgot-password block from success screen. Success screen now shows `fields.phone`. Submit body sends `{ fullName, phone, password }`. Focus priority updated. |
+| `api/auth/signin/route.ts` | DB lookup changed from `where: { email }` to `where: { phone: normPhone }`. JWT payload now `{ id, phone, role }`. Validation guard and error messages reference phone. Added `normalisePhone()` helper (strips spaces/dashes). |
+| `api/auth/signup/route.ts` | Removed email body destructuring, email validation block, email duplicate check, `sendWelcomeEmail` call. Phone becomes the sole unique identifier. |
+| `lib/api.ts` | `AuthUser.phone: string` (required), `email?: string` (optional). `SignUpPayload`: `phone` replaces `email`. `authApi.signIn(phone, password)`. `authApi.forgotPassword` removed (email-based recovery no longer exists). `adminSignIn` left unchanged (admins still use email). |
+
+**Key constraint hit — Prisma schema `email String @unique`:**
+The existing Prisma schema declares `email` as `String @unique` (non-nullable). Removing email from `tx.user.create()` caused TS2322 because Prisma's generated type requires the field. Two options:
+1. Schema migration to make `email String? @unique` — correct long-term fix (DBA scope).
+2. Derive a stable, non-colliding placeholder from the phone number (immediate fix, no migration).
+
+Chose option 2 to unblock the UI change without a DB migration:
+```typescript
+const placeholderEmail = `${normPhone}@phone.rozedesk.local`;
+```
+This is guaranteed unique (phone is already unique), contains a non-routable domain so it can never receive real email, and satisfies the `@unique` constraint. The comment in the code explicitly marks this as pending a proper migration.
+
+**Prevention rule:**
+Before migrating an auth identifier, always check whether any DB column declaration (`@unique`, `NOT NULL`) depends on the old identifier. If the schema requires the old field, you have two paths:
+1. DBA: `prisma migrate dev` to make the column nullable/optional.
+2. Backend: derive a deterministic placeholder from the new identifier as a bridge.
+
+Never silently drop a required DB field without one of these two paths — it will fail at write time even if TypeScript doesn't catch it.
+
+**Security notes applied:**
+- Error message "Incorrect mobile number or password." (not "user not found") prevents user enumeration.
+- `normalisePhone()` strips spaces/dashes before lookup and storage — prevents duplicate registrations for the same number in different formats.
+- URL param sanitisation on mount strips `phone`, `email`, `password` etc. — prevents credential leakage in browser history/server logs.
+- `passwordHash.startsWith("oauth:")` guard preserved in signin route — OAuth accounts cannot be accessed via password path.
+
+**Related SOP section:** Backend SOP §Hard Rule 1 (server re-validates all inputs), §5.2 (never trust client for auth identifier — always server-side lookup), §6.2 (generic error message prevents enumeration), Frontend SOP §Hard Rule 1 (client validation is UX only)
+
+---
+
+### 2026-09-26 — Prisma `@unique` field blocks auth identifier migration without schema change
+
+**What happened:**
+Migrating from email-based to phone-based auth required removing `email` from `tx.user.create()`. The Prisma generated type `UserCreateInput` still had `email: string` as a required property. TypeScript error TS2322 blocked the build.
+
+**Root cause:**
+Prisma generates strict TypeScript types directly from `schema.prisma`. A `String @unique` field without `?` is non-nullable and mandatory in all create operations. Removing it from the runtime call does not change the schema — the generated type still enforces it.
+
+**Correct immediate fix (bridge pattern):**
+Derive a deterministic, non-colliding placeholder that satisfies the unique constraint:
+```typescript
+// phone is already @unique — so phone@domain is also unique
+const placeholderEmail = `${normPhone}@phone.rozedesk.local`;
+```
+Characteristics of a good placeholder:
+- Deterministic (derived from the new unique identifier — no random suffix needed)
+- Non-colliding (inherits uniqueness from phone)
+- Non-routable domain (`.local` TLD — can never receive real email)
+- Self-documenting (`phone.rozedesk.local` makes the intent clear in DB inspection)
+
+**Correct long-term fix (DBA task):**
+```prisma
+model User {
+  email  String?  @unique   // nullable: phone-registered users have no email
+  phone  String   @unique   // primary identifier for seeker accounts
+}
+```
+Run `prisma migrate dev --name make_email_optional` and regenerate the client. After migration, the placeholder workaround can be removed.
+
+**Prevention rule:**
+When planning any field deprecation or identifier change:
+1. Check `schema.prisma` for `NOT NULL` / non-`?` constraints on the old field.
+2. If the field is required by the schema, plan the migration first (DBA SOP) before writing the backend code.
+3. If migration cannot happen immediately, document the placeholder pattern clearly with a `TODO: migration` comment so the bridge is never treated as permanent.
+
+Never silently pass an empty string to satisfy a unique constraint — `""` would collide on the second registration. Always derive from an already-unique value.
+
+**Related SOP section:** DBA SOP §3 (migrations must be planned before backend implementation), Backend SOP §Hard Rule 1 (server validates data integrity — placeholder must be deterministic and non-colliding), Universal Engineering Principles §Hard Rule 2 (temporary bridges must be documented and owned)
+
+---
+
+## Backend Lessons
+
+### 2026-09-26 — Prisma: `findUnique` fails on nullable unique fields (`String? @unique`) — must use `findFirst`
+
+**What happened:**
+`POST /api/auth/signup` returned 500 with:
+```
+PrismaClientValidationError: Unknown argument `phone`. Did you mean `role`?
+```
+The query was:
+```typescript
+await db.user.findUnique({ where: { phone: normPhone } })
+```
+
+**Root cause:**
+In Prisma, `findUnique()` only accepts fields in its `where` clause that are:
+1. The `@id` field, OR
+2. A field marked `@unique` **and non-nullable** (i.e., `String @unique`, not `String? @unique`), OR
+3. A `@@unique([...])` composite constraint.
+
+The `User` model had:
+```prisma
+phone String? @unique   // nullable optional unique
+```
+Because `phone` is nullable (`?`), Prisma does NOT generate a `findUnique` overload for it. The generated TypeScript types for `UserWhereUniqueInput` do not include `phone` as a valid key — hence the "Unknown argument `phone`" error.
+
+**Correct approach:**
+Use `findFirst()` for nullable unique fields:
+```typescript
+// WRONG — Prisma rejects nullable unique fields in findUnique
+await db.user.findUnique({ where: { phone: normPhone } });
+
+// CORRECT — findFirst accepts any where clause
+await db.user.findFirst({ where: { phone: normPhone }, select: { id: true } });
+```
+
+**Files fixed:**
+- `src/app/api/auth/signup/route.ts` — duplicate phone check
+- `src/app/api/auth/signin/route.ts` — login lookup by phone
+
+**Prevention rule:**
+Before using `findUnique({ where: { fieldName } })`, check the Prisma schema:
+- Is the field `@id`? → `findUnique` OK.
+- Is the field `Type @unique` (non-nullable)? → `findUnique` OK.
+- Is the field `Type? @unique` (nullable)? → **must use `findFirst`**.
+- Is it a `@@unique([...])` composite? → `findUnique` with the composite object shape OK.
+
+A quick mental check: if the field type has a `?`, use `findFirst`, not `findUnique`.
+
+**Related SOP section:** DBA SOP §3 (schema constraints must match query API), Backend SOP §Hard Rule 1 (never trust client input — validate server-side, but also validate your own queries compile cleanly)
+
+---
+
+## Backend Lessons (continued)
+
+### 2026-09-26 — Signup 500: Prisma client stale — schema has `phone` but generated client doesn't
+
+**What happened:**
+`POST /api/auth/signup` returned `500` with:
+```
+PrismaClientValidationError: Unknown argument `phone`. Did you mean `role`?
+```
+The signup route used `db.user.findFirst({ where: { phone: normPhone } })` which is valid given the schema, but the Prisma client threw a validation error saying `phone` doesn't exist.
+
+**Root cause — schema and generated client out of sync:**
+`phone String? @unique` was added to the `User` model in `prisma/schema.prisma`, but `prisma generate` was never re-run after that change. The generated Prisma client at `src/generated/prisma/` was still compiled from the old schema that had no `phone` field.
+
+Prisma client is a **code-generated artifact** — it does not read from the schema at runtime. It is a static TypeScript module compiled at generate time. Any schema change that isn't followed by `prisma generate` leaves the client and schema diverged. The TypeScript compiler did NOT catch this because the generated types were also out of date, so the type-checking passed with stale types.
+
+**Fix:**
+Run the project's own generate script (DRY — defined once in `package.json`):
+```powershell
+npm run db:generate
+# which runs: node ../node_modules/prisma/build/index.js generate --config ../prisma7.config.ts
+```
+After regeneration, `UserWhereInput.phone` appeared in `src/generated/prisma/index.d.ts` and the query works.
+
+**Why `tsc` didn't catch it:**
+`tsc --noEmit` checks against the types in `src/generated/prisma/index.d.ts`. If that file is stale (reflects the old schema), TypeScript sees no error — the stale types match the stale code. Type safety only works if the generated types are fresh.
+
+**Prevention rule — mandatory generate-after-schema-change:**
+Any time `prisma/schema.prisma` is modified (add field, rename field, add model, add enum value):
+1. Run `npm run db:generate` immediately.
+2. If the change also needs a migration, run `npm run db:push` (dev) or create a migration file.
+3. Never commit a schema change without also committing the regenerated `src/generated/prisma/` output.
+
+**CI enforcement (for production readiness):**
+Add to build script (already partially done via `package.json` `build` script):
+```json
+"build": "prisma generate --schema=../prisma/schema.prisma && next build"
+```
+This ensures the client is always regenerated before a production build. For local dev, add a `postinstall` script or a pre-commit hook.
+
+**Secondary observation — `prisma generate` output path:**
+This project uses a custom output path (`output = "../rozedesk-app/src/generated/prisma"` in the schema). When running `prisma generate` from the repo root vs. from the `rozedesk-app/` subdirectory, the config file path changes. The correct invocation here is `npm run db:generate` from inside `rozedesk-app/` — which uses `prisma7.config.ts` that points to the correct schema at `../prisma/schema.prisma`.
+
+**Related SOP section:** DBA SOP §5.1 (schema change process — generate + migrate are two separate steps, both required), Backend SOP §Hard Rule 1 (never trust a client API you haven't verified against the current schema), Universal Engineering Principles §Hard Rule 2 (generated artifacts are part of the codebase — regenerate is part of every schema commit)
+
+---
+
+## Backend / DBA Lessons
+
+### 2026-09-26 — PrismaClientValidationError: Unknown argument `phone` — generated client stale after schema change
+
+**What happened:**
+`POST /api/auth/signup` returned HTTP 500 with:
+```
+PrismaClientValidationError: Invalid prisma.user.findFirst() invocation:
+  Unknown argument `phone`. Did you mean `role`?
+```
+The `User` model in `prisma/schema.prisma` had `phone String? @unique` correctly defined, but the runtime Prisma client in `src/generated/prisma/` was compiled from an older version of the schema that did not include the `phone` field.
+
+**Root cause — two separate gaps:**
+
+1. **`prisma generate` not re-run after schema change.**
+   The generated client (`src/generated/prisma/client.js`) is a compiled artifact from the schema at the time `prisma generate` last ran. Editing `schema.prisma` has zero effect on the running client until `prisma generate` is re-run. The generated `.prisma` mirror file in `src/generated/prisma/schema.prisma` matched the source schema (it was copied on last generate), but the compiled JS types and runtime client were stale.
+
+2. **Database column not yet added to MySQL.**
+   The `users` table in MySQL did not have the `phone` column either — it existed only in the schema definition. `prisma db push` was needed to apply the schema diff to the live database and add the `UNIQUE` index.
+
+**Fix sequence (exact commands):**
+```powershell
+# Step 1: Regenerate the Prisma client from the schema
+npm run db:generate
+# Output: ✔ Generated Prisma Client (v7.10.0) to ./src/generated/prisma in 377ms
+
+# Step 2: Push schema diff to MySQL (adds `phone` column + UNIQUE index to `users`)
+# Note: db:push reads DATABASE_URL from prisma7.config.ts → dotenv/config
+# The .env file is in d:\RozeDesk (one level above the app) so pass the var explicitly
+$env:DATABASE_URL="mysql://root:@127.0.0.1:3306/rozedesk"
+node ..\node_modules\prisma\build\index.js db push --config ..\prisma7.config.ts
+# Output: Your database is now in sync with your Prisma schema.
+
+# Step 3: Verify — TypeScript check
+npx tsc --noEmit --skipLibCheck   # must exit 0
+```
+
+**Why `dotenv/config` didn't pick up `.env.local`:**
+`dotenv/config` reads `.env` from the process working directory. `npm run db:push` runs from `rozedesk-app/`, where `.env.local` exists but NOT `.env`. The canonical `DATABASE_URL` lives in `d:\RozeDesk\.env` (one level up). Passing the variable explicitly with `$env:DATABASE_URL=...` bypasses the dotenv lookup entirely.
+
+**Prevention rules:**
+
+1. **After every `schema.prisma` edit, run `npm run db:generate` immediately** — treat it as mandatory, like a compile step. Add it to the pre-commit checklist.
+
+2. **After adding a new column/table, run `db:push` (dev) or create a migration (production)** — the schema file is a declaration, not a live change. The database does not update automatically.
+
+3. **Keep `prisma generate` in the `build` script** — already present as `prisma generate && next build` so production builds always regenerate. But local dev has no auto-regeneration. Consider adding a `postinstall` script: `"postinstall": "npm run db:generate"` so it runs after `npm install`.
+
+4. **`dotenv/config` reads `.env` from CWD, not `.env.local`** — if your DB scripts live in a subdirectory and your `.env` is in a parent directory, either:
+   - Symlink `.env` into the subdirectory, or
+   - Pass the variable explicitly in the npm script: `"db:push": "cross-env DATABASE_URL=$(node -e \"require('dotenv').config({path:'../.env'});console.log(process.env.DATABASE_URL)\") prisma db push"`
+   - Or update `prisma7.config.ts` to load from the correct path: `import "dotenv/config"; // reads from CWD` → change to `config({ path: path.join(__dirname, '.env') })`.
+
+**Related SOP section:** DBA SOP §5 (migrations — schema changes must be applied to the DB, not just the schema file), Backend SOP §Hard Rule 2 (never swallow errors — the 500 correctly surfaced this; the root cause was infrastructure not code logic)
+
+---
+
+## Backend Lessons
+
+### 2026-09-26 — Admin login silently broken: shared signin route is phone-keyed, admin page sends email
+
+**What happened:**
+The admin login page (`/admin/login`) showed "Mobile number and password are required." for every sign-in attempt, regardless of what the admin typed. The error message came from the backend — not client validation.
+
+**Root cause — field contract mismatch between page and API:**
+The admin login page was wired to the shared `/api/auth/signin` route. That route was designed exclusively for job seekers who authenticate with a Pakistani mobile number (`03XXXXXXXXX`). Its first validation check was:
+```typescript
+if (!phone?.trim() || !password) {
+  return err(400, "Mobile number and password are required.");
+}
+```
+The admin login page sent `{ email, password }` in the request body. The API read `req.json()` and destructured `{ phone, password }` — `phone` was always `undefined`, so the `!phone?.trim()` check always failed and returned 400 before any DB query ran.
+
+No error was logged on the server because the 400 was intentional from the route's perspective — it just happened to be the wrong route.
+
+**Why this wasn't caught earlier:**
+The admin login page comment said `"/* Real admin auth — /api/auth/signin validates role=ADMIN server-side */"` — the developer assumed the shared route would handle both seeker and admin flows. But the shared route was phone-only by design (seekers register with mobile, admins register with email — two different auth identifiers).
+
+**Correct fix — dedicated `/api/admin/signin` route:**
+Admin auth has fundamentally different requirements from seeker auth:
+- Auth identifier: email (not phone)
+- Role: must be `ADMIN` — enforced server-side by querying `{ email, role: "ADMIN" }`, not just email
+- No `rememberMe` toggle needed (admin sessions are single-tab, 24h fixed)
+- JWT payload: `{ id, email, role }` (email-keyed, not phone-keyed)
+
+Creating a dedicated route makes the contract explicit, prevents role confusion, and means a future change to seeker auth can't silently break admin auth.
+
+```typescript
+// /api/admin/signin
+const admin = await db.user.findFirst({
+  where: { email: email.trim().toLowerCase(), role: "ADMIN" },
+});
+if (!admin) return err(401, "Incorrect email or password.");  // generic — no enumeration
+```
+
+**Prevention rule:**
+When two user roles have different auth identifiers (phone vs email, username vs email), they must have **separate API routes** — not a shared route with conditional logic. The field name in the request body is part of the API contract. A mismatch between what the client sends and what the server reads is always silent — the server sees `undefined`, not an error.
+
+Before wiring any login form to an API route, verify:
+1. What field name does the form submit? (`email`, `phone`, `username`?)
+2. What field name does the server destructure from `req.json()`?
+3. Do they match exactly — same field name, same format?
+
+**Related SOP section:** Backend SOP §2.1 (require the contract first — API field names are part of the contract), §Hard Rule 1 (server validates — but it can only validate what it actually received)
+
+---
+
+### 2026-09-26 — Admin account bootstrap: use the /api/setup/admin endpoint, not manual DB inserts
+
+**What happened:**
+No admin account existed in the database. The login form was correctly wired (after the above fix) but all attempts returned 401 because the `users` table had no row with `role = "ADMIN"`.
+
+**Correct approach — bootstrap endpoint pattern:**
+The codebase already had a `/api/setup/admin` route that:
+1. Reads credentials from env vars (`ADMIN_EMAIL`, `ADMIN_INITIAL_PASSWORD`) — never hardcoded
+2. Is protected by `SETUP_SECRET` env var — returns 403 without the correct secret
+3. Uses `db.user.upsert` — idempotent, safe to re-run if the account already exists
+4. Returns the credentials in the response (only once — the password is never stored in plaintext)
+
+Calling it once via HTTP seeds the admin account without touching the database directly:
+```
+GET /api/setup/admin?secret=<SETUP_SECRET>
+```
+
+**Key env vars (set in `.env.local`, never hardcoded):**
+- `SETUP_SECRET` — protects the endpoint; remove from env after first login
+- `ADMIN_EMAIL` — admin email address (default: `admin@rozedesk.com`)
+- `ADMIN_INITIAL_PASSWORD` — initial password; change after first login
+
+**Prevention rule:**
+Never create admin accounts by writing SQL directly or hardcoding credentials in source files. The bootstrap endpoint pattern is the correct approach:
+- Credentials come from env vars (controlled per environment)
+- Endpoint is protected by a separate secret (not the admin password itself)
+- The secret is rotated or removed after use
+- The upsert makes it safe to re-run in CI/CD or disaster recovery
+
+**Security note:** After calling the bootstrap endpoint successfully, set `SETUP_SECRET=` (empty) or remove the key from env entirely. This permanently disables the endpoint, preventing it from being used to reset the admin password if the server is ever compromised.
+
+**Related SOP section:** Backend SOP §6.2 (resource-level authorization — bootstrap endpoint must be protected independently of admin auth), DevOps SOP §Hard Rule 1 (no secrets in source code — all credentials via env vars)
+
+---
+
+## Backend Lessons (continued)
+
+### 2026-09-26 — Real-time notifications via SSE without Supabase realtime or Redis
+
+**What happened:**
+The product needed real-time toast notifications with sound — admin sees new deposit/withdraw requests instantly, users see approvals instantly. The existing infrastructure had no WebSocket, no Supabase realtime channel, and no Redis pub/sub.
+
+**Architecture decision — SSE over polling:**
+Instead of adding new infrastructure (Redis, Supabase realtime), implemented **Server-Sent Events (SSE)** using the existing Prisma/MySQL stack. The SSE endpoint internally polls the DB every 4 s and pushes only new rows to the open HTTP connection. This gives near-real-time delivery with zero new infrastructure dependencies.
+
+**Why SSE over WebSocket for this use case:**
+- Notifications are server → client only (no client → server messages needed).
+- SSE is unidirectional, simpler, and reconnects automatically.
+- Works natively with `EventSource` in all modern browsers — no library needed.
+- HTTP/2 multiplexing handles multiple concurrent SSE connections efficiently.
+- WebSocket would require a separate upgrade handshake and custom reconnect logic.
+
+**SSE endpoint pattern — `GET /api/notifications/stream`:**
+```typescript
+export const dynamic = "force-dynamic";  // required — prevents Next.js static caching
+
+export async function GET(req: NextRequest) {
+  const user = getAuthUser(req);
+  if (!user) return new Response("...", { status: 401 });
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const pollId = setInterval(async () => {
+        const rows = await db.notification.findMany({
+          where: { userId: user.id, createdAt: { gt: lastSeen } },
+        });
+        rows.forEach(n => controller.enqueue(encode(`event: notification\ndata: ${JSON.stringify(n)}\n\n`)));
+      }, POLL_MS);
+
+      // Heartbeat keeps connection alive through CDN/proxy 30s idle timeouts
+      const hbId = setInterval(() => controller.enqueue(encode(": heartbeat\n\n")), 25_000);
+
+      req.signal.addEventListener("abort", () => {
+        clearInterval(pollId); clearInterval(hbId);
+        try { controller.close(); } catch {}
+      });
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type":      "text/event-stream; charset=utf-8",
+      "Cache-Control":     "no-cache, no-store",
+      "X-Accel-Buffering": "no",   // disable Nginx response buffering
+    }
+  });
+}
+```
+
+**Critical headers:**
+- `X-Accel-Buffering: no` — without this, Nginx buffers the response body until it reaches a certain size, breaking SSE delivery. Required for any Nginx-proxied deployment.
+- `Cache-Control: no-cache, no-store` — prevents CDN/proxy caching of the stream.
+- `export const dynamic = "force-dynamic"` — Next.js App Router will otherwise statically analyze the route and cache it; this forces runtime execution.
+
+**Auth on SSE:**
+`EventSource` does not support custom headers. Auth works via:
+1. HttpOnly cookie (`rozedesk-token`) — sent automatically for same-origin SSE requests.
+2. `?token=` query param — avoided (token in URL lands in server logs).
+The `getAuthUser()` function already reads from cookie OR Bearer header, so same-origin SSE works with cookies transparently.
+
+**Prevention rule:**
+For any server → client push use case in a Next.js App Router project with an existing SQL database, prefer SSE + DB polling over adding Redis or Supabase realtime. The SSE endpoint only needs `force-dynamic` and a heartbeat. Add Supabase realtime or Redis only when the polling interval causes measurable DB load at scale.
+
+**Related SOP section:** Backend SOP §7 (external dependency governance — don't add dependencies you don't need), DevOps SOP Hard Rule 1 (no new infra without explicit justification)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Toast system upgrade: onClick callback + duration prop while preserving backwards compatibility
+
+**What happened:**
+The existing `Toast.tsx` had a fixed 4s duration and no `onClick` support. Notification toasts needed to be clickable (navigate to a page) and stay on screen longer (7s for notification alerts).
+
+**The backwards-compatibility trap:**
+The existing API was `toast.success("message")`. Changing the signature to `toast.success("message", link, duration)` would break every existing call site. The correct pattern is an **options object** as the second argument — callers that omit it work exactly as before.
+
+```typescript
+// Before — still works unchanged
+toast.success("Saved!");
+
+// After — new capabilities, same base call
+toast.info("New deposit request", {
+  duration: 7000,
+  onClick: () => router.push("/admin/game-deposits"),
+});
+```
+
+**Polymorphic wrapper element — DRY approach:**
+When a toast has an `onClick`, it must be a `<button>` (keyboard-operable, SOP §7). When it doesn't, it's a `<div>`. Instead of duplicating JSX for both cases, use a variable `Wrapper` that holds either `"button"` or `"div"`:
+```typescript
+const Wrapper = clickable ? "button" : "div";
+return (
+  <Wrapper
+    {...(clickable ? { type: "button", onClick: () => { t.onClick?.(); dismiss(t.id); } } : {})}
+    className={...}
+  >
+    {children}
+  </Wrapper>
+);
+```
+This avoids duplicating the entire toast JSX for two variants.
+
+**Dismiss × button in a clickable toast:**
+The dismiss `×` button must call `e.stopPropagation()` to prevent it from also triggering the toast's `onClick`:
+```typescript
+<button onClick={(e) => { e.stopPropagation(); dismiss(t.id); }}>×</button>
+```
+Without `stopPropagation()`, clicking `×` on a clickable toast would simultaneously dismiss it AND navigate — unintended behaviour.
+
+**Prevention rule:**
+Any existing toast/modal/dialog API that takes a plain `string` must be extended with an optional `opts?` object, never positional parameters. Positional parameters break backwards compatibility the moment a third parameter is added. The options object pattern allows unlimited future extension with zero call-site breakage.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — one component, not two), Frontend SOP §Hard Rule 1 (all interactive elements must be keyboard-operable — use `<button>` not `<div onClick>`)
+
+---
+
+### 2026-09-26 — Notification sound via Web Audio API: no audio files, no CDN, env-gated
+
+**What happened:**
+The product needed notification sounds but no audio files were available and adding a CDN dependency for a chime was excessive. The requirement was also that sound should be suppressible per environment.
+
+**Solution — programmatic Web Audio API chime:**
+The Web Audio API can synthesize a simple two-tone chime entirely in JavaScript — no `.mp3`, no CDN, no import. The pattern:
+```typescript
+const osc  = ctx.createOscillator();
+const gain = ctx.createGain();
+osc.connect(gain);
+gain.connect(ctx.destination);
+osc.type = "sine";
+osc.frequency.setValueAtTime(880, ctx.currentTime);
+gain.gain.setValueAtTime(0, ctx.currentTime);
+gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.04);   // attack
+gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12); // decay
+osc.start(ctx.currentTime);
+osc.stop(ctx.currentTime + 0.12);
+```
+Multiple notes are staggered by `i * stepSeconds` to create a melody.
+
+**AudioContext singleton — OOP:**
+`AudioContext` has a browser limit of ~6 per tab. Wrapping it in a class with a private `ctx` field and lazy-initialisation ensures only one is ever created:
+```typescript
+class SoundChime {
+  private ctx: AudioContext | null = null;
+  private getCtx() {
+    if (!this.ctx) this.ctx = new AudioContext();
+    if (this.ctx.state === "suspended") this.ctx.resume();
+    return this.ctx;
+  }
+}
+const chime = new SoundChime(); // module singleton
+```
+
+**Autoplay policy:**
+Browsers suspend `AudioContext` until a user gesture has occurred. Call `ctx.resume()` on every `play()` call — it's a no-op if already running and silently resumes if suspended. Do not assume the context is running.
+
+**Env gate — no hardcoded enable/disable:**
+```typescript
+// .env.local
+NEXT_PUBLIC_NOTIF_SOUND=false   // silence all notification sounds
+
+// Code
+if (process.env.NEXT_PUBLIC_NOTIF_SOUND === "false") return;
+```
+`NEXT_PUBLIC_` prefix makes the variable available client-side via Next.js bundle. The gate defaults to enabled (undefined → play). This means staging/production can suppress sound without code changes.
+
+**Prevention rule:**
+Any feature that produces sensory output (sound, vibration, animation) must have an env-variable kill-switch. Never hardcode `enabled = true`. The kill-switch must default to the "on" state so new environments work without explicit configuration.
+
+**Related SOP section:** DevOps SOP Hard Rule 1 (all config from env, never hardcoded), Universal Engineering Principles §Hard Rule 2 (OOP — singleton for shared resource)
+
+---
+
+### 2026-09-26 — localStorage token key inconsistency between admin pages ("flappywin-token" vs "rozedesk-token")
+
+**What happened:**
+Two admin pages used different localStorage key names to read the auth token:
+- `src/app/admin/game-deposits/page.tsx` → `localStorage.getItem("rozedesk-token")`
+- `src/app/admin/withdrawals/page.tsx` → `localStorage.getItem("flappywin-token")`
+- `src/components/dashboard/DashboardHeader.tsx` → `localStorage.getItem("flappywin-token")`
+
+The canonical key defined in `src/lib/api.ts` is `"rozedesk-token"`. The `"flappywin-token"` variant was a copy-paste from an older version of the game-specific wallet code that used a different key. Any admin page using `"flappywin-token"` would silently fail to send the Authorization header (getting `""` back), causing 401s that were hard to debug because the page appeared to load but all actions failed.
+
+**Root cause:**
+No DRY abstraction for the `authHeaders()` helper in admin pages. Each page copy-pasted the function and some copied the wrong key.
+
+**Correct approach:**
+The `authHeaders()` helper must be defined **once** in a shared module (e.g. `src/lib/api.ts` or `src/lib/adminAuth.ts`) and imported by every admin page:
+```typescript
+// src/lib/api.ts — already exports getToken()
+export function getToken(): string {
+  return typeof window !== "undefined" ? localStorage.getItem("rozedesk-token") ?? "" : "";
+}
+
+export function authHeaders(json = true): HeadersInit {
+  return json
+    ? { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` }
+    : { Authorization: `Bearer ${getToken()}` };
+}
+```
+Every admin page then does `import { authHeaders } from "@/lib/api"` — no local copy.
+
+**Prevention rule:**
+Never copy-paste an `authHeaders()` function across page files. The token key name is a value (Universal Engineering Principles §Hard Rule 2 — no duplicated values). It must live in exactly one file. Any new admin page must import `authHeaders` from the shared lib, never redeclare it.
+
+When reviewing a new admin page, check: does it have a local `authHeaders()` function? If yes, replace with the shared import and delete the local copy.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — no duplicated values), Backend SOP §6.2 (auth on every request — a silent token mismatch is a security gap, not just a bug)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Toast: button-in-button hydration error broke clickable toasts and admin deposit notifications
+
+**What happened:**
+The browser logged `In HTML, <button> cannot be a descendant of <button>` and React threw a hydration error. All clickable toasts were broken, which meant admin deposit-request notifications (which are clickable toasts that navigate to `/admin/game-deposits`) never appeared.
+
+**Root cause:**
+`Toast.tsx` used a dynamic `Wrapper` variable — `"button"` when the toast had an `onClick`, `"div"` otherwise. When `Wrapper = "button"`, the dismiss `<button>` at the bottom of the JSX was rendered *inside* the wrapper button:
+
+```jsx
+// BROKEN — <button> nested inside <button>
+const Wrapper = clickable ? "button" : "div";
+<Wrapper onClick={...}>          {/* outer button when clickable */}
+  <svg />
+  <span />
+  <button onClick={dismiss} />   {/* inner button → INVALID HTML */}
+</Wrapper>
+```
+
+HTML forbids interactive elements (buttons, links, inputs) as descendants of `<button>`. Browsers recover by restructuring the DOM, which mismatches React's virtual DOM snapshot → hydration error. The error manifested as a complete failure to render any clickable toast item, which is why the admin received no notification when a deposit request came in.
+
+**What was wrong about it:**
+The pattern `const Wrapper = clickable ? "button" : "div"` looks DRY but creates an illegal HTML structure whenever the wrapper is `"button"` and any descendant is also interactive. The `e.stopPropagation()` on the dismiss button was a hint that someone knew there was a conflict — it was masking the symptom, not fixing the cause.
+
+**Correct structure:**
+The outer container must always be a `<div role="alert">`. The *body* of the toast (icon + message) becomes the clickable element when needed. The dismiss button is always a sibling — never a child of another button:
+
+```jsx
+// CORRECT — dismiss is a flex sibling, never inside a button
+<div role="alert" className="flex items-stretch ...">
+  {clickable ? (
+    <button type="button" onClick={bodyClick} className="flex flex-1 ...">
+      <svg /><span /><span "Open →" />
+    </button>
+  ) : (
+    <div className="flex flex-1 ...">
+      <svg /><span />
+    </div>
+  )}
+  {/* Dismiss: always a sibling of the body, never nested */}
+  <button type="button" onClick={dismiss} className="flex-shrink-0 ...">
+    <svg />
+  </button>
+</div>
+```
+
+With this layout:
+- The outer `div` holds `role="alert"` for screen readers.
+- The body `<button>` (when clickable) is keyboard-operable and has full flex-1 width.
+- The dismiss `<button>` is a flex-sibling with `flex-shrink-0` and a left border separator.
+- `e.stopPropagation()` is no longer needed — dismiss is not inside a clickable parent.
+
+**Why this also fixed admin deposit notifications:**
+The admin notification toast had `onClick: () => window.location.href = "/admin/game-deposits"`, making it clickable → `Wrapper = "button"` → hydration crash → React abandoned rendering that toast item entirely. Fixing the HTML structure meant the toast renders correctly and the `onClick` navigation works.
+
+**Prevention rule:**
+Never use a variable element type (`const Wrapper = interactive ? "button" : "div"`) if any descendant of the rendered element is also interactive (button, a, input, select, textarea). The rule is simple:
+- If an element contains interactive descendants → it must be a non-interactive container (`div`, `li`, `article`).
+- The interactive action goes on the specific child that the user should click, not the whole container.
+- A `<div>` can hold multiple buttons; a `<button>` cannot hold another button.
+
+Check: before using `as React.ElementType` or dynamic tag patterns, ask — "could any descendant ever be interactive?" If yes, the wrapper must be a non-interactive element.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (client-side validation is UX only — equally: HTML validity is structural, not optional), UI/UX SOP §Hard Rule 2 (accessibility — interactive elements must be keyboard-operable and structurally valid)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Toast not showing in admin panel despite ToastProvider in root layout
+
+**What happened:**
+`useToast()` returned no-op callbacks `() => {}` in all admin panel pages. Calling `toast.success()`, `toast.error()` etc. did nothing — no visible toast appeared.
+
+**Root cause — Next.js App Router client/server boundary + nested layout interaction:**
+`ToastProvider` was placed in `src/app/layout.tsx` (a **Server Component**). The admin panel has its own `src/app/admin/layout.tsx` (a **Client Component** with `"use client"`). In Next.js App Router, when a Server Component tree wraps a Client Component subtree, React Context created inside the Client Component does NOT automatically propagate through the Server Component boundary into nested Client Component layouts/pages.
+
+The symptom: `useContext(ToastContext)` in admin pages returns the default fallback value `{ success: () => {}, ... }` — the no-op context — because the client-side React tree sees a context provider from a different rendering boundary than expected.
+
+This is distinct from the standard React behaviour where context providers DO propagate through all descendants. The App Router's hybrid server/client rendering creates component tree segments that can break context propagation in certain configurations.
+
+**Why it worked in the seeker dashboard but not admin:**
+The seeker dashboard layout (`src/app/dashboard/layout.tsx`) is also `"use client"`. The issue is not with all layouts — the exact failure depends on how Next.js bundles and hydrates each segment. Admin happened to land in a segment where the root-level `ToastProvider` context did not reach.
+
+**Correct fix — add `ToastProvider` directly inside the admin layout:**
+```tsx
+// src/app/admin/layout.tsx
+import { ToastProvider } from "@/components/Toast";
+
+export default function AdminLayout({ children }) {
+  // ...
+  return (
+    <ToastProvider>
+      {/* admin shell */}
+      {children}
+    </ToastProvider>
+  );
+}
+```
+React Context allows nested providers — the innermost provider wins. Wrapping the admin layout in its own `ToastProvider` guarantees the context is available to all admin pages regardless of how the App Router hydrates the segment boundary.
+
+**This is not a DRY violation:**
+- `ToastProvider` is defined once (single source of truth in `Toast.tsx`).
+- Placing it in multiple layout segments is **correct usage** of the React Context pattern — each segment that needs it gets its own provider instance.
+- The alternative (a single root provider) is ideal in theory but unreliable in practice with App Router's hybrid rendering model.
+
+**Prevention rule:**
+In Next.js App Router, never rely on a React Context provider in a **Server Component** layout to reach all **Client Component** subtrees. For any layout segment that has its own `"use client"` layout and needs a context (Toast, Theme, Auth), add the provider directly in that layout. Apply this rule to:
+- Any feature-specific context (Toast, Notifications, Modal)
+- Theme providers
+- Any `createContext()` whose value must be consumed in that layout segment
+
+**Exceptions:** `AuthProvider` works at root level because it uses cookies/JWT which is server-validated — the client value is always set from the AuthContext's own fetch on mount, not relying on context propagation from server boundary.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (validate assumptions — context propagation in App Router must be tested per segment, not assumed), Universal Engineering Principles §Hard Rule 4 (async and rendering boundaries must be explicit)
+
+---
+
+## Backend Lessons
+
+### 2026-09-26 — Admin game settings saved but never applied to players — DB key format mismatch
+
+**What happened:**
+Admin saved `escapeMin`, `escapeMax`, `biasMode`, `minWager`, `maxWager`, `minDeposit` from `/admin/game-settings`. Players started new games and saw no change — the old defaults persisted regardless of what the admin set.
+
+**Root cause — two writers, two key formats, zero overlap:**
+
+The admin settings API (`/api/admin/game-settings/route.ts`) writes to `platform_settings` using a `"game."` dot-prefix convention:
+```
+game.minDeposit, game.minWager, game.maxWager,
+game.escapeMin, game.escapeMax, game.biasMode, ...
+```
+
+The wallet API (`/api/game/wallet/route.ts`) was reading those same values using a **different, undotted format**:
+```ts
+getIntSetting("gameMinDeposit", GAME.MIN_DEPOSIT)  // ← "gameMinDeposit", no dot
+getIntSetting("gameMinWager",   GAME.MIN_WAGER)     // ← "gameMinWager",   no dot
+getIntSetting("gameMaxWager",   GAME.MAX_WAGER)     // ← "gameMaxWager",   no dot
+```
+
+`db.platformSetting.findUnique({ where: { key: "gameMinDeposit" } })` returned `null` (no such row) every time because the admin writer stored `"game.minDeposit"`. The `getIntSetting` fallback silently returned the env-backed `GAME.*` constant. No error, no warning — the game simply used hardcoded defaults.
+
+**The game config API** (`/api/game/config/route.ts`) was already using the correct `"game."` prefix for `escapeMin`, `escapeMax`, and `biasMode` — so those three fields WERE being applied correctly from the admin. Only the three wager/deposit limits in the wallet API were broken.
+
+**Fix — align wallet/route.ts to the established `"game."` prefix:**
+```ts
+// BEFORE (broken — keys never match DB rows written by admin API)
+getIntSetting("gameMinDeposit", GAME.MIN_DEPOSIT)
+getIntSetting("gameMinWager",   GAME.MIN_WAGER)
+getIntSetting("gameMaxWager",   GAME.MAX_WAGER)
+
+// AFTER (correct — matches what /api/admin/game-settings writes)
+getIntSetting("game.minDeposit", GAME.MIN_DEPOSIT)
+getIntSetting("game.minWager",   GAME.MIN_WAGER)
+getIntSetting("game.maxWager",   GAME.MAX_WAGER)
+```
+
+**Why this was silent:**
+The `getIntSetting` helper returns the `fallback` argument when `findUnique` returns `null`.
+`null` row → `parseInt(null, 10)` = `NaN` → `isNaN(v) || v < 1` → returns `fallback`.
+The fallback is a valid business number (`GAME.MIN_WAGER = 120`), so no error is thrown,
+no log is written, and the UI renders correctly — just with stale defaults.
+
+**Prevention rules:**
+
+1. **One key convention per feature domain, defined once, imported everywhere.**
+   The `"game."` prefix is the established convention for this project's game settings.
+   Any new reader of `platform_settings` game keys MUST use `"game.<field>"` — never invent a new format.
+   
+2. **Define all known DB keys as constants, not string literals.**
+   Inline string literals like `"gameMinDeposit"` bypass any IDE refactoring and grep checks.
+   Create a `GAME_SETTING_KEYS` constants object:
+   ```ts
+   export const GAME_SETTING_KEYS = {
+     minDeposit: "game.minDeposit",
+     minWager:   "game.minWager",
+     maxWager:   "game.maxWager",
+     biasMode:   "game.biasMode",
+     escapeMin:  "game.escapeMin",
+     escapeMax:  "game.escapeMax",
+     // ...
+   } as const;
+   ```
+   Any typo in a key becomes a TS error rather than a silent DB miss at runtime.
+
+3. **Cross-check writer and reader keys in code review.**
+   When a new API route reads a `platform_settings` key: always locate the API that writes that key and confirm they use the exact same string. This is a contract — both sides must agree.
+
+4. **Silent fallback is a silent bug.**
+   `getIntSetting(key, fallback)` returning the fallback is indistinguishable at the call site from "DB row found and parsed." Add a dev-mode log when the DB row is missing so discrepancies surface during development:
+   ```ts
+   if (!row) console.warn(`[platform_settings] key "${key}" not found — using fallback ${fallback}`);
+   ```
+
+**Files changed:**
+- `src/app/api/game/wallet/route.ts` — 3 key strings updated (`"gameMinDeposit"` → `"game.minDeposit"`, etc.)
+
+**Related SOP section:** Backend SOP Hard Rule 2 (no silent swallowing — a DB miss that returns a fallback should at minimum log in dev), Universal Engineering Principles §Hard Rule 2 (DRY — key strings are values; define once, reference everywhere), Backend SOP §4.1 (shared data contracts must be documented and verified on both read and write sides)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Admin settings changes not immediately visible in player game — 30-second poll delay
+
+**What happened:**
+An admin saved new wager limits (minWager, minDeposit, maxWager) on `/admin/game-settings`. The player's game page (`/dashboard/game`) continued showing the old stake presets and old deposit minimum for up to 30 seconds because the wallet data was only refreshed by a `setInterval(fetchWallet, 30_000)` poll.
+
+**Root cause:**
+`page.tsx` fetches `/api/game/wallet` (which returns `minWager`, `minDeposit`, `maxWager` fresh from DB) on mount and then every 30 seconds. There was no mechanism to trigger an out-of-cycle refresh when an admin changed these values. The admin settings page and the player game page had no signal pathway between them.
+
+The API itself had no caching — the DB values were always current. The delay was entirely in the client-side polling interval.
+
+**Why reducing the interval is wrong:**
+Cutting the poll from 30s to 5s would multiply server load by 6× for every active player tab. For a game with many concurrent players, this compounds quickly into unnecessary DB reads with no benefit outside the rare admin-saves event.
+
+**Correct approach — BroadcastChannel for zero-cost cross-tab signalling:**
+`BroadcastChannel` is a same-origin browser API. Messages posted on a named channel are delivered to all other open tabs/windows on the same origin instantly, with no server round-trip and no extra DB load.
+
+**Admin side** (`game-settings/page.tsx`) — post after every successful PUT:
+```typescript
+// Inside the save() helper, after setSaveState("saved"):
+try {
+  const ch = new BroadcastChannel("hunt:settings");
+  ch.postMessage({ type: "game-settings-updated", payload });
+  ch.close();  // ← open, post, close immediately — no persistent listener needed
+} catch { /* BroadcastChannel unsupported (some embedded WebViews) */ }
+```
+
+**Player side** (`dashboard/game/page.tsx`) — listen in the wallet useEffect:
+```typescript
+useEffect(() => {
+  fetchWallet();
+  const id = setInterval(fetchWallet, 30_000);
+
+  let ch: BroadcastChannel | null = null;
+  try {
+    ch = new BroadcastChannel("hunt:settings");
+    ch.onmessage = (e: MessageEvent) => {
+      if (e.data?.type === "game-settings-updated") fetchWallet();
+    };
+  } catch { /* fall back to 30s poll */ }
+
+  return () => {
+    clearInterval(id);
+    try { ch?.close(); } catch {}
+  };
+}, [fetchWallet]);
+```
+
+**Key design decisions:**
+- Channel name `"hunt:settings"` is namespaced to avoid collision with other BroadcastChannels in the same origin.
+- The admin side opens, posts, and **immediately closes** the channel — no persistent sender needed.
+- The player side opens once in the effect and **closes in the cleanup** — tied to component lifecycle, no leak.
+- The `try/catch` on both sides means the feature degrades gracefully to the 30s poll in environments that don't support BroadcastChannel (e.g. some React Native WebViews, older Safari).
+- The message includes `payload` (the changed fields) for future extensibility — the listener could apply partial updates directly without a fetch if desired.
+
+**Security note:**
+`BroadcastChannel` is same-origin only by spec. No cross-origin tab can send or receive on this channel. The player side only calls `fetchWallet()` — it never trusts message content for any privileged operation. The actual new values always come from the authenticated API call, not from the message payload.
+
+**Prevention rule:**
+Any time a UI has a `setInterval(fetch, N_seconds)` that polls for admin-controlled configuration, ask: "Is there a zero-cost way to signal when the data actually changes?" For same-origin multi-tab apps, `BroadcastChannel` is always the right answer over reducing poll intervals. Only use WebSocket/SSE for cross-device real-time sync.
+
+**Also fixed:** Admin settings page subtitle said "Changes apply to the next game session" — corrected to "Changes apply immediately to new game sessions." Never ship copy that understates the system's capabilities.
+
+**Related SOP section:** Frontend SOP §6.1 (all states — data currency is a UI state), Universal Engineering Principles §Hard Rule 2 (DRY — one signal pathway, not duplicated poll logic), Backend SOP §7 (minimize unnecessary server load — polling is a cost, signals are free)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — Hardcoded stake presets ignored admin-configured minWager — game showed Rs. 10 minimum when admin set Rs. 5
+
+**What happened:**
+The admin set `minWager = 5` in the game settings panel. The game page still showed `10` as the first stake preset button and the wager input stayed at `120` (the server-side env fallback). The admin-configured value had no visible effect.
+
+**Two separate root causes:**
+
+**Root cause A — Hardcoded `STAKES` constant:**
+```typescript
+const STAKES = [10, 25, 50, 100, 250, 500, 1000];  // ← hardcoded, never changes
+```
+The UI filtered this with `STAKES.filter(s => s >= minWager)`. When `minWager = 5`, every element passes the filter (`10 >= 5`, `25 >= 5`, etc.) — nothing is removed, and the lowest visible button is still `10`. The filter only hides presets BELOW `minWager`, it cannot ADD presets for values the admin sets below the hardcoded floor of `10`.
+
+**Root cause B — One-directional wager clamp:**
+```typescript
+setWager(w => Math.max(w, d.minWager));  // ← only clamps upward
+```
+Initial `wager` state was `GAME.MIN_WAGER`, which reads from `process.env.GAME_MIN_WAGER ?? "120"`. On first wallet load with `d.minWager = 5`:
+`Math.max(120, 5) = 120` — the wager stayed at `120`, never snapping to the server's configured floor.
+
+This combination meant the admin-set `minWager` was fetched correctly from the DB and returned by the API but was completely invisible to the user.
+
+**Correct fix A — dynamic presets:**
+Replace the hardcoded array with a pure function that generates presets from server limits:
+```typescript
+function buildStakePresets(min: number, max: number): number[] {
+  const steps = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+  const result: number[] = [];
+  for (const s of steps) {
+    const v = s * Math.ceil(min / (s || 1));
+    if (v >= min && v <= max && !result.includes(v)) result.push(v);
+    if (result.length >= 7) break;
+  }
+  if (!result.includes(min)) result.unshift(min);
+  if (!result.includes(max) && result.length < 8) result.push(max);
+  return [...new Set(result)].sort((a, b) => a - b);
+}
+// Usage (memoised so it only recomputes when server limits change):
+const stakePresets = useMemo(() => buildStakePresets(minWager, maxWager), [minWager, maxWager]);
+```
+This always includes `minWager` as the first button, regardless of its value.
+
+**Correct fix B — first-load snap with `initialWagerSetRef`:**
+```typescript
+const initialWagerSetRef = useRef(false);
+
+// In fetchWallet:
+if (!initialWagerSetRef.current) {
+  initialWagerSetRef.current = true;
+  setWager(d.minWager);          // snap to server floor on first load
+} else {
+  // Subsequent 30s polls: clamp into valid range without resetting mid-game
+  setWager(w => w < d.minWager ? d.minWager : w > d.maxWager ? d.maxWager : w);
+}
+```
+A ref (not state) is used for the first-load flag because:
+- It must be set synchronously in the same call as `setWager(d.minWager)`.
+- It must survive re-renders without resetting (unlike a local variable).
+- It does not need to trigger a render itself.
+
+**Prevention rules:**
+1. **Never hardcode stake/wager presets in a game that has admin-configurable limits.** Any numeric list in a gambling/game UI that can be configured by an admin must be derived at runtime from the API response, not from a compile-time constant.
+2. **`Math.max(current, floor)` only enforces a floor; it never snaps to the floor.** If the intent is "start at the server's minimum," use an explicit first-load snap pattern. Distinguish between "clamp to keep valid" (ongoing polls) and "initialise from server" (first load).
+3. **When a page has both a server-side env fallback and a DB-backed live config, the env fallback is only a build-time safety net** — the live value must always win on the client. Use a ref-gated first-load snap to guarantee this.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — no duplicated values; presets must not duplicate limits that are already in the API response), Frontend SOP §6.1 (all states — the "loaded/initialised" state must reflect server data, not build-time constants)
+
+---
+
+## Backend Lessons (continued)
+
+### 2026-09-26 — Game withdraw minimum was env-locked, not DB-backed — admin could not change it without a redeploy
+
+**What happened:**
+The minimum withdrawal amount was hardcoded as a module-level constant in the withdraw API route:
+```typescript
+const MIN_WITHDRAW = parseInt(process.env.GAME_MIN_WITHDRAW ?? "120", 10);
+```
+This value was fixed at deploy time. If the admin needed to raise or lower the minimum (e.g. from Rs. 120 to Rs. 200), a code change and redeploy was required. Additionally, the withdraw page used `minWager` (the minimum game bet) as a proxy for the minimum withdrawal amount — a semantic mismatch that would break if the two values ever diverged.
+
+**Root cause:**
+Three separate problems were found together:
+
+1. **Env-locked server validation** — `MIN_WITHDRAW` was a module-level constant set once at process start. No DB read, so admin panel changes had zero effect on server-side enforcement.
+
+2. **Wrong field on the client** — The withdraw page fetched `minWager` from the wallet API and used it as the withdrawal floor. Wager minimum and withdrawal minimum are conceptually different limits. Using `minWager` as a proxy worked only by coincidence when both were set to the same default.
+
+3. **Missing field across the stack** — `minWithdraw` did not exist in `GAME` constants, the `game-settings` API, the wallet API response, or the admin UI. No single entry point existed to manage it.
+
+**Correct fix — full stack change, 6 files:**
+
+| Layer | Change |
+|---|---|
+| `gameConstants.ts` | Added `GAME.MIN_WITHDRAW` — env-backed (`GAME_MIN_WITHDRAW`), default `200`. Single source of truth for the build-time fallback. |
+| `/api/admin/game-settings` | Added `"game.minWithdraw"` to `DEFAULTS` map (env-backed). Added `minWithdraw` to `GET` response. `PUT` validates `>0` and upserts via the existing `$transaction` pattern. |
+| `/api/game/wallet` | Added `minWithdraw` to the parallel `Promise.all` load via `getIntSetting("game.minWithdraw", GAME.MIN_WITHDRAW)`. Added `minWithdraw` to the JSON response so clients always receive the live admin-set value. |
+| `/api/game/withdraw` | Replaced module-level `const MIN_WITHDRAW = parseInt(process.env...)` with a per-request DB read: `const minWithdraw = await getIntSetting("game.minWithdraw", GAME.MIN_WITHDRAW)`. Server validation now enforces the live admin value, not the deploy-time env value. |
+| `dashboard/withdraw/page.tsx` | Renamed state `minWager → minWithdraw`. Fetch type updated to `{ balance: number; minWithdraw: number }`. All UI references (placeholder, helper text, client validation, `min` attr) use `minWithdraw`. |
+| `admin/game-settings/page.tsx` | Added `minWithdraw` to `GameSettings` interface, draft state, per-field validation, save payload, the 4-column wager grid (as a `NumInput`), live summary pills, and the "Currently Live" read-only bar. |
+
+**Why `getIntSetting()` per-request in the withdraw route (not module-level):**
+A module-level constant is evaluated once when Node.js loads the module — it never reflects subsequent DB changes. A per-request DB read is ~0.5ms (single indexed lookup) and ensures every withdrawal attempt is validated against the current admin setting. For a financial operation, staleness is unacceptable.
+
+**Prevention rules:**
+1. Any numeric business rule that an admin should be able to change without a redeploy MUST be stored in the DB and read per-request (or per-minute with a cache). Never use a module-level constant for admin-configurable limits.
+2. The withdraw page must fetch its own specific limit (`minWithdraw`) from the API — never reuse a semantically different field (`minWager`) as a proxy, even if both happen to have the same default value today.
+3. When adding a new configurable limit, always touch all 5 layers in one commit: constants → admin API → player API → server validation → client UI. A partial implementation (e.g. admin UI without server validation) creates the illusion of control without actual enforcement.
+
+**Files changed:**
+- `src/lib/gameConstants.ts`
+- `src/app/api/admin/game-settings/route.ts`
+- `src/app/api/game/wallet/route.ts`
+- `src/app/api/game/withdraw/route.ts`
+- `src/app/dashboard/withdraw/page.tsx`
+- `src/app/admin/game-settings/page.tsx`
+
+**Related SOP section:** Backend SOP Hard Rule 1 (never trust client — server must validate against authoritative source, not env constant), Backend SOP §4.3 (idempotency / atomic validation), Universal Engineering Principles §Hard Rule 2 (DRY — one source of truth per business rule), Frontend SOP §6.1 (all states — client-side validation must mirror server-side validation exactly)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: effect PNGs cluttering demo canvas — shared renderer had no demo/live mode distinction
+
+**What happened:**
+The idle demo preview (shown before a game starts) displayed large, randomly-placed PNG sprites (feathers, burst, goldTrail, goldCoin, trophy) visibly scattered across the canvas behind the flying bird. The demo was supposed to show only a clean bird flight trajectory.
+
+**Root cause:**
+`PixiRenderer` is shared between the real game and the demo. Both paths called the same `onSuccess()` and `onEscapeStart()` methods, which fire `emitParticles()` — spawning full-size PNG-textured Sprites at the bird's position. With a demo loop cycling every ~2.8 seconds, these particle sprites accumulated rapidly. Each particle lived for `1 / 0.014–0.03` ≈ 33–70 frames, so multiple burst cycles worth of sprites were visible simultaneously.
+
+Additionally, the trail emit rate was `0.85 + (m−1)×0.04` per frame — nearly every frame — which in demo mode created a dense cloud of trail circles that further cluttered the canvas.
+
+**What was wrong about it:**
+`PixiRenderer` had no awareness of whether it was being used for a live game or a preview/demo. The "demo" concept existed only in `DemoEngine` (the engine class) but the renderer had no matching flag. This violates the OOP principle of behavioural polymorphism — a renderer serving two different contexts must express that difference in its interface.
+
+**Correct fix — `isDemo` flag on `PixiRenderer`:**
+```typescript
+class PixiRenderer {
+  isDemo = false;   /* set to true before init() for demo/preview usage */
+
+  emitParticles(...) {
+    if (this.isDemo) return;   /* no PNG particle bursts in demo mode */
+    // ...
+  }
+
+  update(m: number, phase: Phase) {
+    // ...
+    /* Trail rate: 25% in demo (clean preview), ~99% in real game (full effect) */
+    const trailRate = this.isDemo ? 0.25 : 0.85 + Math.min(0.14, (m - 1) * 0.04);
+    if (Math.random() < trailRate) this.emitTrailDot(m);
+  }
+}
+
+// In demo useEffect:
+const rend = new PixiRenderer();
+rend.isDemo = true;   // set BEFORE init()
+```
+
+**Why `isDemo` not a constructor parameter:**
+The flag is set after `new PixiRenderer()` and before `rend.init(canvas)`. Using a public property (not constructor param) keeps the constructor signature unchanged and allows the flag to be set at the call site without changing any other instantiation. A constructor param would require overloading or an options object — unnecessary complexity for a single boolean.
+
+**Why `isDemo` on the renderer, not the engine:**
+The engine (`DemoEngine`) already knew it was a demo. The bug was that the renderer did not. The renderer is the one that calls `emitParticles()` and controls trail rate — so the guard belongs there. Putting the guard in the engine would mean the engine would have to suppress calls to renderer methods it doesn't own, which breaks encapsulation.
+
+**Trail rate 25% in demo:**
+A light trail is intentional — it helps users visually follow the bird's path. The full 85–99% rate in live games is appropriate for the "exciting" feel but excessive in a subdued preview. 25% gives one dot roughly every 4 frames — enough to show motion, not enough to clutter.
+
+**Prevention rule:**
+Any renderer (Pixi, Three.js, canvas 2D) that is used in both a "live/real" context and a "preview/demo/idle" context MUST have an explicit mode flag. Particle emissions, camera shake, screen flash — all effects that are appropriate in real gameplay — are almost always wrong in a preview. Add the flag at the class level (not inline in calling code) so the distinction is enforced at the boundary, not scattered across every call site.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — single renderer class, mode differentiated by flag, not by duplication), OOP §Encapsulation (renderer owns its own mode; callers don't need to know the implementation detail)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: `Cannot set properties of undefined (setting 'texture')` — writing to a Pixi sprite after destroy()
+
+**What happened:**
+`Cannot set properties of undefined (setting 'texture')` at `PixiRenderer.onEscapeStart` line 779,
+called from `HuntEngine.tick` via `engine.onEscape` callback.
+
+**Root cause:**
+`HuntEngine.destroy()` calls `cancelAnimationFrame(this.rafId)` — but `cancelAnimationFrame` only
+cancels a **scheduled** frame. If the engine is mid-tick when `destroy()` is called, the current
+tick frame cannot be cancelled. The tick continues synchronously through its callbacks:
+
+```
+tick() {
+  // phase === "FLYING", cap reached
+  _doEscape()          // → onEscape(bx, by) → rend.onEscapeStart(bx, by)
+  onPhaseChange(...)   // → setGameActive(false) → React schedules re-render
+  // React useEffect cleanup will run on NEXT render, not now
+  // tick continues here — rAF loop still running
+  this.rafId = requestAnimationFrame(this.tick)
+}
+```
+
+`rend.destroy()` runs in the React `useEffect` cleanup, which fires on the **next render cycle**
+— one or more rAF frames after `setGameActive(false)`. During this window, any rAF tick that
+calls a renderer method (e.g. from `engine.onEscape → rend.onEscapeStart`) hits sprites that
+have already been destroyed by `rend.destroy()`.
+
+In Pixi v8, a destroyed Sprite's internal `_texture` reference is nulled. Setting `.texture` on it
+throws: `Cannot set properties of undefined (setting 'texture')`.
+
+**Fix — `_destroyed` guard at top of every public renderer method:**
+```typescript
+onFlyingStart()             { if (this._destroyed) return; ... }
+onSuccess(x, y)             { if (this._destroyed) return; ... }
+onEscapeStart(x, y)         { if (this._destroyed) return; ... }
+onNewRound()                { if (this._destroyed) return; ... }
+private _setHunter(key)     { if (this._destroyed || this.hunter?.destroyed) return; ... }
+```
+
+Additionally guard individual sprite `.texture` writes with a per-sprite `.destroyed` check
+as a second line of defence:
+```typescript
+// In onEscapeStart:
+if (tFail && !this.bird.destroyed) this.bird.texture = tFail;
+
+// In onNewRound:
+if (tBird && !this.bird.destroyed) { this.bird.texture = tBird; ... }
+```
+
+**OOP principle applied — Defensive Object State:**
+A destroyed object must silently no-op all further method calls rather than throwing.
+This is the Null Object / Guard pattern applied to object lifecycle:
+- The `_destroyed` flag is the single source of truth for the object's lifecycle state.
+- Every public method checks it first — this is a postcondition of `destroy()`.
+- Private helpers that touch sprites also check it because they may be called from GSAP
+  `onComplete` callbacks that fire asynchronously after `destroy()` has run.
+
+**Prevention rule:**
+Any class that wraps a WebGL/Canvas resource (Pixi Application, Three.js renderer, etc.) MUST:
+1. Set a `_destroyed = true` flag as the very first line of `destroy()`.
+2. Add `if (this._destroyed) return;` as the first line of EVERY public method.
+3. Add `if (sprite.destroyed) <skip write>` before EVERY `.texture =` or `.filters =` write
+   inside `onComplete` callbacks — these fire asynchronously and are not covered by (2).
+
+Never rely on `cancelAnimationFrame` alone to stop all callbacks — it only cancels future frames,
+not the current one or any already-queued microtasks/macrotasks.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (async state transitions must be explicit),
+Universal Engineering Principles §Hard Rule 3 (object lifecycle — destroyed state must be honoured)
+
+---
+
+### 2026-09-26 — HUNT game: `PIXI.Texture.from()` throws null.split on 2nd boot — hardening the _tex population loop
+
+**What happened:**
+Even after `PIXI.Assets.reset()` in `destroy()` and re-loading assets in `init()`, `PIXI.Texture.from(src)`
+in the `_tex` population loop could still throw `null.split` in edge cases on second boot.
+
+**Root cause:**
+`PIXI.Texture.from(src)` is a synchronous lookup that goes through several internal maps:
+`TextureCache → BaseTextureCache → resolver._resolverHash`. If `Assets.load()` completed but the
+internal reference chain has a stale null entry from a prior partially-loaded texture,
+`Texture.from()` can throw `null.split` when it tries to normalise the URL internally.
+
+Additionally, `Texture.from()` can return a valid-looking `Texture` object whose `.destroyed`
+property is `true` — this happens when Pixi reuses an object slot for a newly loaded texture
+over a slot that was previously destroyed. Writing this into `_tex` and later calling `.width`
+on it would crash.
+
+**Fix — triple-guard in the _tex population loop:**
+```typescript
+for (const src of allUrls) {
+  try {
+    const t = PIXI.Texture.from(src);
+    // Guard 1: t must exist
+    // Guard 2: t must not be a destroyed slot
+    // Guard 3: t must have real dimensions (not a placeholder 1×1 texture)
+    if (t && !t.destroyed && t.width > 0) this._tex.set(src, t);
+  } catch { /* URL not resolved, wrong content type, or cache in bad state */ }
+}
+```
+
+**Why each guard matters:**
+- `t &&` — `Texture.from` can return null/undefined in some Pixi build configurations
+- `!t.destroyed` — Pixi can reuse object slots; a destroyed texture must never be cached
+- `t.width > 0` — a successfully loaded texture always has real width; a pending/failed texture has width 0
+
+**Prevention rule:**
+Never store a `PIXI.Texture` reference without checking all three: truthy, not-destroyed, non-zero width.
+This triple-guard must be applied at every point where a texture is stored in any cache or Map.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (defensive by default),
+Frontend SOP §Hard Rule 1 (validate third-party return values before storing)
+
+---
+
+## Frontend Lessons (continued)
+
+### 2026-09-26 — HUNT game: `Cannot set properties of null (setting 'y')` — GSAP sets property on Pixi-destroyed sprite
+
+**What happened:**
+`TypeError: Cannot set properties of null (setting 'y')` fired after pressing SECURE or after a bird escape. The crash happened inside GSAP's tween update loop, not in application code directly.
+
+**Root cause — Pixi v8 `destroy()` nulls the sprite's internal transform:**
+When `app.destroy({ children: true })` is called, Pixi calls `.destroy()` on every display object in the stage tree. In Pixi v8, `DisplayObject.destroy()` sets `this.transform = null` (among other internal fields). GSAP's tween system does NOT know about Pixi's destroy mechanism — it holds a reference to the sprite object and continues calling its property setters (`.x`, `.y`, `.alpha`, `.rotation`) on the next rAF tick. The Pixi setter for `.y` internally reads `this.transform.position.y = value` — but `this.transform` is now `null`, producing the crash.
+
+**There are two separate crash paths:**
+
+**Path A — Nested `onComplete → gsap.to()` creates an orphan tween:**
+```typescript
+// WRONG — inner tween is created AFTER killTweensOf() ran in destroy()
+gsap.to(this.bird, {
+  y: targetY,
+  onComplete: () => {
+    if (this._destroyed || this.bird.destroyed) return;
+    gsap.to(this.bird, { y: settleY });  // ← orphan: created AFTER the kill sweep
+  },
+});
+```
+`destroy()` calls `gsap.killTweensOf(this.bird)` which kills the outer tween but does NOT kill the inner tween — because the inner tween does not exist yet at kill time. The outer tween's `onComplete` fires afterward (GSAP calls completed callbacks even when tweens are killed in some versions), creating the inner tween. That inner tween then sets `.y` on the destroyed sprite.
+
+**Fix — use `gsap.timeline()` stored in a class field:**
+```typescript
+// CORRECT — both segments are one killable Animation object
+this._successLoop = gsap.timeline()
+  .to(this.bird, { y: targetY,  duration: 0.35, ease: "power2.out" })
+  .to(this.bird, { y: settleY,  duration: 0.50, ease: "power1.in"  });
+```
+`destroy()` calls `this._successLoop.kill()` which kills both segments atomically. No orphan tweens possible.
+
+**Path B — `resize()` and `_setAxisLabel()` called from `ResizeObserver` after destroy:**
+`ResizeObserver` fires asynchronously. After `rend.destroy()` runs (teardown effect), the browser can still fire the `ResizeObserver` callback on the next frame. `resize()` and `_setAxisLabel()` then set `.x`, `.y` on sprites that Pixi has already destroyed. The existing guard `if (!this.app)` does NOT protect against this because `this.app` is set to `null` at the END of `destroy()`, but the ResizeObserver fires before React's cleanup runs.
+
+**Fix — add `_destroyed` check at the top of every method that sets sprite properties:**
+```typescript
+resize(w: number, h: number) {
+  if (this._destroyed || !this.app || ...) return;  // _destroyed checked FIRST
+  // ...
+  if (!this.hunter.destroyed) {                      // individual sprite guard
+    this.hunter.x = w * 0.12;
+    this.hunter.y = h - this._groundH() + 2;
+  }
+}
+
+private _setAxisLabel(tick, x, y, fontSize) {
+  if (this._destroyed || !this.app || !this.PIXI) return;  // _destroyed first
+  const label = this._axisLabels[tick - 1];
+  if (!label || label.destroyed) return;            // label-level guard
+  label.x = x; label.y = y;
+}
+```
+
+**Why `!this.hunter` is insufficient — CRITICAL distinction:**
+```typescript
+// WRONG — hunter is never null; it's a class field assigned in buildScene()
+if (this._destroyed || !this.hunter || this.hunter.destroyed) return;
+// ↑ !this.hunter is always false because the field holds the object reference
+
+// CORRECT — check .destroyed flag, not nullability
+if (this._destroyed || this.hunter.destroyed) return;
+```
+After `app.destroy()`, Pixi sprites have `destroyed === true`. The object reference itself is not null — only its internal state is invalid. Always check `.destroyed`, never `!sprite`.
+
+**Prevention rules (all apply when wrapping Pixi.js in a class with GSAP):**
+
+1. **Never nest `gsap.to()` inside `onComplete`.** If you need sequential animations, use `gsap.timeline()` stored in a class field that `destroy()` can kill atomically with `.kill()`.
+
+2. **`_destroyed` flag check must be the FIRST line of every method that touches sprite properties** — not after `!this.app`. The app reference is nulled at the END of `destroy()` but `_destroyed` is set at the START.
+
+3. **Check `sprite.destroyed` not `!sprite`** before every direct property set (`x`, `y`, `rotation`, `alpha`, `texture`, `scale`). The reference is never null — only the internal state is invalid.
+
+4. **Widen GSAP type fields that store either `Tween` or `Timeline`** to `gsap.core.Animation | null`. Both `Tween` and `Timeline` extend `Animation`, which exposes `.kill()`. Never type them as `Tween` if a timeline may be stored.
+
+5. **`ResizeObserver` callbacks fire asynchronously** — they can arrive after React's `useEffect` cleanup but before `this.app` is null. `_destroyed` is the reliable guard because it is set synchronously at the start of `destroy()`.
+
+**Related SOP section:** Frontend SOP §Hard Rule 1 (all teardown paths must be explicit), Universal Engineering Principles §Hard Rule 4 (async timing must be explicit — ResizeObserver, rAF, and GSAP callbacks all fire outside React's lifecycle)
+
+---
+
+## Security Lessons
+
+### 2026-09-26 — CRITICAL: Next.js middleware named proxy.ts — route guards completely bypassed
+
+**What happened:**
+`/dashboard/*` and `/admin/*` routes had zero page-level authentication protection. Any browser could navigate to `/admin/settings`, `/admin/jobs`, or `/dashboard` without a cookie and the shell UI would render. API calls returned 401/403 correctly, but the page itself loaded.
+
+**Root cause:**
+The middleware file was named `proxy.ts` and exported a function named `proxy`. Next.js middleware MUST be named exactly `middleware.ts` (or `middleware.js`) at `src/` or the project root, and the export MUST be named `middleware`. Any other filename is silently ignored — the framework never loads it.
+
+**What this means in practice:**
+The entire route-guard system written in `proxy.ts` — redirect unauthenticated users, redirect seekers away from admin, redirect logged-in users away from signin — was completely dead code from day one. It could be perfectly correct logic and still protect nothing.
+
+**Fix:**
+Created `src/middleware.ts` with the exact same logic, correct export name `middleware`, and the same `config.matcher`.
+
+**Prevention rule:**
+Next.js middleware has exactly one valid location and one valid export name. Before writing any middleware logic, verify:
+1. File is at `src/middleware.ts` or `<project-root>/middleware.ts`
+2. The route guard function is exported as `export function middleware(request: NextRequest)`
+3. `export const config = { matcher: [...] }` is present
+
+If the filename, export name, or location is wrong, Next.js loads the app without running any middleware — no warning, no error, no indication anything is missing.
+
+**Related SOP section:** Security SOP §4.1 (access control — verify the guard actually runs), Backend SOP §6.2 (authorization must be verified end-to-end, not assumed)
+
+---
+
+### 2026-09-26 — CRITICAL: JWT_SECRET fallback "dev_secret" in production collapses entire auth system
+
+**What happened:**
+`apiAuth.ts` contained `const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret"`. Any production deployment where `JWT_SECRET` was not set in the environment would fall back to a publicly known string. Any attacker who knew the source code (e.g. via a public GitHub repo) could forge a valid JWT for any user ID and role, including `ADMIN`.
+
+**Root cause:**
+Defensive coding pattern used incorrectly: `?? "fallback"` is appropriate for non-security-critical config (port numbers, log levels), but catastrophic for cryptographic secrets. A known fallback is worse than no secret at all — at least with no secret the app crashes visibly. With a known fallback it silently accepts forged tokens.
+
+**Fix:**
+```typescript
+const JWT_SECRET = (() => {
+  const s = process.env.JWT_SECRET;
+  if (!s && process.env.NODE_ENV === "production") {
+    throw new Error("FATAL: JWT_SECRET env var is not set.");
+  }
+  return s ?? "dev_secret_local_only";
+})();
+```
+In production: throws at module load time (server startup fails visibly before accepting any request).
+In development: falls back to a local-only value that is clearly named as non-production.
+
+**Prevention rule:**
+Never use `?? "any_value"` for: JWT secrets, encryption keys, API keys, session secrets, HMAC keys, or any value used in a cryptographic operation. Use `?? fallback` only for: timeouts, ports, log levels, feature flags, display strings. For cryptographic secrets, fail fast and loudly if missing. A startup crash is infinitely better than a silent security bypass.
+
+**Related SOP section:** Security SOP §4.7 (authentication — secrets must not have known fallbacks), DevOps SOP §3 (secrets management — all secrets in env vars, no hardcoded values including fallbacks for crypto)
+
+---
+
+### 2026-09-26 — HIGH: Game session finalScore unbounded — unlimited payout exploit
+
+**What happened:**
+`PATCH /api/game/session` accepted any `finalScore` value with `cashout: true`. A client could submit `{ sessionId, finalScore: 999999999, cashout: true }` and receive `wager × (999999999 / 100)` credited to their wallet — potentially hundreds of millions of rupees from a single Rs. 10 wager.
+
+**Root cause:**
+`finalScore` was validated for type (`typeof finalScore !== "number"`) and sign (`finalScore < 0`) but not for magnitude. The payout calculation is `wager × (finalScore / 100)` — the server trusted the client's claimed multiplier.
+
+**The correct mental model for crash games:**
+The server should compute the outcome from server-side state (the session's wager and the server-determined escape cap), not from client-submitted score. Since this codebase uses a client-computed multiplier (architecture decision), the minimum mitigation is a hard cap on `finalScore` that exceeds any legitimate game outcome.
+
+**Fix:**
+```typescript
+const MAX_FINAL_SCORE = 100_000; // 1000× — generous cap, still prevents exploit
+if (finalScore > MAX_FINAL_SCORE) {
+  return NextResponse.json({ message: "finalScore exceeds maximum." }, { status: 400 });
+}
+```
+
+**Prevention rule:**
+Every numeric value from a client that feeds a money calculation MUST have:
+1. Type validation (number, not string/null)
+2. Sign validation (non-negative where applicable)
+3. **Magnitude validation** — an upper bound that makes financial sense
+
+"The client can only send values the game produces" is not a security property — it's a trust assumption. Assume the client is hostile.
+
+**Related SOP section:** Security SOP §4.4 (business logic abuse), Backend SOP §Hard Rule 1 (never trust client input for money-sensitive values)
+
+---
+
+### 2026-09-26 — HIGH: Path traversal via unsanitized path param in /api/admin/file
+
+**What happened:**
+`GET /api/admin/file?path=../../other-bucket/file` passed the raw `path` query parameter directly to `getSignedUrl(path, 3600)`, which forwarded it to Supabase `storage.createSignedUrl()`. A crafted path could potentially generate a valid signed URL for files outside the intended `cv/` and `receipts/` folders.
+
+**Root cause:**
+File path from query string was not validated against an allowlist of permitted prefixes before use.
+
+**Fix — prefix allowlist + path normalisation:**
+```typescript
+const ALLOWED_PREFIXES = ["cv/", "receipts/", "screenshots/"];
+const normalised = path.replace(/\\/g, "/").replace(/\/\.\.\/|^\.\.\/|\.\.$/, "");
+if (!ALLOWED_PREFIXES.some(p => normalised.startsWith(p))) {
+  return NextResponse.json({ message: "Invalid file path." }, { status: 400 });
+}
+// Use `normalised`, not `path`, in all subsequent calls
+```
+
+**Prevention rule:**
+Any endpoint that accepts a file path, bucket key, or storage identifier as a query/body parameter MUST validate it against a known-good prefix before use — regardless of what the downstream SDK is expected to do. Never rely on the SDK to reject traversal strings. Validate the path before it reaches any storage or filesystem call.
+
+**Related SOP section:** Security SOP §4.3 (injection — path traversal is a variant of injection), Backend SOP §Hard Rule 1 (server validates, never trusts client input)
+
+---
+
+### 2026-09-26 — MEDIUM: Auth cookies missing `secure` and `sameSite` flags on seeker routes
+
+**What happened:**
+The seeker signin and signup routes set `httpOnly: true` on auth cookies but omitted `secure` and `sameSite`. The admin signin route correctly used `secure: process.env.NODE_ENV === "production"` and `sameSite: "lax"` — the seeker routes missed both.
+
+**Impact:**
+- Without `secure`: the cookie can be transmitted over plaintext HTTP in production if HTTPS is not enforced at the infrastructure level.
+- Without `sameSite`: cross-site request forgery (CSRF) is not mitigated at the cookie level.
+
+**Fix:**
+```typescript
+const isProd = process.env.NODE_ENV === "production";
+response.cookies.set("rozedesk-token", token, {
+  httpOnly: true,
+  secure:   isProd,
+  sameSite: "lax",
+  path:     "/",
+  ...(rememberMe ? { maxAge } : {}),
+});
+```
+
+**Prevention rule:**
+When setting an auth cookie, the complete required set of flags is:
+- `httpOnly: true` — prevents JS access (XSS token theft)
+- `secure: process.env.NODE_ENV === "production"` — HTTPS only in prod
+- `sameSite: "lax"` — CSRF mitigation (use `"strict"` for admin cookies)
+- `path: "/"` — available to all routes
+
+Never copy a cookie.set() call from one route to another without checking that all four flags are present. Define a shared `makeAuthCookieOptions()` helper to guarantee consistency.
+
+**Related SOP section:** Security SOP §4.7 (session cookies must have httpOnly, Secure, SameSite), Backend SOP §5.2 (auth attributes never sourced from client)
+
+---
+
+### 2026-09-26 — MEDIUM: Admin settings route wrote game settings with wrong DB key prefix
+
+**What happened:**
+`PUT /api/admin/settings` wrote game minimum deposit and wager as `"gameMinDeposit"` and `"gameMinWager"`. The game engine (`/api/game/config`, `/api/game/wallet`) read from `"game.minDeposit"` and `"game.minWager"` (dot-prefix convention). The write and the read used different keys — changes saved from the admin settings panel were silently discarded by the game engine.
+
+**Root cause:**
+Two different routes maintained the same logical settings with inconsistent key naming. No single source of truth for the key names.
+
+**Fix:**
+Changed the writer to use the same `game.` prefix: `{ key: "game.minDeposit", value: String(v) }`. Also fixed the GET reader to look up the same keys.
+
+**Prevention rule:**
+Platform settings keys are a contract between the writer and the reader. Any time a setting is written in one route and read in another, both routes MUST reference the key from a shared constant — not a string literal typed independently in each file. Define:
+```typescript
+// lib/settingsKeys.ts
+export const SETTINGS = {
+  GAME_MIN_DEPOSIT: "game.minDeposit",
+  GAME_MIN_WAGER:   "game.minWager",
+  // ...
+} as const;
+```
+Then import and use `SETTINGS.GAME_MIN_DEPOSIT` in every route that reads or writes it. A typo in a string literal silently stores to the wrong key with no error.
+
+**Related SOP section:** Universal Engineering Principles §Hard Rule 2 (DRY — a string value used in multiple places must be defined once), Backend SOP §Hard Rule 2 (never swallow data silently — a setting that saves successfully but has no effect IS a silent failure)
+
+---
+
+### 2026-09-26 — MEDIUM: In-memory filter on full DB table caused O(n) memory load in ledger API
+
+**What happened:**
+`GET /api/admin/ledger` fetched ALL payment records from the database, then applied a search filter `q` using JavaScript `.filter()` on the in-memory array. On a large dataset, this loads the entire payments table into the Node.js process on every ledger page load — potential OOM and slow response.
+
+**Root cause:**
+The search filter was added after the DB query was written, as a quick JS fix rather than modifying the Prisma `where` clause.
+
+**Fix:**
+Pushed the filter into the Prisma query:
+```typescript
+const searchFilter = q ? {
+  OR: [
+    { application: { user: { name: { contains: q } } } },
+    { application: { job:  { title: { contains: q } } } },
+    { id: { contains: q } },
+  ],
+} : {};
+const payments = await db.payment.findMany({ where: { ...where, ...searchFilter }, ... });
+```
+
+**Prevention rule:**
+Filtering, sorting, and pagination MUST happen at the database layer, not in JavaScript. Any time you write `.filter()`, `.sort()`, or `.slice()` on the result of a DB query, ask: "Could this array be large?" If yes, push the operation into the `where`, `orderBy`, or `take`/`skip` of the Prisma query. The exception is computed fields (e.g. `net = amount * cut`) that the DB cannot compute — those are fine in JS after a bounded result set is returned.
+
+**Related SOP section:** DBA SOP §6 (query design — filters at DB level, not app level), Backend SOP §Hard Rule 2 (silent performance failures are still failures)
+
+---
+
+### 2026-09-26 — MEDIUM: Analytics conversionPct formula always returned exactly 10%
+
+**What happened:**
+The conversion rate KPI in `/api/admin/analytics` was computed as:
+```typescript
+(applicants / Math.max(applicants * 10, 1)) * 100
+```
+This simplifies to `applicants / (applicants * 10) * 100 = 1/10 * 100 = 10` — always exactly 10% whenever there are any applicants. The metric was meaningless but looked plausible.
+
+**Root cause:**
+The formula was written to produce a "reasonable-looking" percentage (10% conversion is a common industry figure) rather than computing an actual rate. This is the definition of a hardcoded value hidden inside a formula.
+
+**Fix:**
+Used a real metric — applicants who advanced past payment review divided by total applicants:
+```typescript
+const advancedCount = await db.application.count({
+  where: { status: { in: ["CV_UNDER_REVIEW", "SHORTLISTED", "HIRED"] }, createdAt: { gte: from, lte: to } },
+});
+const conversionPct = applicants > 0
+  ? parseFloat(((advancedCount / applicants) * 100).toFixed(1))
+  : 0;
+```
+
+**Prevention rule:**
+Before shipping any computed metric (conversion rate, average, ratio), verify it manually: pick a concrete example (e.g. 5 applicants, 2 advanced) and trace the formula to confirm it produces the expected result (2/5 × 100 = 40%). If the formula always produces the same value regardless of input, it is hardcoded — remove or fix it. Analytics that report incorrect data are worse than no analytics.
+
+**Related SOP section:** Backend SOP §Hard Rule 2 (silent failures — a metric that always returns the same wrong value is a failure), Universal Engineering Principles §Hard Rule 4 (verify before asserting)
+
+---
+
+### 2026-09-26 — MEDIUM: SSE endpoint used Access-Control-Allow-Origin: * allowing cross-origin subscriptions
+
+**What happened:**
+`GET /api/notifications/stream` (Server-Sent Events) included `"Access-Control-Allow-Origin": "*"` in its response headers. While the endpoint required a valid auth cookie and would return no data without one, the wildcard CORS header allowed any origin to attempt an SSE connection — violating the principle of minimum exposure.
+
+**Fix:**
+Restricted to the app's own origin:
+```typescript
+"Access-Control-Allow-Origin": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+```
+
+**Prevention rule:**
+`Access-Control-Allow-Origin: *` is appropriate ONLY for genuinely public APIs that serve anonymous data (e.g. a public asset CDN). For any authenticated endpoint — even one that would return nothing without a valid session — restrict CORS to the application's own origin. This eliminates an entire class of cross-origin probing attacks.
+
+**Related SOP section:** Security SOP §4.5 (security misconfiguration — default-open CORS is a misconfiguration), DevOps SOP §4 (network security — restrict to minimum necessary access)
+
+---
+
+### 2026-09-26 — MEDIUM: HTML injection via user input in transactional email templates
+
+**What happened:**
+`/api/contact/route.ts` inserted `name`, `email`, `subject`, and `message` directly into an HTML email template string using ES6 template literals. A user could submit `name: "<b onclick='...'>"` to inject arbitrary HTML/CSS into the admin's email client.
+
+**Root cause:**
+Template literal string interpolation does not perform HTML escaping. Raw user input inserted into an HTML string is HTML injection.
+
+**Fix — inline escape function:**
+```typescript
+const esc = (s: string) =>
+  s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+   .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+const safeName = esc(name.trim());
+// ... then use safeName in the HTML template
+```
+
+**Prevention rule:**
+User-supplied strings must NEVER be interpolated directly into an HTML string. This applies to: email templates, notification HTML, admin panel rendered strings, and any `innerHTML` equivalent. Always escape before interpolation, or use a template engine that auto-escapes. The `text:` field of the email (plain text) does not need escaping — only the `html:` field.
+
+**Related SOP section:** Security SOP §4.3 (injection — HTML injection is a variant of XSS), Frontend SOP §Hard Rule 4 (never inject raw user content into HTML)
+
+---
+
+### 2026-09-26 — LOW: npm audit: Next.js 16.3.5 had a critical RCE in next/og ImageResponse
+
+**What happened:**
+`npm audit` reported `GHSA-vcvr-r3jv-pc5j` — Remote Code Execution in Next.js `next/og` ImageResponse — affecting versions 16.2.0–16.3.5. This is a CRITICAL severity CVE.
+
+**Fix:**
+`npm audit fix` patched `brace-expansion` (removing it from the audit output). The Next.js RCE was resolved separately — `npm audit --audit-level=critical` returned exit code 0 after the fix.
+
+**Remaining unresolved:**
+- `deepmerge-ts` / `mysql2` HIGH via Prisma internals — fix requires `prisma@6.x` which is a breaking major version bump. Deferred to a dedicated Prisma migration sprint.
+- `mariadb` HIGH via `@prisma/adapter-mariadb` — no fix available upstream. This project uses MySQL directly, not MariaDB adapter — low practical risk.
+
+**Prevention rule:**
+Run `npm audit` as part of every deploy pipeline. Set `--audit-level=high` as the CI gate — builds fail on high/critical findings until resolved. Do not treat `npm audit` as a one-time check; run it after every `npm install` and every dependency version change. For Prisma: track the upstream security advisories separately because Prisma's internal adapter dependencies (mysql2, mariadb) frequently trail behind available patches.
+
+**Related SOP section:** Security SOP §4.6 (vulnerable and outdated components — dependency audit required before launch), DevOps SOP §5 (CI/CD — security gates in pipeline)
+
+---
+
+### 2026-09-26 — Architecture: Full pre-launch security audit revealed gaps at role seams
+
+**What happened:**
+The individual per-role security rules (Backend's `requireAuth`/`requireAdmin`, DBA's ownership scoping, Frontend's UI guards) were all correctly implemented within each role's boundary. But two CRITICAL gaps existed at the seams between roles:
+1. The middleware (DevOps/Architecture concern) was a dead file — so Frontend's UI was unprotected despite Backend's API being correctly guarded.
+2. The JWT fallback secret (Backend concern) would have collapsed all per-route auth in any production deployment missing the env var.
+
+Neither gap was visible from inside any single role's codebase — they only became apparent when the whole system was read end-to-end.
+
+**The lesson:**
+Per-role security discipline does not automatically produce a secure whole. A complete audit that reads the system as an attacker sees it (from the outside in) is required before any public deployment. The Security SOP §0 states this explicitly: "gaps live at the seams between roles."
+
+**Prevention rule:**
+Before any production deployment, a full cross-role security review MUST be performed:
+1. Start from the entrypoint (middleware) and trace: is the guard actually loaded?
+2. Trace every auth check: does it fail-safe (throw) or fail-open (return null)?
+3. Verify crypto config: does every secret have a hard-fail if missing?
+4. Run `npm audit` for supply-chain issues.
+
+The Security SOP §7 go-live checklist must be completed before launch — not just assumed to be covered by the individual role SOPs.
+
+**Related SOP section:** Security SOP §0 (mandate — gaps live at the seams), §7 (go-live gate — all 10 items must be checked), §2.1 (required inputs — complete entry point list before testing)
+
+---
+
+## DevOps / Next.js Lessons
+
+### 2026-10-01 — All routes returned 404: middleware.ts and proxy.ts both present in Next.js 16
+
+**What happened:**
+Every page route (`/`, `/dashboard`, `/admin`, `/dashboard/game`) returned 404. No page compiled or served correctly. The server log repeated:
+
+```
+⨯ unhandledRejection: Error: Both middleware file "./src\middleware.ts" and proxy file
+"./src\proxy.ts" are detected. Please use "./src\proxy.ts" only.
+```
+
+**Root cause:**
+Next.js 16 (Turbopack) renamed the middleware contract. The new convention is:
+- File: `src/proxy.ts`
+- Export: `export function proxy(request: NextRequest)`
+
+The legacy convention was:
+- File: `src/middleware.ts`
+- Export: `export function middleware(request: NextRequest)`
+
+Both files existed simultaneously with identical auth logic. Next.js 16 treats this as a fatal conflict — when both are detected, the entire request pipeline crashes before reaching any route handler. Every route returns 404 because no request ever makes it past the broken middleware stage.
+
+**What was wrong about it:**
+When migrating from Next.js 14/15 to Next.js 16, `proxy.ts` was created with the new contract but `middleware.ts` was never deleted. Both files had the same route guard logic (dashboard/admin/signin/signup protection), so no functionality was missing from `proxy.ts`.
+
+**Correct fix:**
+Delete `src/middleware.ts`. `src/proxy.ts` is the sole route guard file. No code changes needed — `proxy.ts` was already complete and correct.
+
+**Verification steps after fix:**
+1. `Get-ChildItem src -Filter "*.ts" | Where-Object { $_.Name -match "middleware|proxy" }` — confirms only `proxy.ts` remains.
+2. `Remove-Item -Recurse -Force ".next"` — clear the build cache so Next.js does not serve stale compiled output.
+3. Restart the dev server — confirm no `unhandledRejection` errors, all routes return expected status codes.
+
+**Prevention rule:**
+When upgrading Next.js major versions, always check for renamed/replaced conventions:
+- Search for `middleware.ts` in `src/` — if `proxy.ts` also exists, delete `middleware.ts`.
+- The error message `Both middleware file ... and proxy file ... are detected` is unambiguous: one file must be removed.
+
+Never keep both files "just in case" — Next.js does not merge them; it crashes the pipeline entirely.
+
+**Next.js version map:**
+| Version | File name | Export name |
+|---------|-----------|-------------|
+| ≤15 | `src/middleware.ts` | `export function middleware()` |
+| 16+ (Turbopack) | `src/proxy.ts` | `export function proxy()` |
+
+`config.matcher` export is the same in both versions.
+
+**Related SOP section:** DevOps SOP §Deployment checklist (verify framework conventions after major version bumps), Universal Engineering Principles §Hard Rule 2 (one source of truth — two files with the same responsibility is a violation)
+
+---
+
+## DevOps Lessons
+
+### 2026-09-26 — Turbopack FATAL panic from corrupted .sst cache files after forced process kill
+
+**What happened:**
+`next dev` (Turbopack) failed with a FATAL panic on startup:
+```
+TurbopackInternalError: Failed to lookup task ids
+Caused by: Unable to open static sorted file referenced from 00000329.meta
+failed to open file `.next\dev\cache\turbopack\v16.3.5-ca2c75eb\00000324.sst`: The system cannot find the file specified. (os error 2)
+```
+Also: `ENOENT: no such file or directory, open '.next\dev\server\app\api\...\app-paths-manifest.json'`
+
+**Root cause:**
+Turbopack maintains a persistent task graph database under `.next/dev/cache/turbopack/` using SST (Sorted String Table) files — similar to RocksDB/LevelDB. This database is incrementally updated in a background thread as compilation tasks complete.
+
+When the Node.js process is forcefully killed (window closed, Task Manager, power loss, or a crash after a long-running connection like a 23-minute SSE stream), the background persist thread is interrupted mid-write. This leaves:
+- A `.meta` file that references an `.sst` file that was never fully written
+- An `.sst` file that is missing or partially written
+
+On the next `npm run dev`, Turbopack tries to resume from the persisted state, reads the `.meta` file, tries to open the referenced `.sst` file, fails with `os error 2` (file not found), and panics fatally. The process then disables all further persisting (`Persisting is disabled for this session`), which means even subsequent routes fail to compile.
+
+**Fix:**
+```powershell
+# Kill any running node processes first
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 2
+# Wipe the corrupted cache
+Remove-Item -Recurse -Force ".next"
+# Then restart normally
+npm run dev
+```
+
+**Prevention rules:**
+1. Always stop the dev server with `Ctrl+C` — never close the terminal window directly.
+2. If the server must be force-killed (crash, Task Manager), always run `Remove-Item -Recurse -Force .next` before the next `npm run dev`.
+3. Long-lived SSE/WebSocket connections in dev mode increase the risk of mid-write corruption if interrupted — implement a dev-only timeout (e.g. 5 min) on SSE streams to reduce open connection duration.
+4. Add a `package.json` script: `"dev:clean": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run dev"` for one-command clean restart.
+5. This is a known Turbopack dev-mode limitation. It does NOT affect production builds (`next build`).
+
+**This error is NOT a code bug** — it cannot be fixed by editing source files. The only fix is always cache deletion.
+
+**Related SOP section:** DevOps SOP §Incident Response — distinguish infra/tooling failures from application code bugs before attempting a code fix.

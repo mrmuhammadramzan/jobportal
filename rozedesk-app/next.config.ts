@@ -55,8 +55,10 @@ const nextConfig: NextConfig = {
 
   /* Turbopack root — always set to this app's directory to prevent Turbopack
      from walking up to the monorepo root and failing to resolve CSS plugins.
-     Without this, in production Railway builds Turbopack finds /app/package-lock.json
-     (the root lockfile) and looks for @tailwindcss/postcss in the wrong node_modules. */
+
+     IMPORTANT: Turbopack cache location is controlled via the env var
+     NEXT_TURBOPACK_CACHE_PATH in .env.local (dev) or hosting config (prod).
+     This moves the cache outside .next so deleting .next never corrupts it. */
   turbopack: { root: __dirname },
 
   /* LAN dev origins — dev only, empty in production */

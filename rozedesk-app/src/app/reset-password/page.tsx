@@ -14,6 +14,7 @@ import AuthLayout from "@/components/AuthLayout";
 import FormInput  from "@/components/FormInput";
 import Button     from "@/components/Button";
 import { ROUTES } from "@/lib/routes";
+import { BRAND }  from "@/lib/gameConstants";
 
 type PageState = "form" | "loading" | "success" | "error";
 
@@ -51,9 +52,9 @@ function ResetPasswordPageInner() {
   if (!token) {
     return (
       <AuthLayout
-        quote="Simple, fast, and secure. RozeDesk makes job searching stress-free."
+        quote={`Simple, fast, and secure. ${BRAND.name} — every round is a real payout opportunity.`}
         quoteAuthor="Sara Ahmed"
-        quoteRole="Finance Analyst — hired via RozeDesk"
+        quoteRole={`Player — ${BRAND.name}`}
         features={["Secure one-time reset links", "Links expire after 1 hour", "Request a new link anytime"]}
       >
         <div className="flex flex-col items-center gap-5 text-center py-8">
@@ -102,9 +103,9 @@ function ResetPasswordPageInner() {
   if (pageState === "success") {
     return (
       <AuthLayout
-        quote="Simple, fast, and secure. RozeDesk makes job searching stress-free."
+        quote={`Simple, fast, and secure. ${BRAND.name} — every round is a real payout opportunity.`}
         quoteAuthor="Sara Ahmed"
-        quoteRole="Finance Analyst — hired via RozeDesk"
+        quoteRole={`Player — ${BRAND.name}`}
         features={["Password updated successfully", "Sign in with your new password", "Keep it safe this time!"]}
       >
         <div className="flex flex-col items-center gap-5 text-center py-8" role="status" aria-live="polite">
@@ -130,9 +131,9 @@ function ResetPasswordPageInner() {
   /* ── Form state ── */
   return (
     <AuthLayout
-      quote="Simple, fast, and secure. RozeDesk makes job searching stress-free."
+      quote={`Simple, fast, and secure. ${BRAND.name} — every round is a real payout opportunity.`}
       quoteAuthor="Sara Ahmed"
-      quoteRole="Finance Analyst — hired via RozeDesk"
+      quoteRole={`Player — ${BRAND.name}`}
       features={["Secure one-time reset link", "Link expires in 1 hour", "Choose a strong password"]}
     >
       <div className="flex flex-col gap-6">

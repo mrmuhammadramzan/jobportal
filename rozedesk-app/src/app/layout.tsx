@@ -9,13 +9,13 @@ const geistSans = { variable: "--font-geist-sans", className: "" };
 const geistMono = { variable: "--font-geist-mono", className: "" };
 
 export const metadata: Metadata = {
-  title: "RozeDesk — Find Jobs & Hire Talent in Pakistan",
+  title: "HUNT — Track the Eagle & Earn Real PKR in Pakistan",
   description:
-    "Browse thousands of jobs across Pakistan. Register free, apply in one click, or post a job listing to find your next hire.",
-  keywords: ["jobs in pakistan", "job board", "find jobs", "post a job", "hiring", "RozeDesk"],
+    "Deposit Rs. 120, watch the eagle fly, and press SECURE at the perfect multiplier. Earn real money every round. Register free and start hunting today.",
+  keywords: ["hunt game", "earn money playing games", "online earning pakistan", "hunt eagle game", "game earning app", "play and earn pkr", "rozedesk hunt"],
   openGraph: {
-    title: "RozeDesk — Find Jobs & Hire Talent in Pakistan",
-    description: "Browse jobs, register free, apply in one click. Employers post listings and find talent fast.",
+    title: "HUNT — Track the Eagle & Earn Real Money",
+    description: "Deposit Rs. 120, hunt the eagle, earn real PKR. Secure at the right multiplier. Register free.",
     type: "website",
   },
 };
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('rozedesk-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}else{var dark=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=dark?'dark':'light';document.documentElement.setAttribute('data-theme',d);document.documentElement.style.colorScheme=d;}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('flappywin-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}else{var dark=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=dark?'dark':'light';document.documentElement.setAttribute('data-theme',d);document.documentElement.style.colorScheme=d;}}catch(e){}})();`,
           }}
         />
       </head>

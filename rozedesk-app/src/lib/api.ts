@@ -138,8 +138,8 @@ export const api = {
 /* ── Auth ── */
 export const authApi = {
   /** POST /auth/signin  → { token, user } */
-  signIn:  (email: string, password: string) =>
-    api.post<{ token: string; user: AuthUser }>("/auth/signin", { email, password }),
+  signIn:  (phone: string, password: string) =>
+    api.post<{ token: string; user: AuthUser }>("/auth/signin", { phone, password }),
 
   /** POST /auth/signup  → { token, user } */
   signUp:  (data: SignUpPayload) =>
@@ -148,10 +148,6 @@ export const authApi = {
   /** POST /auth/admin/signin → { token, user } */
   adminSignIn: (email: string, password: string) =>
     api.post<{ token: string; user: AuthUser }>("/auth/admin/signin", { email, password }),
-
-  /** POST /auth/forgot-password → { message } */
-  forgotPassword: (email: string) =>
-    api.post<{ message: string }>("/auth/forgot-password", { email }),
 
   /** POST /auth/signout → { message } */
   signOut: () => api.post<{ message: string }>("/auth/signout", {}),
@@ -278,14 +274,15 @@ export const adminApi = {
 export interface AuthUser {
   id:       string;
   name:     string;
-  email:    string;
+  phone:    string;
+  email?:   string;   /* kept optional — admin accounts may still have email */
   role:     "seeker" | "admin";
   initials: string;
 }
 
 export interface SignUpPayload {
   fullName: string;
-  email:    string;
+  phone:    string;
   password: string;
 }
 
@@ -405,4 +402,92 @@ export interface AdminSettings {
   notifNew:     boolean;
   notifShortlist: boolean;
   notifWeekly:  boolean;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   safeFetch — defensive fetch wrapper for direct fetch() calls
+   ──────────────────────────────────────────────────────────────
+   WHY THIS EXISTS:
+   Any time a server returns HTML instead of JSON (404 page, 500
+   error page, or a redirect to /signin), a raw `await res.json()`
+   blows up with "Unexpected token '<', '<!DOCTYPE'...".
+
+   RULES (Backend SOP Hard Rule 2 — never swallow silently):
+     1. Check Content-Type BEFORE calling .json().
+     2. Parse body exactly ONCE — no double-consume.
+     3. If !res.ok, always throw ApiError with a clean message.
+     4. If body is not JSON, surface the HTTP status text, not a
+        raw SyntaxError.
+
+   USAGE (replaces raw fetch in components):
+     import { safeFetch } from "@/lib/api";
+
+     const data = await safeFetch<WalletData>("/api/game/wallet", {
+       credentials: "include",
+       headers: authHeaders(),
+     });
+     // throws ApiError on !ok or non-JSON response
+     // caller wraps in try/catch and shows toast on ApiError
+
+   FORM DATA (multipart/form-data uploads):
+     const data = await safeFetch<{ depositId: string }>(
+       "/api/game/deposit",
+       { method: "POST", credentials: "include", body: formData,
+         headers: { Authorization: `Bearer ${tok}` } },
+       // NOTE: omit Content-Type header for FormData — browser sets
+       // the boundary automatically.
+     );
+   ══════════════════════════════════════════════════════════════ */
+export async function safeFetch<T = unknown>(
+  url:     string,
+  init?:   RequestInit,
+): Promise<T> {
+  let res: Response;
+
+  /* ── Network-level failure (offline, DNS, CORS) ── */
+  try {
+    res = await fetch(url, init);
+  } catch (networkErr: unknown) {
+    const msg = networkErr instanceof Error
+      ? networkErr.message
+      : "Network error — check your connection.";
+    throw new ApiError(0, msg);
+  }
+
+  /* ── Parse body exactly once ── */
+  const ct   = res.headers.get("content-type") ?? "";
+  const isJson = ct.includes("application/json");
+
+  let body: unknown;
+  if (isJson) {
+    try {
+      body = await res.json();
+    } catch {
+      /* Server said Content-Type: application/json but sent garbage */
+      throw new ApiError(
+        res.status,
+        `Server returned malformed JSON (HTTP ${res.status}).`,
+      );
+    }
+  } else {
+    /* HTML error page, plain text, empty body — read as text */
+    const text = await res.text().catch(() => "");
+    body = text || res.statusText;
+  }
+
+  /* ── Error response ── */
+  if (!res.ok) {
+    const message =
+      isJson &&
+      typeof body === "object" &&
+      body !== null &&
+      "message" in body
+        ? String((body as { message: unknown }).message)
+        : isJson
+          ? `Request failed (HTTP ${res.status}).`
+          : `Server error (HTTP ${res.status}) — expected JSON but received ${ct || "no content-type"}.`;
+    throw new ApiError(res.status, message, body);
+  }
+
+  return body as T;
 }

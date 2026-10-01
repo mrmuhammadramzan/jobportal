@@ -26,20 +26,31 @@ export const ROUTES = {
   /* Apply flow: /dashboard/apply/[jobId] — CV upload → payment → receipt */
   applyJob:         "/dashboard/apply",          /* prefix; append /[jobId] via applyJobUrl() */
 
+  /* ── Game ── */
+  game:             "/dashboard/game",
+  seekerWallet:     "/dashboard/wallet",
+  seekerHistory:    "/dashboard/history",
+  seekerWithdraw:   "/dashboard/withdraw",
+
   /* ── Super Admin (never linked publicly) ── */
   adminLogin:           "/admin/login",
   admin:                "/admin",
+  adminPaymentSettings: "/admin/payment-settings",
+  adminGameDeposits:    "/admin/game-deposits",
+  adminWithdrawals:     "/admin/withdrawals",
+  adminSettings:        "/admin/settings",
+
+  /* ── Legacy (kept for existing API links — not in sidebar) ── */
   adminJobs:            "/admin/jobs",
   adminPostJob:         "/admin/jobs/new",
   adminEditJob:         "/admin/jobs/[id]/edit",
   adminApplicants:      "/admin/applicants",
   adminAnalytics:       "/admin/analytics",
   adminLedger:          "/admin/ledger",
-  adminPayments:        "/admin/payments",         /* review receipt uploads, approve/reject */
-  adminPaymentSettings: "/admin/payment-settings", /* configure JazzCash/Easypaisa details */
-  adminSettings:        "/admin/settings",
+  adminPayments:        "/admin/payments",
 
-  /* ── Legal ── */
+  adminGameSettings:    "/admin/game-settings",  /* HUNT flight range, wager limits, outcome bias */
+  adminPlayers:         "/admin/players",         /* player management   */
   terms:   "/terms",
   privacy: "/privacy",
 } as const;

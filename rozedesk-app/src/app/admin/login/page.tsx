@@ -121,9 +121,9 @@ export default function AdminLoginPage() {
     setErrors({});
     setSubmitState("loading");
 
-    /* Real admin auth — /api/auth/signin validates role=ADMIN server-side */
+    /* Admin auth — dedicated email-keyed endpoint, role enforced server-side */
     try {
-      const response = await fetch("/api/auth/signin", {
+      const response = await fetch("/api/admin/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: fields.email, password: fields.password }),

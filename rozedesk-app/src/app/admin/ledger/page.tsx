@@ -18,6 +18,7 @@ import DateFilter, { useDefaultDateRange, buildApiParams, type DateRange } from 
 import SkeletonCard from "@/components/dashboard/SkeletonCard";
 import { PLATFORM_CUT_PCT } from "@/lib/constants";
 import { useFee } from "@/hooks/useFee";
+import { safeFetch, ApiError } from "@/lib/api";
 
 /* ── Shared helpers ── */
 function Icon({ path, className = "w-5 h-5" }: { path: string; className?: string }) {
@@ -106,19 +107,25 @@ export default function LedgerPage() {
   const fetchLedger = useCallback(async (range: DateRange) => {
     setLoading(true); setError("");
     try {
-      const qs  = buildApiParams(range);
-      const res = await fetch(`/api/admin/ledger?${qs}`, {
+      const qs   = buildApiParams(range);
+      /* safeFetch: single parse, content-type guard, throws ApiError on !ok */
+      const data = await safeFetch<{
+        transactions: Transaction[];
+        summary:      Summary | null;
+        revenueByJob: RevenueJob[];
+        chartData:    number[];
+      }>(`/api/admin/ledger?${qs}`, {
         headers: authHeaders(), credentials: "include",
       });
-      if (!res.ok) throw new Error((await res.json()).message ?? "Failed to load ledger.");
-      const data = await res.json();
       setTransactions(data.transactions ?? []);
       setSummary(data.summary ?? null);
       setRevenueByJob(data.revenueByJob ?? []);
       setChartData(data.chartData ?? []);
-      if (data.summary?.cutPct !== undefined) setCutPct(data.summary.cutPct);
+      if (data.summary && "cutPct" in data.summary) {
+        setCutPct((data.summary as Summary & { cutPct?: number }).cutPct ?? PLATFORM_CUT_PCT);
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load ledger.");
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to load ledger.");
     } finally {
       setLoading(false);
     }

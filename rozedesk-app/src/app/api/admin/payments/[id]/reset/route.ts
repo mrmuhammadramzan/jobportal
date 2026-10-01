@@ -25,14 +25,14 @@ export async function POST(
     });
     if (!payment) return NextResponse.json({ message: "Payment not found." }, { status: 404 });
 
-    /* Reset atomically */
-    await db.$transaction([
-      db.payment.delete({ where: { id } }),
-      db.application.update({
+    /* Reset atomically — callback form required by MariaDB driver adapter */
+    await db.$transaction(async (tx) => {
+      await tx.payment.delete({ where: { id } });
+      await tx.application.update({
         where: { id: payment.applicationId },
         data:  { status: "PENDING_PAYMENT" },
-      }),
-    ]);
+      });
+    });
 
     return NextResponse.json({ message: "Reset. Applicant can resubmit." });
   } catch (e) {

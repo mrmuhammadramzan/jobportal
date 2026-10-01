@@ -13,9 +13,22 @@ export async function PATCH(
     const { status } = await req.json() as { status: string };
     if (!status) return NextResponse.json({ message: "Status required." }, { status: 400 });
 
+    /* Allowlist — reject any value not in the ApplicationStatus enum */
+    const VALID_STATUSES = [
+      "PENDING_PAYMENT", "PAYMENT_UNDER_REVIEW", "CV_UNDER_REVIEW",
+      "SHORTLISTED", "HIRED", "REJECTED",
+    ] as const;
+    type ValidStatus = typeof VALID_STATUSES[number];
+    if (!VALID_STATUSES.includes(status as ValidStatus)) {
+      return NextResponse.json(
+        { message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
     const application = await db.application.update({
       where:   { id },
-      data:    { status: status as never },
+      data:    { status: status as ValidStatus },
       include: {
         user: { select: { id: true, name: true } },
         job:  { select: { title: true } },

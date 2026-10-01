@@ -12,19 +12,19 @@ import { ROUTES } from "@/lib/routes";
 
 /* Single source of truth for footer columns — DRY Hard Rule 2 */
 const FOOTER_LINKS = {
-  "For Job Seekers": [
-    { label: "Browse All Jobs",   href: ROUTES.jobs         },
-    { label: "Register Free",     href: ROUTES.signUp       },
-    { label: "Sign In",           href: ROUTES.signIn       },
-    { label: "My Applications",   href: ROUTES.applications },
+  "For Hunters": [
+    { label: "How It Works",   href: "/#how-it-works"  },
+    { label: "Earnings Guide", href: "/#earnings"       },
+    { label: "Register Free",  href: ROUTES.signUp      },
+    { label: "Sign In",        href: ROUTES.signIn      },
   ],
-  "RozeDesk": [
-    { label: "About Us",          href: ROUTES.about   },
-    { label: "Contact Us",        href: ROUTES.contact },
+  "HUNT": [
+    { label: "About Us",       href: ROUTES.about   },
+    { label: "Contact Us",     href: ROUTES.contact },
   ],
   "Legal": [
-    { label: "Privacy Policy",    href: ROUTES.privacy },
-    { label: "Terms of Service",  href: ROUTES.terms   },
+    { label: "Privacy Policy", href: ROUTES.privacy },
+    { label: "Terms of Use",   href: ROUTES.terms   },
   ],
 } as const;
 
@@ -75,8 +75,8 @@ export default function Footer() {
           <div className="col-span-2 flex flex-col gap-4">
             <Logo href={ROUTES.home} />
             <p className="text-[var(--text-secondary)] text-[var(--text-sm)] leading-relaxed max-w-xs">
-              RozeDesk publishes job openings and connects great candidates with the right opportunities.
-              Register free and apply today.
+              HUNT lets you track the eagle and earn real PKR. Secure the bird at the right
+              multiplier. Every 100 score = Rs. 10. Minimum deposit Rs. 120.
             </p>
             <div className="flex flex-wrap gap-2 mt-1">
               {SOCIALS.map(s => (
@@ -117,10 +117,10 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-7">
           <p className="text-[var(--text-muted)] text-[var(--text-xs)]">
-            © {new Date().getFullYear()} RozeDesk. All rights reserved.
+            © {new Date().getFullYear()} HUNT. All rights reserved.
           </p>
           <p className="text-[var(--text-muted)] opacity-60 text-[var(--text-xs)]">
-            Browse jobs. Apply in minutes. Get hired.
+            Hunt. Secure. Earn. Withdraw.
           </p>
         </div>
       </div>

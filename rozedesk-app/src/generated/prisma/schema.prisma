@@ -59,6 +59,7 @@ model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
+  phone        String?  @unique // PK mobile e.g. 03001234567 — required for seekers, null for OAuth/admin
   passwordHash String
   role         Role     @default(SEEKER)
   createdAt    DateTime @default(now())
@@ -66,12 +67,14 @@ model User {
 
   resetToken       String?
   resetTokenExpiry DateTime?
+  blocked          Boolean   @default(false)
 
   profile       SeekerProfile?
   applications  Application[]
   savedJobs     SavedJob[]
   alerts        Alert[]
   notifications Notification[]
+  gameWallet    GameWallet?
 
   @@map("users")
 }
@@ -263,4 +266,109 @@ model PlatformSetting {
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")
+}
+
+// ─────────────────────────────────────────
+// GAME — ENUMS
+// ─────────────────────────────────────────
+
+enum GameDepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─────────────────────────────────────────
+// GAME — WALLET
+// One wallet per user, balance in PKR (Int = paisas * 100 avoided;
+// we store integer rupees for simplicity, min 120)
+// ─────────────────────────────────────────
+model GameWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Int      @default(0) // PKR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deposits    GameDeposit[]
+  sessions    GameSession[]
+  withdrawals GameWithdrawal[]
+
+  @@map("game_wallets")
+}
+
+// ─────────────────────────────────────────
+// GAME — DEPOSIT REQUEST
+// User uploads payment screenshot → admin approves → balance credited
+// ─────────────────────────────────────────
+model GameDeposit {
+  id              String            @id @default(cuid())
+  walletId        String
+  wallet          GameWallet        @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId          String
+  amount          Int // PKR
+  method          PaymentMethod
+  screenshotUrl   String            @db.LongText // base64 or storage path
+  status          GameDepositStatus @default(PENDING)
+  rejectionReason String?           @db.Text
+  submittedAt     DateTime          @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+
+  @@index([userId])
+  @@index([status])
+  @@map("game_deposits")
+}
+
+// ─────────────────────────────────────────
+// GAME — SESSION
+// Records every game play: amount wagered, final score, winnings paid out
+// ─────────────────────────────────────────
+model GameSession {
+  id          String     @id @default(cuid())
+  walletId    String
+  wallet      GameWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId      String
+  wagerAmount Int // PKR deducted at session start
+  finalScore  Int        @default(0)
+  winAmount   Int        @default(0) // PKR credited at session end
+  milestones  Json       @default("[]") // array of milestone scores awarded
+  startedAt   DateTime   @default(now())
+  endedAt     DateTime?
+  completed   Boolean    @default(false)
+
+  @@index([userId])
+  @@map("game_sessions")
+}
+
+// ─────────────────────────────────────────
+// GAME — WITHDRAWAL REQUEST
+// User requests PKR withdrawal → admin approves → balance deducted
+// ─────────────────────────────────────────
+
+enum GameWithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model GameWithdrawal {
+  id              String               @id @default(cuid())
+  walletId        String
+  wallet          GameWallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId          String
+  amount          Int // PKR
+  method          String // JAZZCASH | EASYPAISA
+  accountNumber   String
+  accountName     String
+  status          GameWithdrawalStatus @default(PENDING)
+  rejectionReason String?              @db.Text
+  submittedAt     DateTime             @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+
+  @@index([userId])
+  @@index([status])
+  @@map("game_withdrawals")
 }

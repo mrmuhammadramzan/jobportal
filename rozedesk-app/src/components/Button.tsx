@@ -41,7 +41,6 @@ export interface ButtonProps {
   "aria-label"?: string;
 }
 
-/* ── Design-token-driven style maps ── */
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
     "bg-[var(--brand-500)] text-white border-transparent " +
@@ -50,9 +49,10 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     "focus-visible:ring-[var(--brand-500)]",
 
   secondary:
-    "bg-[var(--brand-50)] text-[var(--brand-700)] border-[var(--brand-200)] " +
-    "hover:bg-[var(--brand-100)] hover:-translate-y-0.5 " +
-    "active:bg-[var(--brand-200)] active:translate-y-0 active:scale-[0.97]",
+    /* Dark-surface safe: elevated bg + brand border + bright text */
+    "bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-hover)] " +
+    "hover:bg-[var(--brand-500)] hover:text-white hover:border-[var(--brand-500)] hover:-translate-y-0.5 " +
+    "active:scale-[0.97]",
 
   ghost:
     "bg-transparent text-[var(--text-secondary)] border-transparent " +
@@ -60,14 +60,14 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     "active:scale-[0.97]",
 
   outline:
-    "bg-transparent text-[var(--text-primary)] border-[var(--border-default)] " +
-    "hover:border-[var(--brand-500)] hover:text-[var(--brand-600)] hover:-translate-y-0.5 " +
+    "bg-transparent text-[var(--text-primary)] border-[var(--border-hover)] " +
+    "hover:border-[var(--brand-500)] hover:text-[var(--brand-400)] hover:-translate-y-0.5 " +
     "active:scale-[0.97]",
 
   gradient:
-    /* logo gradient: brand-blue → teal-accent — matches logo colour story */
-    "text-white border-transparent relative overflow-hidden " +
-    "bg-gradient-to-r from-[var(--brand-500)] via-[var(--brand-400)] to-[var(--accent-400)] " +
+    /* Electric blue → hot orange — always readable white text on dark bg */
+    "text-white border-transparent " +
+    "bg-[linear-gradient(135deg,var(--brand-600)_0%,var(--brand-500)_40%,var(--accent-500)_100%)] " +
     "bg-[length:200%_100%] hover:bg-right hover:-translate-y-0.5 " +
     "hover:shadow-[var(--shadow-brand)] active:translate-y-0 active:scale-[0.97]",
 

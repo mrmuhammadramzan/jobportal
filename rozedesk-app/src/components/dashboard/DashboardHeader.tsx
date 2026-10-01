@@ -18,11 +18,11 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link         from "next/link";
-import { useRouter } from "next/navigation";
 import Logo         from "@/components/Logo";
-import ThemeToggle  from "@/components/ThemeToggle";
 import { ROUTES }   from "@/lib/routes";
 import { useSignOut } from "@/hooks/useSignOut";
+import { useToast }  from "@/components/Toast";
+import { playNotifSound } from "@/lib/notifSound";
 
 /* ════════════════════════════════════════
    Types
@@ -47,55 +47,198 @@ interface Notification {
   link?: string;
 }
 
-/* ── Real notifications from /api/notifications ── */
-function useNotifications(isActive: boolean) {
-  const [notifs,      setNotifs]      = React.useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = React.useState(0);
+/* ── Real wallet balance for seeker header chip ── */
+function useWalletBalance(isSeeker: boolean, refreshTrigger: number) {
+  const [balance, setBalance] = React.useState<number | null>(null);
 
-  const fetchNotifs = React.useCallback(() => {
+  const fetch_ = React.useCallback(() => {
+    if (!isSeeker) return;
     const tok = typeof window !== "undefined" ? localStorage.getItem("rozedesk-token") ?? "" : "";
-    if (!tok || !isActive) return;
-    fetch("/api/notifications?limit=20", {
+    if (!tok) return;
+    fetch("/api/game/wallet", {
       credentials: "include",
       headers: { Authorization: `Bearer ${tok}` },
     })
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        setNotifs((data.notifications ?? []).map((n: { id: string; title: string; body: string; type: string; createdAt: string; read: boolean; link?: string }) => ({
-          id:    n.id,
-          title: n.title,
-          body:  n.body,
-          icon:  (n.type as Notification["icon"]) ?? "info",
-          time:  new Date(n.createdAt).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }),
-          read:  n.read,
-          link:  n.link,
-        })));
-        setUnreadCount(data.unreadCount ?? 0);
-      })
+      .then(data => { if (data?.balance !== undefined) setBalance(data.balance); })
       .catch(() => {});
-  }, [isActive]);
+  }, [isSeeker]);
 
-  React.useEffect(() => {
-    fetchNotifs();
-    /* Poll every 30s for new notifications */
-    const interval = setInterval(fetchNotifs, 30_000);
-    return () => clearInterval(interval);
-  }, [fetchNotifs]);
+  React.useEffect(() => { fetch_(); }, [fetch_, refreshTrigger]);
 
-  const markAllRead = React.useCallback(() => {
-    const tok = typeof window !== "undefined" ? localStorage.getItem("rozedesk-token") ?? "" : "";
-    fetch("/api/notifications", {
-      method: "PATCH",
-      credentials: "include",
-      headers: { Authorization: `Bearer ${tok}` },
-    }).then(() => {
-      setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadCount(0);
-    }).catch(() => {});
+  return balance;
+}
+
+/**
+ * useNotifications — real-time notification hook.
+ *
+ * Strategy:
+ *  1. Fetch initial list via REST (GET /api/notifications) for instant render.
+ *  2. Open SSE stream (GET /api/notifications/stream) for push updates.
+ *  3. If SSE fails (network / server error), fall back to 30 s polling.
+ *
+ * Token: uses "rozedesk-token" (the canonical key — see src/lib/api.ts).
+ * Sound: calls playNotifSound() on new events (env-gated).
+ * Toast: fires a clickable toast that navigates to the notification link.
+ */
+function useNotifications(isActive: boolean) {
+  const [notifs,      setNotifs]      = React.useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+  const [balanceTick, setBalanceTick] = React.useState(0);
+
+  /* CustomEvent bridge: avoid importing ToastContext into this hook */
+  const fireToast = React.useCallback((
+    msg:   string,
+    type:  "success" | "error" | "warning" | "info",
+    link?: string | null,
+  ) => {
+    window.dispatchEvent(
+      new CustomEvent("__notif_toast__", { detail: { msg, type, link } }),
+    );
   }, []);
 
-  return { notifs, unreadCount, markAllRead };
+  /* Helper: map a raw DB/API notification row → display shape */
+  const mapRow = (n: {
+    id: string; title: string; body: string; type: string;
+    createdAt: string; read: boolean; link?: string | null;
+  }): Notification => ({
+    id:    n.id,
+    title: n.title,
+    body:  n.body,
+    icon:  (n.type as Notification["icon"]) ?? "info",
+    time:  new Date(n.createdAt).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" }),
+    read:  n.read,
+    link:  n.link ?? undefined,
+  });
+
+  const tok = React.useCallback(
+    () => (typeof window !== "undefined" ? localStorage.getItem("rozedesk-token") ?? "" : ""),
+    [],
+  );
+
+  /* ── Initial REST fetch (for instant render on mount) ── */
+  const fetchAll = React.useCallback(async () => {
+    const t = tok();
+    if (!t || !isActive) return;
+    try {
+      const res  = await fetch("/api/notifications?limit=20", {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifs((data.notifications ?? []).map(mapRow));
+      setUnreadCount(data.unreadCount ?? 0);
+    } catch { /* silent */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
+
+  React.useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  /* ── SSE stream ── */
+  React.useEffect(() => {
+    if (!isActive) return;
+    const t = tok();
+    if (!t) return;
+
+    /* Fallback polling timer — only used when SSE is unavailable */
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let destroyed = false;
+
+    const startPollFallback = () => {
+      if (pollTimer) return;
+      pollTimer = setInterval(fetchAll, 30_000);
+    };
+
+    const stopPollFallback = () => {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    };
+
+    const openSSE = (sinceIso?: string) => {
+      if (destroyed) return;
+      const url = `/api/notifications/stream?since=${sinceIso ?? new Date().toISOString()}`;
+
+      /* SSE requires auth — pass token as query param because EventSource
+         doesn't support custom headers. The server reads from cookie OR
+         the Authorization header; the cookie is sent automatically with
+         credentials:"include" on the fetch-based initial call, so we
+         rely on the HttpOnly cookie for SSE auth.
+         Note: EventSource always sends cookies for same-origin requests. */
+      es = new EventSource(url, { withCredentials: true });
+
+      es.addEventListener("connected", () => {
+        stopPollFallback(); /* SSE working — no need for 30s poll */
+      });
+
+      es.addEventListener("notification", (e: MessageEvent) => {
+        try {
+          const n = JSON.parse(e.data) as {
+            id: string; title: string; body: string; type: string;
+            createdAt: string; read: boolean; link?: string | null;
+          };
+          const mapped = mapRow(n);
+
+          /* Prepend to list */
+          setNotifs(prev => {
+            if (prev.find(x => x.id === mapped.id)) return prev;
+            return [mapped, ...prev].slice(0, 50);
+          });
+          setUnreadCount(c => c + 1);
+
+          /* Sound */
+          const flavour =
+            n.type === "success" ? "success" :
+            n.type === "error"   ? "error"   : "alert";
+          playNotifSound(flavour);
+
+          /* Clickable toast */
+          const msg = mapped.title + (mapped.body ? ` — ${mapped.body.slice(0, 55)}` : "");
+          fireToast(msg, mapped.icon as "success"|"error"|"warning"|"info", mapped.link);
+
+          /* If deposit/withdrawal approved → refresh wallet balance */
+          if (n.type === "success") setBalanceTick(c => c + 1);
+        } catch { /* malformed SSE data */ }
+      });
+
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        if (!destroyed) {
+          /* Retry SSE after 10 s; meanwhile fall back to polling */
+          startPollFallback();
+          reconnectTimer = setTimeout(() => openSSE(), 10_000);
+        }
+      };
+    };
+
+    openSSE();
+
+    return () => {
+      destroyed = true;
+      es?.close();
+      stopPollFallback();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
+
+  const markAllRead = React.useCallback(async () => {
+    const t = tok();
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch { /* silent */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { notifs, unreadCount, markAllRead, balanceTick };
 }
 
 /* ── Shared dropdown animation classes ── */
@@ -267,9 +410,9 @@ function ProfileDropdown({
   }, [onClose, signOut]);
   /* Link groups — DRY: data drives the menu */
   const SEEKER_LINKS = [
-    { label: "My Dashboard",  href: ROUTES.dashboard,    icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
-    { label: "Applications",  href: ROUTES.applications, icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
-    { label: "My Profile",    href: ROUTES.seekerProfile,icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    { label: "My Dashboard", href: ROUTES.dashboard,    icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
+    { label: "Play Game",    href: ROUTES.game,         icon: "M5 3l14 9-14 9V3z" },
+    { label: "My Profile",   href: ROUTES.seekerProfile,icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
   const ADMIN_LINKS = [
     { label: "Admin Dashboard",href: ROUTES.admin,         icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
@@ -286,12 +429,13 @@ function ProfileDropdown({
     >
       {/* User identity */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border-default)]">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 bg-gradient-to-br from-[var(--brand-500)] to-[var(--accent-400)]">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-inverse)] font-bold text-sm flex-shrink-0"
+          style={{ background: "linear-gradient(135deg,var(--brand-600),var(--brand-500))" }}>
           {userInitials.slice(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{userName}</p>
-          <p className="text-xs text-[var(--text-muted)]">{isAdmin ? "Super Admin" : "Job Seeker"}</p>
+          <p className="text-xs text-[var(--text-muted)]">{isAdmin ? "Super Admin" : "Player"}</p>
         </div>
       </div>
 
@@ -351,7 +495,25 @@ export default function DashboardHeader({
   const [profileOpen, setProfileOpen] = useState(false);
 
   /* Real notifications from API */
-  const { notifs, unreadCount, markAllRead: apiMarkAllRead } = useNotifications(true);
+  const { notifs, unreadCount, markAllRead: apiMarkAllRead, balanceTick } = useNotifications(true);
+  /* Wallet balance — refreshes when deposit approved notification arrives */
+  const walletBalance = useWalletBalance(!isAdmin, balanceTick);
+
+  /* Listen for notification toasts fired via CustomEvent from useNotifications */
+  const toast = useToast();
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { msg, type, link } = (e as CustomEvent<{
+        msg: string; type: "success"|"error"|"warning"|"info"; link?: string | null;
+      }>).detail;
+      toast[type]?.(msg, {
+        duration: 7000,
+        onClick: link ? () => { window.location.href = link; } : undefined,
+      });
+    };
+    window.addEventListener("__notif_toast__", handler);
+    return () => window.removeEventListener("__notif_toast__", handler);
+  }, [toast]);
 
   /* Keep local markAllRead that calls API version */
   const markAllRead = apiMarkAllRead;
@@ -396,27 +558,31 @@ export default function DashboardHeader({
     <header className="sticky top-0 z-40 border-b border-[var(--border-default)] bg-[var(--bg-base)] transition-all duration-[var(--dur-fast)]">
       <div className="h-14 px-4 sm:px-6 flex items-center gap-2">
 
-        {/* Mobile hamburger */}
+        {/* Mobile hamburger — admin only (seeker uses bottom nav) */}
         <button
           type="button"
           onClick={onMenuToggle}
           aria-label={menuOpen ? "Close sidebar" : "Open sidebar"}
           aria-expanded={menuOpen}
           aria-controls="dashboard-sidebar"
-          className="lg:hidden flex flex-col justify-center items-center w-8 h-8 gap-[5px] rounded-[var(--radius-md)] transition-colors hover:bg-[var(--bg-elevated)]"
+          className={[
+            "flex flex-col justify-center items-center w-8 h-8 gap-[5px]",
+            "rounded-[var(--radius-md)] transition-colors hover:bg-[var(--bg-elevated)]",
+            isAdmin ? "lg:hidden flex-shrink-0" : "hidden",
+          ].join(" ")}
         >
           <span className={`w-4 h-0.5 rounded-full bg-[var(--text-primary)] transition-all duration-[var(--dur-default)] ${menuOpen ? "rotate-45 translate-y-[7px]" : ""}`} />
           <span className={`w-4 h-0.5 rounded-full bg-[var(--text-primary)] transition-all duration-[var(--dur-default)] ${menuOpen ? "opacity-0" : ""}`} />
           <span className={`w-4 h-0.5 rounded-full bg-[var(--text-primary)] transition-all duration-[var(--dur-default)] ${menuOpen ? "-rotate-45 -translate-y-[7px]" : ""}`} />
         </button>
 
-        {/* Logo — mobile only */}
-        <div className="lg:hidden">
-          <Logo size="sm" href={ROUTES.home} />
+        {/* Logo — mobile only, seeker (desktop logo is in sidebar) / always for admin mobile */}
+        <div className={isAdmin ? "lg:hidden flex-shrink-0" : "lg:hidden flex-shrink-0"}>
+          <Logo size="sm" href={isAdmin ? ROUTES.admin : ROUTES.dashboard} priority />
         </div>
 
-        {/* Page title */}
-        <h1 className="hidden sm:block font-bold text-[var(--text-base)] text-[var(--text-primary)]">
+        {/* Page title — desktop + tablet */}
+        <h1 className="hidden sm:block font-bold text-[var(--text-base)] text-[var(--text-primary)] truncate">
           {pageTitle}
         </h1>
 
@@ -431,9 +597,6 @@ export default function DashboardHeader({
 
         {/* ── Right side controls ── */}
         <div className="flex items-center gap-1.5">
-
-          {/* Theme toggle — animated sun↔moon */}
-          <ThemeToggle variant="default" showLabel={false} />
 
           {/* ── Notification bell + dropdown ── */}
           <div ref={notifRef} className="relative">
@@ -480,7 +643,7 @@ export default function DashboardHeader({
             />
           </div>
 
-          {/* ── Profile button + dropdown ── */}
+          {/* ── Wallet balance chip (seeker) / profile button (admin) ── */}
           <div ref={profileRef} className="relative">
             <button
               type="button"
@@ -489,28 +652,46 @@ export default function DashboardHeader({
               aria-expanded={profileOpen}
               aria-haspopup="true"
               className={[
-                "flex items-center gap-2 px-2 h-9 rounded-[var(--radius-md)]",
-                "transition-all duration-[var(--dur-default)]",
+                "flex items-center gap-2 px-2.5 h-9 rounded-[var(--radius-pill)]",
+                "border transition-all duration-[var(--dur-default)]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)]",
                 profileOpen
-                  ? "bg-[var(--bg-elevated)]"
-                  : "hover:bg-[var(--bg-elevated)]",
+                  ? "bg-[var(--bg-elevated)] border-[var(--brand-500)]"
+                  : "bg-[var(--bg-elevated)] border-[var(--border-default)] hover:border-[var(--brand-500)]",
               ].join(" ")}
             >
-              {/* Avatar */}
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 bg-gradient-to-br from-[var(--brand-500)] to-[var(--accent-400)]">
-                {userInitials.slice(0, 2).toUpperCase()}
-              </div>
-              {/* Name — hidden on mobile */}
-              <span className="hidden md:block text-xs font-medium text-[var(--text-primary)] max-w-[100px] truncate">
-                {userName}
-              </span>
-              {/* Chevron — rotates when open */}
+              {/* Wallet icon / Avatar */}
+              {!isAdmin && walletBalance !== null ? (
+                <>
+                  {/* Wallet icon */}
+                  <svg className="w-4 h-4 text-[var(--accent-500)] flex-shrink-0" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                  </svg>
+                  {/* Balance */}
+                  <span className="text-xs font-black text-[var(--text-primary)] tabular-nums">
+                    Rs.{walletBalance.toLocaleString()}
+                  </span>
+                </>
+              ) : (
+                <>
+                  {/* Admin avatar */}
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center
+                    text-[var(--text-inverse)] font-bold text-[10px] flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg,var(--brand-700),var(--brand-500))" }}>
+                    {userInitials.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="hidden sm:block text-xs font-medium text-[var(--text-primary)] max-w-[80px] truncate">
+                    {userName}
+                  </span>
+                </>
+              )}
+              {/* Chevron */}
               <svg
-                className={`hidden md:block w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-[var(--dur-default)] ${profileOpen ? "rotate-180" : ""}`}
-                viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"
-              >
-                <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                className={`w-3 h-3 text-[var(--text-muted)] transition-transform duration-[var(--dur-default)] ${profileOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
 

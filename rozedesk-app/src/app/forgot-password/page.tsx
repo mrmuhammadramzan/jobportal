@@ -10,6 +10,7 @@ import AuthLayout from "@/components/AuthLayout";
 import FormInput  from "@/components/FormInput";
 import Button     from "@/components/Button";
 import { ROUTES } from "@/lib/routes";
+import { BRAND }  from "@/lib/gameConstants";
 
 type SendState = "idle"|"loading"|"sent"|"error";
 
@@ -47,9 +48,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      quote="Simple, fast, and secure. RozeDesk makes job searching stress-free."
+      quote={`Simple, fast, and secure. ${BRAND.name} — every round is a real payout opportunity.`}
       quoteAuthor="Sara Ahmed"
-      quoteRole="Finance Analyst — hired via RozeDesk"
+      quoteRole={`Player — ${BRAND.name}`}
       features={["Reset your password in minutes","Check your inbox for a reset link","Secure one-time link expires in 1 hour","Contact support if you need help"]}
     >
       {sendState === "sent" ? (

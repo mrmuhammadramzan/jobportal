@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Turbopack persistent cache (separate from .next to prevent SST corruption)
+.turbopack-cache/

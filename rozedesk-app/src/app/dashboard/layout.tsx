@@ -42,13 +42,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const displayInitials = mounted ? ((contextInitials !== "SK" ? contextInitials : cachedInit))  : "SK";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
+    /*
+     * Layout strategy:
+     *  - Mobile (< lg): NO sidebar in the flex row. Seeker uses bottom nav (fixed overlay).
+     *    The <Sidebar> component renders only its fixed bottom-nav element on mobile.
+     *  - Desktop (lg+): flex row — sidebar (fixed 256px) + main content column.
+     */
+    <div className="flex h-[100dvh] overflow-hidden bg-[var(--bg-base)]">
+      {/* Sidebar — on mobile renders ONLY the bottom nav overlay (not in flex row) */}
       <Sidebar
         variant="seeker"
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+
+      {/* Main content column — takes full width on mobile */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden w-full">
         <DashboardHeader
           variant="seeker"
           pageTitle="My Dashboard"
@@ -58,8 +67,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           menuOpen={sidebarOpen}
           onMenuToggle={() => setSidebarOpen(o => !o)}
         />
-        <main id="dashboard-main" className="flex-1 overflow-y-auto bg-[var(--bg-base)]">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <main
+          id="dashboard-main"
+          className="flex-1 overflow-y-auto overflow-x-hidden bg-[var(--bg-base)]"
+        >
+          {/*
+           * px-3 sm:px-6 — tight on mobile, comfortable on tablet+
+           * pb safe area: bottom nav height + extra breathing room
+           * lg:pb-8 — desktop has no bottom nav
+           */}
+          <div className="w-full max-w-3xl lg:max-w-6xl mx-auto px-3 sm:px-5 py-4 sm:py-6 lg:py-8
+            pb-[calc(var(--bottom-nav-height,64px)+20px)] lg:pb-8">
             {children}
           </div>
         </main>

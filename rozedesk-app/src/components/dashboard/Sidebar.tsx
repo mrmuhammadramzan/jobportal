@@ -29,27 +29,25 @@ interface NavItem {
   badge?:  string;   /* optional count badge */
 }
 
-/* ── Seeker nav items ── */
+/* ── Player (seeker) nav items — each has a UNIQUE href (fixes multiple-active bug) ── */
 const SEEKER_NAV: NavItem[] = [
-  { label: "Overview",      href: ROUTES.dashboard,       icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
-  { label: "Browse Jobs",   href: "/dashboard/jobs",       icon: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
-  { label: "Applications",  href: ROUTES.applications,     icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
-  { label: "Saved Jobs",    href: ROUTES.savedJobs,        icon: "M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" },
-  { label: "Job Alerts",    href: ROUTES.seekerAlerts,     icon: "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" },
-  { label: "My Profile",    href: ROUTES.seekerProfile, icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z" },
+  { label: "Overview",      href: ROUTES.dashboard,      icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
+  { label: "Play Game",     href: ROUTES.game,            icon: "M5 3l14 9-14 9V3z" },
+  { label: "My Wallet",     href: ROUTES.seekerWallet,    icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" },
+  { label: "Withdraw",      href: ROUTES.seekerWithdraw,  icon: "M12 4v16m-4-4l4 4 4-4" },
+  { label: "History",       href: ROUTES.seekerHistory,   icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
+  { label: "My Profile",    href: ROUTES.seekerProfile,   icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z" },
 ];
 
-/* ── Admin nav items ── */
+/* ── Admin nav — game platform only ── */
 const ADMIN_NAV: NavItem[] = [
-  { label: "Overview",          href: ROUTES.admin,                icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
-  { label: "Job Listings",      href: ROUTES.adminJobs,            icon: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
-  { label: "Post a Job",        href: ROUTES.adminPostJob,         icon: "M12 4v16m8-8H4" },
-  { label: "Applicants",        href: ROUTES.adminApplicants,      icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
-  { label: "Payments",          href: ROUTES.adminPayments,        icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
-  { label: "Analytics",         href: ROUTES.adminAnalytics,       icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
-  { label: "Ledger",            href: ROUTES.adminLedger,          icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-  { label: "Payment Settings",  href: ROUTES.adminPaymentSettings, icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" },
-  { label: "Settings",          href: ROUTES.adminSettings,        icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
+  { label: "Overview",         href: ROUTES.admin,                icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" },
+  { label: "Game Deposits",    href: ROUTES.adminGameDeposits,    icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+  { label: "Withdrawals",      href: ROUTES.adminWithdrawals,     icon: "M12 4v16m-4-4l4 4 4-4" },
+  { label: "Players",          href: ROUTES.adminPlayers,         icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
+  { label: "Game Settings",    href: ROUTES.adminGameSettings,    icon: "M5 3l14 9-14 9V3z" },
+  { label: "Payment Settings", href: ROUTES.adminPaymentSettings, icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" },
+  { label: "Settings",         href: ROUTES.adminSettings,        icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
 ];
 
 interface SidebarProps {
@@ -146,14 +144,18 @@ export default function Sidebar({ variant, open, onClose }: SidebarProps) {
    *     - All others: exact only by default
    */
   const EXACT_ONLY = new Set<string>([
-    ROUTES.admin,                  /* /admin                — root, exact only */
-    ROUTES.adminJobs,              /* /admin/jobs           — list; /new is a sibling not a child */
-    ROUTES.adminPostJob,           /* /admin/jobs/new       — action, exact only */
-    ROUTES.adminLedger,            /* /admin/ledger         — leaf page, exact only */
-    ROUTES.adminPayments,          /* /admin/payments       — leaf page, exact only */
-    ROUTES.adminPaymentSettings,   /* /admin/payment-settings — leaf page, exact only */
-    ROUTES.dashboard,              /* /dashboard            — root, exact only */
-    ROUTES.seekerProfile,          /* /dashboard/profile    — leaf page, exact only */
+    ROUTES.admin,
+    ROUTES.dashboard,
+    ROUTES.game,
+    ROUTES.seekerWallet,
+    ROUTES.seekerWithdraw,
+    ROUTES.seekerHistory,
+    ROUTES.seekerProfile,
+    ROUTES.adminGameDeposits,
+    ROUTES.adminWithdrawals,
+    ROUTES.adminPaymentSettings,
+    ROUTES.adminGameSettings,
+    ROUTES.adminPlayers,
   ]);
 
   const isActive = (href: string): boolean => {
@@ -170,16 +172,14 @@ export default function Sidebar({ variant, open, onClose }: SidebarProps) {
    * All classes use CSS var tokens that respond to the user's ThemeToggle.
    * Both seeker and admin variants use the same token classes.
    */
-  const bg          = "bg-[var(--bg-base)]";
+  const bg          = "bg-[var(--bg-surface)]";
   const border      = "border-[var(--border-default)]";
-  const logoText    = "default" as const;   /* token-based — dark pin handles admin */
-  const linkDefault = "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]";
-  const linkActive  = "bg-[var(--brand-500)] text-white shadow-[var(--shadow-brand)]";
+  const logoText    = "default" as const;
+  const linkDefault = "text-[var(--text-secondary)] hover:text-[var(--brand-400)] hover:bg-[var(--bg-elevated)]";
+  const linkActive  = "bg-gradient-to-r from-[var(--brand-600)] to-[var(--brand-500)] text-[var(--text-inverse)] shadow-[var(--shadow-brand)]";
   const sectionLabel = "text-[var(--text-muted)]";
   const divider     = "border-[var(--border-default)]";
-  const signOutColor = isAdmin
-    ? "text-[var(--text-muted)] hover:text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_8%,transparent)]"
-    : "text-[var(--text-muted)] hover:text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_8%,transparent)]";
+  const signOutColor = "text-[var(--text-muted)] hover:text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_8%,transparent)]";
 
   const sidebarContent = (
     <aside
@@ -206,7 +206,7 @@ export default function Sidebar({ variant, open, onClose }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-0.5" role="navigation">
         {!isAdmin && (
           <p className={`text-[9px] font-bold uppercase tracking-widest px-2 mb-2 ${sectionLabel}`}>
-            Menu
+            Game
           </p>
         )}
         {isAdmin && (
@@ -219,7 +219,7 @@ export default function Sidebar({ variant, open, onClose }: SidebarProps) {
           const active = isActive(item.href);
           return (
             <Link
-              key={item.href}
+              key={item.label}
               href={item.href}
               onClick={onClose}
               aria-current={active ? "page" : undefined}
@@ -236,7 +236,7 @@ export default function Sidebar({ variant, open, onClose }: SidebarProps) {
               {item.badge && (
                 <span className={[
                   "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                  active ? "bg-white/20 text-white" : "bg-[var(--brand-500)] text-white",
+                  active ? "bg-black/20 text-[var(--text-inverse)]" : "bg-[var(--brand-500)] text-[var(--text-inverse)]",
                 ].join(" ")}>
                   {item.badge}
                 </span>
@@ -255,35 +255,98 @@ export default function Sidebar({ variant, open, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop — always visible, fixed width */}
+      {/* ── Desktop sidebar — always visible at lg+ ── */}
       <div className="hidden lg:flex h-screen sticky top-0 flex-shrink-0">
         {sidebarContent}
       </div>
 
-      {/* Mobile — slide-in drawer */}
-      {/* Backdrop */}
-      <div
-        className={[
-          "lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm",
-          "transition-opacity duration-[var(--dur-deliberate)]",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        ].join(" ")}
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      {/* Drawer */}
-      <div
-        className={[
-          "lg:hidden fixed inset-y-0 left-0 z-50",
-          "transition-transform duration-[var(--dur-deliberate)]",
-          open ? "translate-x-0" : "-translate-x-full",
-        ].join(" ")}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation menu"
-      >
-        {sidebarContent}
-      </div>
+      {/* ── Admin only: mobile slide-in drawer ── */}
+      {isAdmin && (
+        <>
+          {/* Backdrop */}
+          <div
+            className={[
+              "lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm",
+              "transition-opacity duration-[var(--dur-deliberate)]",
+              open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+            ].join(" ")}
+            onClick={onClose}
+            aria-hidden="true"
+          />
+          {/* Drawer */}
+          <div
+            className={[
+              "lg:hidden fixed inset-y-0 left-0 z-50",
+              "transition-transform duration-[var(--dur-deliberate)] ease-[var(--ease-out)]",
+              open ? "translate-x-0" : "-translate-x-full",
+            ].join(" ")}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+          >
+            {sidebarContent}
+          </div>
+        </>
+      )}
+
+      {/* ── Seeker only: fixed bottom nav bar on mobile ──
+          Native-app feel: 6 items, icon + label, active glow bar on top.
+          CRITICAL: this is NOT inside the flex layout row — it's a fixed overlay.
+          The layout's main content gets padding-bottom equal to --bottom-nav-height
+          so the last content item is never hidden.                           ── */}
+      {!isAdmin && (
+        <nav
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex bg-[var(--bg-surface)] border-t border-[var(--border-default)]"
+          style={{ height: "var(--bottom-nav-height, 64px)", boxShadow: "0 -4px 32px rgba(0,0,0,0.6)" }}
+          aria-label="Mobile bottom navigation"
+        >
+          {navItems.map(item => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "relative flex flex-1 flex-col items-center justify-center gap-[3px]",
+                  "text-[9px] font-bold tracking-wide uppercase",
+                  "transition-colors duration-[var(--dur-fast)]",
+                  "focus-visible:outline-none",
+                  active
+                    ? "text-[var(--brand-400)]"
+                    : "text-[var(--text-muted)] active:text-[var(--text-secondary)]",
+                ].join(" ")}
+              >
+                {/* Top active indicator */}
+                <span
+                  aria-hidden="true"
+                  className={[
+                    "absolute top-0 left-1/2 -translate-x-1/2",
+                    "h-[3px] w-7 rounded-full transition-all duration-[var(--dur-default)]",
+                    active ? "bg-[var(--brand-500)] shadow-[var(--shadow-brand)]" : "bg-transparent",
+                  ].join(" ")}
+                />
+                {/* Icon */}
+                <svg
+                  className={[
+                    "transition-all duration-[var(--dur-fast)]",
+                    active ? "w-[22px] h-[22px] drop-shadow-[0_0_6px_var(--brand-500)]" : "w-5 h-5",
+                  ].join(" ")}
+                  viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor"
+                  strokeWidth={active ? "2.4" : "1.8"}
+                  strokeLinecap="round" strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d={item.icon}/>
+                </svg>
+                {/* Label */}
+                <span className="leading-none">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </>
   );
 }

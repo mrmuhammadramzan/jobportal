@@ -14,6 +14,7 @@ import Sidebar          from "@/components/dashboard/Sidebar";
 import DashboardHeader  from "@/components/dashboard/DashboardHeader";
 import { useAuth, useUserInitials } from "@/context/AuthContext";
 import { getStoredUser, getInitials } from "@/lib/auth";
+import { ToastProvider } from "@/components/Toast";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname         = usePathname();
@@ -36,13 +37,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   /* Login page must render standalone — no sidebar/header */
   if (pathname === "/admin/login") {
-    return <>{children}</>;
+    return <ToastProvider>{children}</ToastProvider>;
   }
 
   const displayName     = mounted ? ((user?.name ?? cachedName) || "Admin") : "Admin";
   const displayInitials = mounted ? (contextInitials !== "SA" ? contextInitials : cachedInit) : "SA";
 
   return (
+    <ToastProvider>
     <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
       <Sidebar
         variant="admin"
@@ -60,11 +62,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           onMenuToggle={() => setSidebarOpen(o => !o)}
         />
         <main id="admin-main" className="flex-1 overflow-y-auto bg-[var(--bg-surface)]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
             {children}
           </div>
         </main>
       </div>
     </div>
+    </ToastProvider>
   );
 }

@@ -68,6 +68,26 @@ export type Notification = $Result.DefaultSelection<Prisma.$NotificationPayload>
  * 
  */
 export type PlatformSetting = $Result.DefaultSelection<Prisma.$PlatformSettingPayload>
+/**
+ * Model GameWallet
+ * 
+ */
+export type GameWallet = $Result.DefaultSelection<Prisma.$GameWalletPayload>
+/**
+ * Model GameDeposit
+ * 
+ */
+export type GameDeposit = $Result.DefaultSelection<Prisma.$GameDepositPayload>
+/**
+ * Model GameSession
+ * 
+ */
+export type GameSession = $Result.DefaultSelection<Prisma.$GameSessionPayload>
+/**
+ * Model GameWithdrawal
+ * 
+ */
+export type GameWithdrawal = $Result.DefaultSelection<Prisma.$GameWithdrawalPayload>
 
 /**
  * Enums
@@ -120,6 +140,24 @@ export const PaymentMethod: {
 
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod]
 
+
+export const GameDepositStatus: {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+};
+
+export type GameDepositStatus = (typeof GameDepositStatus)[keyof typeof GameDepositStatus]
+
+
+export const GameWithdrawalStatus: {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+};
+
+export type GameWithdrawalStatus = (typeof GameWithdrawalStatus)[keyof typeof GameWithdrawalStatus]
+
 }
 
 export type Role = $Enums.Role
@@ -141,6 +179,14 @@ export const PaymentStatus: typeof $Enums.PaymentStatus
 export type PaymentMethod = $Enums.PaymentMethod
 
 export const PaymentMethod: typeof $Enums.PaymentMethod
+
+export type GameDepositStatus = $Enums.GameDepositStatus
+
+export const GameDepositStatus: typeof $Enums.GameDepositStatus
+
+export type GameWithdrawalStatus = $Enums.GameWithdrawalStatus
+
+export const GameWithdrawalStatus: typeof $Enums.GameWithdrawalStatus
 
 /**
  * ##  Prisma Client ʲˢ
@@ -372,6 +418,46 @@ export class PrismaClient<
     * ```
     */
   get platformSetting(): Prisma.PlatformSettingDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.gameWallet`: Exposes CRUD operations for the **GameWallet** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GameWallets
+    * const gameWallets = await prisma.gameWallet.findMany()
+    * ```
+    */
+  get gameWallet(): Prisma.GameWalletDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.gameDeposit`: Exposes CRUD operations for the **GameDeposit** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GameDeposits
+    * const gameDeposits = await prisma.gameDeposit.findMany()
+    * ```
+    */
+  get gameDeposit(): Prisma.GameDepositDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.gameSession`: Exposes CRUD operations for the **GameSession** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GameSessions
+    * const gameSessions = await prisma.gameSession.findMany()
+    * ```
+    */
+  get gameSession(): Prisma.GameSessionDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.gameWithdrawal`: Exposes CRUD operations for the **GameWithdrawal** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GameWithdrawals
+    * const gameWithdrawals = await prisma.gameWithdrawal.findMany()
+    * ```
+    */
+  get gameWithdrawal(): Prisma.GameWithdrawalDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -829,7 +915,11 @@ export namespace Prisma {
     Alert: 'Alert',
     AnalyticsSummary: 'AnalyticsSummary',
     Notification: 'Notification',
-    PlatformSetting: 'PlatformSetting'
+    PlatformSetting: 'PlatformSetting',
+    GameWallet: 'GameWallet',
+    GameDeposit: 'GameDeposit',
+    GameSession: 'GameSession',
+    GameWithdrawal: 'GameWithdrawal'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -845,7 +935,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "seekerProfile" | "job" | "application" | "payment" | "paymentSetting" | "savedJob" | "alert" | "analyticsSummary" | "notification" | "platformSetting"
+      modelProps: "user" | "seekerProfile" | "job" | "application" | "payment" | "paymentSetting" | "savedJob" | "alert" | "analyticsSummary" | "notification" | "platformSetting" | "gameWallet" | "gameDeposit" | "gameSession" | "gameWithdrawal"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1575,6 +1665,270 @@ export namespace Prisma {
           }
         }
       }
+      GameWallet: {
+        payload: Prisma.$GameWalletPayload<ExtArgs>
+        fields: Prisma.GameWalletFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GameWalletFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GameWalletFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>
+          }
+          findFirst: {
+            args: Prisma.GameWalletFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GameWalletFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>
+          }
+          findMany: {
+            args: Prisma.GameWalletFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>[]
+          }
+          create: {
+            args: Prisma.GameWalletCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>
+          }
+          createMany: {
+            args: Prisma.GameWalletCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.GameWalletDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>
+          }
+          update: {
+            args: Prisma.GameWalletUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>
+          }
+          deleteMany: {
+            args: Prisma.GameWalletDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GameWalletUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.GameWalletUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWalletPayload>
+          }
+          aggregate: {
+            args: Prisma.GameWalletAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGameWallet>
+          }
+          groupBy: {
+            args: Prisma.GameWalletGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GameWalletGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GameWalletCountArgs<ExtArgs>
+            result: $Utils.Optional<GameWalletCountAggregateOutputType> | number
+          }
+        }
+      }
+      GameDeposit: {
+        payload: Prisma.$GameDepositPayload<ExtArgs>
+        fields: Prisma.GameDepositFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GameDepositFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GameDepositFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>
+          }
+          findFirst: {
+            args: Prisma.GameDepositFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GameDepositFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>
+          }
+          findMany: {
+            args: Prisma.GameDepositFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>[]
+          }
+          create: {
+            args: Prisma.GameDepositCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>
+          }
+          createMany: {
+            args: Prisma.GameDepositCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.GameDepositDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>
+          }
+          update: {
+            args: Prisma.GameDepositUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>
+          }
+          deleteMany: {
+            args: Prisma.GameDepositDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GameDepositUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.GameDepositUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameDepositPayload>
+          }
+          aggregate: {
+            args: Prisma.GameDepositAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGameDeposit>
+          }
+          groupBy: {
+            args: Prisma.GameDepositGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GameDepositGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GameDepositCountArgs<ExtArgs>
+            result: $Utils.Optional<GameDepositCountAggregateOutputType> | number
+          }
+        }
+      }
+      GameSession: {
+        payload: Prisma.$GameSessionPayload<ExtArgs>
+        fields: Prisma.GameSessionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GameSessionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GameSessionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>
+          }
+          findFirst: {
+            args: Prisma.GameSessionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GameSessionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>
+          }
+          findMany: {
+            args: Prisma.GameSessionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>[]
+          }
+          create: {
+            args: Prisma.GameSessionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>
+          }
+          createMany: {
+            args: Prisma.GameSessionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.GameSessionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>
+          }
+          update: {
+            args: Prisma.GameSessionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>
+          }
+          deleteMany: {
+            args: Prisma.GameSessionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GameSessionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.GameSessionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameSessionPayload>
+          }
+          aggregate: {
+            args: Prisma.GameSessionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGameSession>
+          }
+          groupBy: {
+            args: Prisma.GameSessionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GameSessionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GameSessionCountArgs<ExtArgs>
+            result: $Utils.Optional<GameSessionCountAggregateOutputType> | number
+          }
+        }
+      }
+      GameWithdrawal: {
+        payload: Prisma.$GameWithdrawalPayload<ExtArgs>
+        fields: Prisma.GameWithdrawalFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GameWithdrawalFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GameWithdrawalFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>
+          }
+          findFirst: {
+            args: Prisma.GameWithdrawalFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GameWithdrawalFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>
+          }
+          findMany: {
+            args: Prisma.GameWithdrawalFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>[]
+          }
+          create: {
+            args: Prisma.GameWithdrawalCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>
+          }
+          createMany: {
+            args: Prisma.GameWithdrawalCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.GameWithdrawalDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>
+          }
+          update: {
+            args: Prisma.GameWithdrawalUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>
+          }
+          deleteMany: {
+            args: Prisma.GameWithdrawalDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GameWithdrawalUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.GameWithdrawalUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GameWithdrawalPayload>
+          }
+          aggregate: {
+            args: Prisma.GameWithdrawalAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGameWithdrawal>
+          }
+          groupBy: {
+            args: Prisma.GameWithdrawalGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GameWithdrawalGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GameWithdrawalCountArgs<ExtArgs>
+            result: $Utils.Optional<GameWithdrawalCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1709,6 +2063,10 @@ export namespace Prisma {
     analyticsSummary?: AnalyticsSummaryOmit
     notification?: NotificationOmit
     platformSetting?: PlatformSettingOmit
+    gameWallet?: GameWalletOmit
+    gameDeposit?: GameDepositOmit
+    gameSession?: GameSessionOmit
+    gameWithdrawal?: GameWithdrawalOmit
   }
 
   /* Types for Logging */
@@ -1883,6 +2241,55 @@ export namespace Prisma {
 
 
   /**
+   * Count Type GameWalletCountOutputType
+   */
+
+  export type GameWalletCountOutputType = {
+    deposits: number
+    sessions: number
+    withdrawals: number
+  }
+
+  export type GameWalletCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deposits?: boolean | GameWalletCountOutputTypeCountDepositsArgs
+    sessions?: boolean | GameWalletCountOutputTypeCountSessionsArgs
+    withdrawals?: boolean | GameWalletCountOutputTypeCountWithdrawalsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * GameWalletCountOutputType without action
+   */
+  export type GameWalletCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWalletCountOutputType
+     */
+    select?: GameWalletCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * GameWalletCountOutputType without action
+   */
+  export type GameWalletCountOutputTypeCountDepositsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameDepositWhereInput
+  }
+
+  /**
+   * GameWalletCountOutputType without action
+   */
+  export type GameWalletCountOutputTypeCountSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameSessionWhereInput
+  }
+
+  /**
+   * GameWalletCountOutputType without action
+   */
+  export type GameWalletCountOutputTypeCountWithdrawalsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameWithdrawalWhereInput
+  }
+
+
+  /**
    * Models
    */
 
@@ -1900,36 +2307,42 @@ export namespace Prisma {
     id: string | null
     name: string | null
     email: string | null
+    phone: string | null
     passwordHash: string | null
     role: $Enums.Role | null
     createdAt: Date | null
     updatedAt: Date | null
     resetToken: string | null
     resetTokenExpiry: Date | null
+    blocked: boolean | null
   }
 
   export type UserMaxAggregateOutputType = {
     id: string | null
     name: string | null
     email: string | null
+    phone: string | null
     passwordHash: string | null
     role: $Enums.Role | null
     createdAt: Date | null
     updatedAt: Date | null
     resetToken: string | null
     resetTokenExpiry: Date | null
+    blocked: boolean | null
   }
 
   export type UserCountAggregateOutputType = {
     id: number
     name: number
     email: number
+    phone: number
     passwordHash: number
     role: number
     createdAt: number
     updatedAt: number
     resetToken: number
     resetTokenExpiry: number
+    blocked: number
     _all: number
   }
 
@@ -1938,36 +2351,42 @@ export namespace Prisma {
     id?: true
     name?: true
     email?: true
+    phone?: true
     passwordHash?: true
     role?: true
     createdAt?: true
     updatedAt?: true
     resetToken?: true
     resetTokenExpiry?: true
+    blocked?: true
   }
 
   export type UserMaxAggregateInputType = {
     id?: true
     name?: true
     email?: true
+    phone?: true
     passwordHash?: true
     role?: true
     createdAt?: true
     updatedAt?: true
     resetToken?: true
     resetTokenExpiry?: true
+    blocked?: true
   }
 
   export type UserCountAggregateInputType = {
     id?: true
     name?: true
     email?: true
+    phone?: true
     passwordHash?: true
     role?: true
     createdAt?: true
     updatedAt?: true
     resetToken?: true
     resetTokenExpiry?: true
+    blocked?: true
     _all?: true
   }
 
@@ -2047,12 +2466,14 @@ export namespace Prisma {
     id: string
     name: string
     email: string
+    phone: string | null
     passwordHash: string
     role: $Enums.Role
     createdAt: Date
     updatedAt: Date
     resetToken: string | null
     resetTokenExpiry: Date | null
+    blocked: boolean
     _count: UserCountAggregateOutputType | null
     _min: UserMinAggregateOutputType | null
     _max: UserMaxAggregateOutputType | null
@@ -2076,17 +2497,20 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     email?: boolean
+    phone?: boolean
     passwordHash?: boolean
     role?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     resetToken?: boolean
     resetTokenExpiry?: boolean
+    blocked?: boolean
     profile?: boolean | User$profileArgs<ExtArgs>
     applications?: boolean | User$applicationsArgs<ExtArgs>
     savedJobs?: boolean | User$savedJobsArgs<ExtArgs>
     alerts?: boolean | User$alertsArgs<ExtArgs>
     notifications?: boolean | User$notificationsArgs<ExtArgs>
+    gameWallet?: boolean | User$gameWalletArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -2096,21 +2520,24 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     email?: boolean
+    phone?: boolean
     passwordHash?: boolean
     role?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     resetToken?: boolean
     resetTokenExpiry?: boolean
+    blocked?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "email" | "passwordHash" | "role" | "createdAt" | "updatedAt" | "resetToken" | "resetTokenExpiry", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "email" | "phone" | "passwordHash" | "role" | "createdAt" | "updatedAt" | "resetToken" | "resetTokenExpiry" | "blocked", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     profile?: boolean | User$profileArgs<ExtArgs>
     applications?: boolean | User$applicationsArgs<ExtArgs>
     savedJobs?: boolean | User$savedJobsArgs<ExtArgs>
     alerts?: boolean | User$alertsArgs<ExtArgs>
     notifications?: boolean | User$notificationsArgs<ExtArgs>
+    gameWallet?: boolean | User$gameWalletArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
 
@@ -2122,17 +2549,20 @@ export namespace Prisma {
       savedJobs: Prisma.$SavedJobPayload<ExtArgs>[]
       alerts: Prisma.$AlertPayload<ExtArgs>[]
       notifications: Prisma.$NotificationPayload<ExtArgs>[]
+      gameWallet: Prisma.$GameWalletPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       name: string
       email: string
+      phone: string | null
       passwordHash: string
       role: $Enums.Role
       createdAt: Date
       updatedAt: Date
       resetToken: string | null
       resetTokenExpiry: Date | null
+      blocked: boolean
     }, ExtArgs["result"]["user"]>
     composites: {}
   }
@@ -2478,6 +2908,7 @@ export namespace Prisma {
     savedJobs<T extends User$savedJobsArgs<ExtArgs> = {}>(args?: Subset<T, User$savedJobsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SavedJobPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     alerts<T extends User$alertsArgs<ExtArgs> = {}>(args?: Subset<T, User$alertsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AlertPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     notifications<T extends User$notificationsArgs<ExtArgs> = {}>(args?: Subset<T, User$notificationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$NotificationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    gameWallet<T extends User$gameWalletArgs<ExtArgs> = {}>(args?: Subset<T, User$gameWalletArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2510,12 +2941,14 @@ export namespace Prisma {
     readonly id: FieldRef<"User", 'String'>
     readonly name: FieldRef<"User", 'String'>
     readonly email: FieldRef<"User", 'String'>
+    readonly phone: FieldRef<"User", 'String'>
     readonly passwordHash: FieldRef<"User", 'String'>
     readonly role: FieldRef<"User", 'Role'>
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
     readonly resetToken: FieldRef<"User", 'String'>
     readonly resetTokenExpiry: FieldRef<"User", 'DateTime'>
+    readonly blocked: FieldRef<"User", 'Boolean'>
   }
     
 
@@ -2976,6 +3409,25 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: NotificationScalarFieldEnum | NotificationScalarFieldEnum[]
+  }
+
+  /**
+   * User.gameWallet
+   */
+  export type User$gameWalletArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    where?: GameWalletWhereInput
   }
 
   /**
@@ -12787,6 +13239,4166 @@ export namespace Prisma {
 
 
   /**
+   * Model GameWallet
+   */
+
+  export type AggregateGameWallet = {
+    _count: GameWalletCountAggregateOutputType | null
+    _avg: GameWalletAvgAggregateOutputType | null
+    _sum: GameWalletSumAggregateOutputType | null
+    _min: GameWalletMinAggregateOutputType | null
+    _max: GameWalletMaxAggregateOutputType | null
+  }
+
+  export type GameWalletAvgAggregateOutputType = {
+    balance: number | null
+  }
+
+  export type GameWalletSumAggregateOutputType = {
+    balance: number | null
+  }
+
+  export type GameWalletMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    balance: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type GameWalletMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    balance: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type GameWalletCountAggregateOutputType = {
+    id: number
+    userId: number
+    balance: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type GameWalletAvgAggregateInputType = {
+    balance?: true
+  }
+
+  export type GameWalletSumAggregateInputType = {
+    balance?: true
+  }
+
+  export type GameWalletMinAggregateInputType = {
+    id?: true
+    userId?: true
+    balance?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type GameWalletMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    balance?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type GameWalletCountAggregateInputType = {
+    id?: true
+    userId?: true
+    balance?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type GameWalletAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameWallet to aggregate.
+     */
+    where?: GameWalletWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWallets to fetch.
+     */
+    orderBy?: GameWalletOrderByWithRelationInput | GameWalletOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GameWalletWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWallets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWallets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GameWallets
+    **/
+    _count?: true | GameWalletCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GameWalletAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GameWalletSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GameWalletMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GameWalletMaxAggregateInputType
+  }
+
+  export type GetGameWalletAggregateType<T extends GameWalletAggregateArgs> = {
+        [P in keyof T & keyof AggregateGameWallet]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGameWallet[P]>
+      : GetScalarType<T[P], AggregateGameWallet[P]>
+  }
+
+
+
+
+  export type GameWalletGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameWalletWhereInput
+    orderBy?: GameWalletOrderByWithAggregationInput | GameWalletOrderByWithAggregationInput[]
+    by: GameWalletScalarFieldEnum[] | GameWalletScalarFieldEnum
+    having?: GameWalletScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GameWalletCountAggregateInputType | true
+    _avg?: GameWalletAvgAggregateInputType
+    _sum?: GameWalletSumAggregateInputType
+    _min?: GameWalletMinAggregateInputType
+    _max?: GameWalletMaxAggregateInputType
+  }
+
+  export type GameWalletGroupByOutputType = {
+    id: string
+    userId: string
+    balance: number
+    createdAt: Date
+    updatedAt: Date
+    _count: GameWalletCountAggregateOutputType | null
+    _avg: GameWalletAvgAggregateOutputType | null
+    _sum: GameWalletSumAggregateOutputType | null
+    _min: GameWalletMinAggregateOutputType | null
+    _max: GameWalletMaxAggregateOutputType | null
+  }
+
+  type GetGameWalletGroupByPayload<T extends GameWalletGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GameWalletGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GameWalletGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GameWalletGroupByOutputType[P]>
+            : GetScalarType<T[P], GameWalletGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GameWalletSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    balance?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    deposits?: boolean | GameWallet$depositsArgs<ExtArgs>
+    sessions?: boolean | GameWallet$sessionsArgs<ExtArgs>
+    withdrawals?: boolean | GameWallet$withdrawalsArgs<ExtArgs>
+    _count?: boolean | GameWalletCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["gameWallet"]>
+
+
+
+  export type GameWalletSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    balance?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type GameWalletOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "balance" | "createdAt" | "updatedAt", ExtArgs["result"]["gameWallet"]>
+  export type GameWalletInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    deposits?: boolean | GameWallet$depositsArgs<ExtArgs>
+    sessions?: boolean | GameWallet$sessionsArgs<ExtArgs>
+    withdrawals?: boolean | GameWallet$withdrawalsArgs<ExtArgs>
+    _count?: boolean | GameWalletCountOutputTypeDefaultArgs<ExtArgs>
+  }
+
+  export type $GameWalletPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GameWallet"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+      deposits: Prisma.$GameDepositPayload<ExtArgs>[]
+      sessions: Prisma.$GameSessionPayload<ExtArgs>[]
+      withdrawals: Prisma.$GameWithdrawalPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      balance: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["gameWallet"]>
+    composites: {}
+  }
+
+  type GameWalletGetPayload<S extends boolean | null | undefined | GameWalletDefaultArgs> = $Result.GetResult<Prisma.$GameWalletPayload, S>
+
+  type GameWalletCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GameWalletFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GameWalletCountAggregateInputType | true
+    }
+
+  export interface GameWalletDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GameWallet'], meta: { name: 'GameWallet' } }
+    /**
+     * Find zero or one GameWallet that matches the filter.
+     * @param {GameWalletFindUniqueArgs} args - Arguments to find a GameWallet
+     * @example
+     * // Get one GameWallet
+     * const gameWallet = await prisma.gameWallet.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GameWalletFindUniqueArgs>(args: SelectSubset<T, GameWalletFindUniqueArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GameWallet that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GameWalletFindUniqueOrThrowArgs} args - Arguments to find a GameWallet
+     * @example
+     * // Get one GameWallet
+     * const gameWallet = await prisma.gameWallet.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GameWalletFindUniqueOrThrowArgs>(args: SelectSubset<T, GameWalletFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameWallet that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletFindFirstArgs} args - Arguments to find a GameWallet
+     * @example
+     * // Get one GameWallet
+     * const gameWallet = await prisma.gameWallet.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GameWalletFindFirstArgs>(args?: SelectSubset<T, GameWalletFindFirstArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameWallet that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletFindFirstOrThrowArgs} args - Arguments to find a GameWallet
+     * @example
+     * // Get one GameWallet
+     * const gameWallet = await prisma.gameWallet.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GameWalletFindFirstOrThrowArgs>(args?: SelectSubset<T, GameWalletFindFirstOrThrowArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GameWallets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GameWallets
+     * const gameWallets = await prisma.gameWallet.findMany()
+     * 
+     * // Get first 10 GameWallets
+     * const gameWallets = await prisma.gameWallet.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const gameWalletWithIdOnly = await prisma.gameWallet.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GameWalletFindManyArgs>(args?: SelectSubset<T, GameWalletFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GameWallet.
+     * @param {GameWalletCreateArgs} args - Arguments to create a GameWallet.
+     * @example
+     * // Create one GameWallet
+     * const GameWallet = await prisma.gameWallet.create({
+     *   data: {
+     *     // ... data to create a GameWallet
+     *   }
+     * })
+     * 
+     */
+    create<T extends GameWalletCreateArgs>(args: SelectSubset<T, GameWalletCreateArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GameWallets.
+     * @param {GameWalletCreateManyArgs} args - Arguments to create many GameWallets.
+     * @example
+     * // Create many GameWallets
+     * const gameWallet = await prisma.gameWallet.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GameWalletCreateManyArgs>(args?: SelectSubset<T, GameWalletCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a GameWallet.
+     * @param {GameWalletDeleteArgs} args - Arguments to delete one GameWallet.
+     * @example
+     * // Delete one GameWallet
+     * const GameWallet = await prisma.gameWallet.delete({
+     *   where: {
+     *     // ... filter to delete one GameWallet
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GameWalletDeleteArgs>(args: SelectSubset<T, GameWalletDeleteArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GameWallet.
+     * @param {GameWalletUpdateArgs} args - Arguments to update one GameWallet.
+     * @example
+     * // Update one GameWallet
+     * const gameWallet = await prisma.gameWallet.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GameWalletUpdateArgs>(args: SelectSubset<T, GameWalletUpdateArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GameWallets.
+     * @param {GameWalletDeleteManyArgs} args - Arguments to filter GameWallets to delete.
+     * @example
+     * // Delete a few GameWallets
+     * const { count } = await prisma.gameWallet.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GameWalletDeleteManyArgs>(args?: SelectSubset<T, GameWalletDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GameWallets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GameWallets
+     * const gameWallet = await prisma.gameWallet.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GameWalletUpdateManyArgs>(args: SelectSubset<T, GameWalletUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one GameWallet.
+     * @param {GameWalletUpsertArgs} args - Arguments to update or create a GameWallet.
+     * @example
+     * // Update or create a GameWallet
+     * const gameWallet = await prisma.gameWallet.upsert({
+     *   create: {
+     *     // ... data to create a GameWallet
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GameWallet we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GameWalletUpsertArgs>(args: SelectSubset<T, GameWalletUpsertArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GameWallets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletCountArgs} args - Arguments to filter GameWallets to count.
+     * @example
+     * // Count the number of GameWallets
+     * const count = await prisma.gameWallet.count({
+     *   where: {
+     *     // ... the filter for the GameWallets we want to count
+     *   }
+     * })
+    **/
+    count<T extends GameWalletCountArgs>(
+      args?: Subset<T, GameWalletCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GameWalletCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GameWallet.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GameWalletAggregateArgs>(args: Subset<T, GameWalletAggregateArgs>): Prisma.PrismaPromise<GetGameWalletAggregateType<T>>
+
+    /**
+     * Group by GameWallet.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWalletGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GameWalletGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GameWalletGroupByArgs['orderBy'] }
+        : { orderBy?: GameWalletGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GameWalletGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGameWalletGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GameWallet model
+   */
+  readonly fields: GameWalletFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GameWallet.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GameWalletClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    deposits<T extends GameWallet$depositsArgs<ExtArgs> = {}>(args?: Subset<T, GameWallet$depositsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    sessions<T extends GameWallet$sessionsArgs<ExtArgs> = {}>(args?: Subset<T, GameWallet$sessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    withdrawals<T extends GameWallet$withdrawalsArgs<ExtArgs> = {}>(args?: Subset<T, GameWallet$withdrawalsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GameWallet model
+   */
+  interface GameWalletFieldRefs {
+    readonly id: FieldRef<"GameWallet", 'String'>
+    readonly userId: FieldRef<"GameWallet", 'String'>
+    readonly balance: FieldRef<"GameWallet", 'Int'>
+    readonly createdAt: FieldRef<"GameWallet", 'DateTime'>
+    readonly updatedAt: FieldRef<"GameWallet", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GameWallet findUnique
+   */
+  export type GameWalletFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWallet to fetch.
+     */
+    where: GameWalletWhereUniqueInput
+  }
+
+  /**
+   * GameWallet findUniqueOrThrow
+   */
+  export type GameWalletFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWallet to fetch.
+     */
+    where: GameWalletWhereUniqueInput
+  }
+
+  /**
+   * GameWallet findFirst
+   */
+  export type GameWalletFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWallet to fetch.
+     */
+    where?: GameWalletWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWallets to fetch.
+     */
+    orderBy?: GameWalletOrderByWithRelationInput | GameWalletOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameWallets.
+     */
+    cursor?: GameWalletWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWallets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWallets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameWallets.
+     */
+    distinct?: GameWalletScalarFieldEnum | GameWalletScalarFieldEnum[]
+  }
+
+  /**
+   * GameWallet findFirstOrThrow
+   */
+  export type GameWalletFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWallet to fetch.
+     */
+    where?: GameWalletWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWallets to fetch.
+     */
+    orderBy?: GameWalletOrderByWithRelationInput | GameWalletOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameWallets.
+     */
+    cursor?: GameWalletWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWallets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWallets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameWallets.
+     */
+    distinct?: GameWalletScalarFieldEnum | GameWalletScalarFieldEnum[]
+  }
+
+  /**
+   * GameWallet findMany
+   */
+  export type GameWalletFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWallets to fetch.
+     */
+    where?: GameWalletWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWallets to fetch.
+     */
+    orderBy?: GameWalletOrderByWithRelationInput | GameWalletOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GameWallets.
+     */
+    cursor?: GameWalletWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWallets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWallets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameWallets.
+     */
+    distinct?: GameWalletScalarFieldEnum | GameWalletScalarFieldEnum[]
+  }
+
+  /**
+   * GameWallet create
+   */
+  export type GameWalletCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * The data needed to create a GameWallet.
+     */
+    data: XOR<GameWalletCreateInput, GameWalletUncheckedCreateInput>
+  }
+
+  /**
+   * GameWallet createMany
+   */
+  export type GameWalletCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GameWallets.
+     */
+    data: GameWalletCreateManyInput | GameWalletCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GameWallet update
+   */
+  export type GameWalletUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * The data needed to update a GameWallet.
+     */
+    data: XOR<GameWalletUpdateInput, GameWalletUncheckedUpdateInput>
+    /**
+     * Choose, which GameWallet to update.
+     */
+    where: GameWalletWhereUniqueInput
+  }
+
+  /**
+   * GameWallet updateMany
+   */
+  export type GameWalletUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GameWallets.
+     */
+    data: XOR<GameWalletUpdateManyMutationInput, GameWalletUncheckedUpdateManyInput>
+    /**
+     * Filter which GameWallets to update
+     */
+    where?: GameWalletWhereInput
+    /**
+     * Limit how many GameWallets to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameWallet upsert
+   */
+  export type GameWalletUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * The filter to search for the GameWallet to update in case it exists.
+     */
+    where: GameWalletWhereUniqueInput
+    /**
+     * In case the GameWallet found by the `where` argument doesn't exist, create a new GameWallet with this data.
+     */
+    create: XOR<GameWalletCreateInput, GameWalletUncheckedCreateInput>
+    /**
+     * In case the GameWallet was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GameWalletUpdateInput, GameWalletUncheckedUpdateInput>
+  }
+
+  /**
+   * GameWallet delete
+   */
+  export type GameWalletDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+    /**
+     * Filter which GameWallet to delete.
+     */
+    where: GameWalletWhereUniqueInput
+  }
+
+  /**
+   * GameWallet deleteMany
+   */
+  export type GameWalletDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameWallets to delete
+     */
+    where?: GameWalletWhereInput
+    /**
+     * Limit how many GameWallets to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameWallet.deposits
+   */
+  export type GameWallet$depositsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    where?: GameDepositWhereInput
+    orderBy?: GameDepositOrderByWithRelationInput | GameDepositOrderByWithRelationInput[]
+    cursor?: GameDepositWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: GameDepositScalarFieldEnum | GameDepositScalarFieldEnum[]
+  }
+
+  /**
+   * GameWallet.sessions
+   */
+  export type GameWallet$sessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    where?: GameSessionWhereInput
+    orderBy?: GameSessionOrderByWithRelationInput | GameSessionOrderByWithRelationInput[]
+    cursor?: GameSessionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: GameSessionScalarFieldEnum | GameSessionScalarFieldEnum[]
+  }
+
+  /**
+   * GameWallet.withdrawals
+   */
+  export type GameWallet$withdrawalsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    where?: GameWithdrawalWhereInput
+    orderBy?: GameWithdrawalOrderByWithRelationInput | GameWithdrawalOrderByWithRelationInput[]
+    cursor?: GameWithdrawalWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: GameWithdrawalScalarFieldEnum | GameWithdrawalScalarFieldEnum[]
+  }
+
+  /**
+   * GameWallet without action
+   */
+  export type GameWalletDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWallet
+     */
+    select?: GameWalletSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWallet
+     */
+    omit?: GameWalletOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWalletInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model GameDeposit
+   */
+
+  export type AggregateGameDeposit = {
+    _count: GameDepositCountAggregateOutputType | null
+    _avg: GameDepositAvgAggregateOutputType | null
+    _sum: GameDepositSumAggregateOutputType | null
+    _min: GameDepositMinAggregateOutputType | null
+    _max: GameDepositMaxAggregateOutputType | null
+  }
+
+  export type GameDepositAvgAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type GameDepositSumAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type GameDepositMinAggregateOutputType = {
+    id: string | null
+    walletId: string | null
+    userId: string | null
+    amount: number | null
+    method: $Enums.PaymentMethod | null
+    screenshotUrl: string | null
+    status: $Enums.GameDepositStatus | null
+    rejectionReason: string | null
+    submittedAt: Date | null
+    reviewedAt: Date | null
+    reviewedBy: string | null
+  }
+
+  export type GameDepositMaxAggregateOutputType = {
+    id: string | null
+    walletId: string | null
+    userId: string | null
+    amount: number | null
+    method: $Enums.PaymentMethod | null
+    screenshotUrl: string | null
+    status: $Enums.GameDepositStatus | null
+    rejectionReason: string | null
+    submittedAt: Date | null
+    reviewedAt: Date | null
+    reviewedBy: string | null
+  }
+
+  export type GameDepositCountAggregateOutputType = {
+    id: number
+    walletId: number
+    userId: number
+    amount: number
+    method: number
+    screenshotUrl: number
+    status: number
+    rejectionReason: number
+    submittedAt: number
+    reviewedAt: number
+    reviewedBy: number
+    _all: number
+  }
+
+
+  export type GameDepositAvgAggregateInputType = {
+    amount?: true
+  }
+
+  export type GameDepositSumAggregateInputType = {
+    amount?: true
+  }
+
+  export type GameDepositMinAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    amount?: true
+    method?: true
+    screenshotUrl?: true
+    status?: true
+    rejectionReason?: true
+    submittedAt?: true
+    reviewedAt?: true
+    reviewedBy?: true
+  }
+
+  export type GameDepositMaxAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    amount?: true
+    method?: true
+    screenshotUrl?: true
+    status?: true
+    rejectionReason?: true
+    submittedAt?: true
+    reviewedAt?: true
+    reviewedBy?: true
+  }
+
+  export type GameDepositCountAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    amount?: true
+    method?: true
+    screenshotUrl?: true
+    status?: true
+    rejectionReason?: true
+    submittedAt?: true
+    reviewedAt?: true
+    reviewedBy?: true
+    _all?: true
+  }
+
+  export type GameDepositAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameDeposit to aggregate.
+     */
+    where?: GameDepositWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameDeposits to fetch.
+     */
+    orderBy?: GameDepositOrderByWithRelationInput | GameDepositOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GameDepositWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameDeposits from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameDeposits.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GameDeposits
+    **/
+    _count?: true | GameDepositCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GameDepositAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GameDepositSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GameDepositMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GameDepositMaxAggregateInputType
+  }
+
+  export type GetGameDepositAggregateType<T extends GameDepositAggregateArgs> = {
+        [P in keyof T & keyof AggregateGameDeposit]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGameDeposit[P]>
+      : GetScalarType<T[P], AggregateGameDeposit[P]>
+  }
+
+
+
+
+  export type GameDepositGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameDepositWhereInput
+    orderBy?: GameDepositOrderByWithAggregationInput | GameDepositOrderByWithAggregationInput[]
+    by: GameDepositScalarFieldEnum[] | GameDepositScalarFieldEnum
+    having?: GameDepositScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GameDepositCountAggregateInputType | true
+    _avg?: GameDepositAvgAggregateInputType
+    _sum?: GameDepositSumAggregateInputType
+    _min?: GameDepositMinAggregateInputType
+    _max?: GameDepositMaxAggregateInputType
+  }
+
+  export type GameDepositGroupByOutputType = {
+    id: string
+    walletId: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status: $Enums.GameDepositStatus
+    rejectionReason: string | null
+    submittedAt: Date
+    reviewedAt: Date | null
+    reviewedBy: string | null
+    _count: GameDepositCountAggregateOutputType | null
+    _avg: GameDepositAvgAggregateOutputType | null
+    _sum: GameDepositSumAggregateOutputType | null
+    _min: GameDepositMinAggregateOutputType | null
+    _max: GameDepositMaxAggregateOutputType | null
+  }
+
+  type GetGameDepositGroupByPayload<T extends GameDepositGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GameDepositGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GameDepositGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GameDepositGroupByOutputType[P]>
+            : GetScalarType<T[P], GameDepositGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GameDepositSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    walletId?: boolean
+    userId?: boolean
+    amount?: boolean
+    method?: boolean
+    screenshotUrl?: boolean
+    status?: boolean
+    rejectionReason?: boolean
+    submittedAt?: boolean
+    reviewedAt?: boolean
+    reviewedBy?: boolean
+    wallet?: boolean | GameWalletDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["gameDeposit"]>
+
+
+
+  export type GameDepositSelectScalar = {
+    id?: boolean
+    walletId?: boolean
+    userId?: boolean
+    amount?: boolean
+    method?: boolean
+    screenshotUrl?: boolean
+    status?: boolean
+    rejectionReason?: boolean
+    submittedAt?: boolean
+    reviewedAt?: boolean
+    reviewedBy?: boolean
+  }
+
+  export type GameDepositOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "walletId" | "userId" | "amount" | "method" | "screenshotUrl" | "status" | "rejectionReason" | "submittedAt" | "reviewedAt" | "reviewedBy", ExtArgs["result"]["gameDeposit"]>
+  export type GameDepositInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    wallet?: boolean | GameWalletDefaultArgs<ExtArgs>
+  }
+
+  export type $GameDepositPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GameDeposit"
+    objects: {
+      wallet: Prisma.$GameWalletPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      walletId: string
+      userId: string
+      amount: number
+      method: $Enums.PaymentMethod
+      screenshotUrl: string
+      status: $Enums.GameDepositStatus
+      rejectionReason: string | null
+      submittedAt: Date
+      reviewedAt: Date | null
+      reviewedBy: string | null
+    }, ExtArgs["result"]["gameDeposit"]>
+    composites: {}
+  }
+
+  type GameDepositGetPayload<S extends boolean | null | undefined | GameDepositDefaultArgs> = $Result.GetResult<Prisma.$GameDepositPayload, S>
+
+  type GameDepositCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GameDepositFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GameDepositCountAggregateInputType | true
+    }
+
+  export interface GameDepositDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GameDeposit'], meta: { name: 'GameDeposit' } }
+    /**
+     * Find zero or one GameDeposit that matches the filter.
+     * @param {GameDepositFindUniqueArgs} args - Arguments to find a GameDeposit
+     * @example
+     * // Get one GameDeposit
+     * const gameDeposit = await prisma.gameDeposit.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GameDepositFindUniqueArgs>(args: SelectSubset<T, GameDepositFindUniqueArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GameDeposit that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GameDepositFindUniqueOrThrowArgs} args - Arguments to find a GameDeposit
+     * @example
+     * // Get one GameDeposit
+     * const gameDeposit = await prisma.gameDeposit.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GameDepositFindUniqueOrThrowArgs>(args: SelectSubset<T, GameDepositFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameDeposit that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositFindFirstArgs} args - Arguments to find a GameDeposit
+     * @example
+     * // Get one GameDeposit
+     * const gameDeposit = await prisma.gameDeposit.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GameDepositFindFirstArgs>(args?: SelectSubset<T, GameDepositFindFirstArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameDeposit that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositFindFirstOrThrowArgs} args - Arguments to find a GameDeposit
+     * @example
+     * // Get one GameDeposit
+     * const gameDeposit = await prisma.gameDeposit.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GameDepositFindFirstOrThrowArgs>(args?: SelectSubset<T, GameDepositFindFirstOrThrowArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GameDeposits that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GameDeposits
+     * const gameDeposits = await prisma.gameDeposit.findMany()
+     * 
+     * // Get first 10 GameDeposits
+     * const gameDeposits = await prisma.gameDeposit.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const gameDepositWithIdOnly = await prisma.gameDeposit.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GameDepositFindManyArgs>(args?: SelectSubset<T, GameDepositFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GameDeposit.
+     * @param {GameDepositCreateArgs} args - Arguments to create a GameDeposit.
+     * @example
+     * // Create one GameDeposit
+     * const GameDeposit = await prisma.gameDeposit.create({
+     *   data: {
+     *     // ... data to create a GameDeposit
+     *   }
+     * })
+     * 
+     */
+    create<T extends GameDepositCreateArgs>(args: SelectSubset<T, GameDepositCreateArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GameDeposits.
+     * @param {GameDepositCreateManyArgs} args - Arguments to create many GameDeposits.
+     * @example
+     * // Create many GameDeposits
+     * const gameDeposit = await prisma.gameDeposit.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GameDepositCreateManyArgs>(args?: SelectSubset<T, GameDepositCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a GameDeposit.
+     * @param {GameDepositDeleteArgs} args - Arguments to delete one GameDeposit.
+     * @example
+     * // Delete one GameDeposit
+     * const GameDeposit = await prisma.gameDeposit.delete({
+     *   where: {
+     *     // ... filter to delete one GameDeposit
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GameDepositDeleteArgs>(args: SelectSubset<T, GameDepositDeleteArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GameDeposit.
+     * @param {GameDepositUpdateArgs} args - Arguments to update one GameDeposit.
+     * @example
+     * // Update one GameDeposit
+     * const gameDeposit = await prisma.gameDeposit.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GameDepositUpdateArgs>(args: SelectSubset<T, GameDepositUpdateArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GameDeposits.
+     * @param {GameDepositDeleteManyArgs} args - Arguments to filter GameDeposits to delete.
+     * @example
+     * // Delete a few GameDeposits
+     * const { count } = await prisma.gameDeposit.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GameDepositDeleteManyArgs>(args?: SelectSubset<T, GameDepositDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GameDeposits.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GameDeposits
+     * const gameDeposit = await prisma.gameDeposit.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GameDepositUpdateManyArgs>(args: SelectSubset<T, GameDepositUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one GameDeposit.
+     * @param {GameDepositUpsertArgs} args - Arguments to update or create a GameDeposit.
+     * @example
+     * // Update or create a GameDeposit
+     * const gameDeposit = await prisma.gameDeposit.upsert({
+     *   create: {
+     *     // ... data to create a GameDeposit
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GameDeposit we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GameDepositUpsertArgs>(args: SelectSubset<T, GameDepositUpsertArgs<ExtArgs>>): Prisma__GameDepositClient<$Result.GetResult<Prisma.$GameDepositPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GameDeposits.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositCountArgs} args - Arguments to filter GameDeposits to count.
+     * @example
+     * // Count the number of GameDeposits
+     * const count = await prisma.gameDeposit.count({
+     *   where: {
+     *     // ... the filter for the GameDeposits we want to count
+     *   }
+     * })
+    **/
+    count<T extends GameDepositCountArgs>(
+      args?: Subset<T, GameDepositCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GameDepositCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GameDeposit.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GameDepositAggregateArgs>(args: Subset<T, GameDepositAggregateArgs>): Prisma.PrismaPromise<GetGameDepositAggregateType<T>>
+
+    /**
+     * Group by GameDeposit.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameDepositGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GameDepositGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GameDepositGroupByArgs['orderBy'] }
+        : { orderBy?: GameDepositGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GameDepositGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGameDepositGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GameDeposit model
+   */
+  readonly fields: GameDepositFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GameDeposit.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GameDepositClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    wallet<T extends GameWalletDefaultArgs<ExtArgs> = {}>(args?: Subset<T, GameWalletDefaultArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GameDeposit model
+   */
+  interface GameDepositFieldRefs {
+    readonly id: FieldRef<"GameDeposit", 'String'>
+    readonly walletId: FieldRef<"GameDeposit", 'String'>
+    readonly userId: FieldRef<"GameDeposit", 'String'>
+    readonly amount: FieldRef<"GameDeposit", 'Int'>
+    readonly method: FieldRef<"GameDeposit", 'PaymentMethod'>
+    readonly screenshotUrl: FieldRef<"GameDeposit", 'String'>
+    readonly status: FieldRef<"GameDeposit", 'GameDepositStatus'>
+    readonly rejectionReason: FieldRef<"GameDeposit", 'String'>
+    readonly submittedAt: FieldRef<"GameDeposit", 'DateTime'>
+    readonly reviewedAt: FieldRef<"GameDeposit", 'DateTime'>
+    readonly reviewedBy: FieldRef<"GameDeposit", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GameDeposit findUnique
+   */
+  export type GameDepositFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * Filter, which GameDeposit to fetch.
+     */
+    where: GameDepositWhereUniqueInput
+  }
+
+  /**
+   * GameDeposit findUniqueOrThrow
+   */
+  export type GameDepositFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * Filter, which GameDeposit to fetch.
+     */
+    where: GameDepositWhereUniqueInput
+  }
+
+  /**
+   * GameDeposit findFirst
+   */
+  export type GameDepositFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * Filter, which GameDeposit to fetch.
+     */
+    where?: GameDepositWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameDeposits to fetch.
+     */
+    orderBy?: GameDepositOrderByWithRelationInput | GameDepositOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameDeposits.
+     */
+    cursor?: GameDepositWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameDeposits from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameDeposits.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameDeposits.
+     */
+    distinct?: GameDepositScalarFieldEnum | GameDepositScalarFieldEnum[]
+  }
+
+  /**
+   * GameDeposit findFirstOrThrow
+   */
+  export type GameDepositFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * Filter, which GameDeposit to fetch.
+     */
+    where?: GameDepositWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameDeposits to fetch.
+     */
+    orderBy?: GameDepositOrderByWithRelationInput | GameDepositOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameDeposits.
+     */
+    cursor?: GameDepositWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameDeposits from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameDeposits.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameDeposits.
+     */
+    distinct?: GameDepositScalarFieldEnum | GameDepositScalarFieldEnum[]
+  }
+
+  /**
+   * GameDeposit findMany
+   */
+  export type GameDepositFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * Filter, which GameDeposits to fetch.
+     */
+    where?: GameDepositWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameDeposits to fetch.
+     */
+    orderBy?: GameDepositOrderByWithRelationInput | GameDepositOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GameDeposits.
+     */
+    cursor?: GameDepositWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameDeposits from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameDeposits.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameDeposits.
+     */
+    distinct?: GameDepositScalarFieldEnum | GameDepositScalarFieldEnum[]
+  }
+
+  /**
+   * GameDeposit create
+   */
+  export type GameDepositCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * The data needed to create a GameDeposit.
+     */
+    data: XOR<GameDepositCreateInput, GameDepositUncheckedCreateInput>
+  }
+
+  /**
+   * GameDeposit createMany
+   */
+  export type GameDepositCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GameDeposits.
+     */
+    data: GameDepositCreateManyInput | GameDepositCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GameDeposit update
+   */
+  export type GameDepositUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * The data needed to update a GameDeposit.
+     */
+    data: XOR<GameDepositUpdateInput, GameDepositUncheckedUpdateInput>
+    /**
+     * Choose, which GameDeposit to update.
+     */
+    where: GameDepositWhereUniqueInput
+  }
+
+  /**
+   * GameDeposit updateMany
+   */
+  export type GameDepositUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GameDeposits.
+     */
+    data: XOR<GameDepositUpdateManyMutationInput, GameDepositUncheckedUpdateManyInput>
+    /**
+     * Filter which GameDeposits to update
+     */
+    where?: GameDepositWhereInput
+    /**
+     * Limit how many GameDeposits to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameDeposit upsert
+   */
+  export type GameDepositUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * The filter to search for the GameDeposit to update in case it exists.
+     */
+    where: GameDepositWhereUniqueInput
+    /**
+     * In case the GameDeposit found by the `where` argument doesn't exist, create a new GameDeposit with this data.
+     */
+    create: XOR<GameDepositCreateInput, GameDepositUncheckedCreateInput>
+    /**
+     * In case the GameDeposit was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GameDepositUpdateInput, GameDepositUncheckedUpdateInput>
+  }
+
+  /**
+   * GameDeposit delete
+   */
+  export type GameDepositDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+    /**
+     * Filter which GameDeposit to delete.
+     */
+    where: GameDepositWhereUniqueInput
+  }
+
+  /**
+   * GameDeposit deleteMany
+   */
+  export type GameDepositDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameDeposits to delete
+     */
+    where?: GameDepositWhereInput
+    /**
+     * Limit how many GameDeposits to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameDeposit without action
+   */
+  export type GameDepositDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameDeposit
+     */
+    select?: GameDepositSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameDeposit
+     */
+    omit?: GameDepositOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameDepositInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model GameSession
+   */
+
+  export type AggregateGameSession = {
+    _count: GameSessionCountAggregateOutputType | null
+    _avg: GameSessionAvgAggregateOutputType | null
+    _sum: GameSessionSumAggregateOutputType | null
+    _min: GameSessionMinAggregateOutputType | null
+    _max: GameSessionMaxAggregateOutputType | null
+  }
+
+  export type GameSessionAvgAggregateOutputType = {
+    wagerAmount: number | null
+    finalScore: number | null
+    winAmount: number | null
+  }
+
+  export type GameSessionSumAggregateOutputType = {
+    wagerAmount: number | null
+    finalScore: number | null
+    winAmount: number | null
+  }
+
+  export type GameSessionMinAggregateOutputType = {
+    id: string | null
+    walletId: string | null
+    userId: string | null
+    wagerAmount: number | null
+    finalScore: number | null
+    winAmount: number | null
+    startedAt: Date | null
+    endedAt: Date | null
+    completed: boolean | null
+  }
+
+  export type GameSessionMaxAggregateOutputType = {
+    id: string | null
+    walletId: string | null
+    userId: string | null
+    wagerAmount: number | null
+    finalScore: number | null
+    winAmount: number | null
+    startedAt: Date | null
+    endedAt: Date | null
+    completed: boolean | null
+  }
+
+  export type GameSessionCountAggregateOutputType = {
+    id: number
+    walletId: number
+    userId: number
+    wagerAmount: number
+    finalScore: number
+    winAmount: number
+    milestones: number
+    startedAt: number
+    endedAt: number
+    completed: number
+    _all: number
+  }
+
+
+  export type GameSessionAvgAggregateInputType = {
+    wagerAmount?: true
+    finalScore?: true
+    winAmount?: true
+  }
+
+  export type GameSessionSumAggregateInputType = {
+    wagerAmount?: true
+    finalScore?: true
+    winAmount?: true
+  }
+
+  export type GameSessionMinAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    wagerAmount?: true
+    finalScore?: true
+    winAmount?: true
+    startedAt?: true
+    endedAt?: true
+    completed?: true
+  }
+
+  export type GameSessionMaxAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    wagerAmount?: true
+    finalScore?: true
+    winAmount?: true
+    startedAt?: true
+    endedAt?: true
+    completed?: true
+  }
+
+  export type GameSessionCountAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    wagerAmount?: true
+    finalScore?: true
+    winAmount?: true
+    milestones?: true
+    startedAt?: true
+    endedAt?: true
+    completed?: true
+    _all?: true
+  }
+
+  export type GameSessionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameSession to aggregate.
+     */
+    where?: GameSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameSessions to fetch.
+     */
+    orderBy?: GameSessionOrderByWithRelationInput | GameSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GameSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GameSessions
+    **/
+    _count?: true | GameSessionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GameSessionAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GameSessionSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GameSessionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GameSessionMaxAggregateInputType
+  }
+
+  export type GetGameSessionAggregateType<T extends GameSessionAggregateArgs> = {
+        [P in keyof T & keyof AggregateGameSession]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGameSession[P]>
+      : GetScalarType<T[P], AggregateGameSession[P]>
+  }
+
+
+
+
+  export type GameSessionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameSessionWhereInput
+    orderBy?: GameSessionOrderByWithAggregationInput | GameSessionOrderByWithAggregationInput[]
+    by: GameSessionScalarFieldEnum[] | GameSessionScalarFieldEnum
+    having?: GameSessionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GameSessionCountAggregateInputType | true
+    _avg?: GameSessionAvgAggregateInputType
+    _sum?: GameSessionSumAggregateInputType
+    _min?: GameSessionMinAggregateInputType
+    _max?: GameSessionMaxAggregateInputType
+  }
+
+  export type GameSessionGroupByOutputType = {
+    id: string
+    walletId: string
+    userId: string
+    wagerAmount: number
+    finalScore: number
+    winAmount: number
+    milestones: JsonValue
+    startedAt: Date
+    endedAt: Date | null
+    completed: boolean
+    _count: GameSessionCountAggregateOutputType | null
+    _avg: GameSessionAvgAggregateOutputType | null
+    _sum: GameSessionSumAggregateOutputType | null
+    _min: GameSessionMinAggregateOutputType | null
+    _max: GameSessionMaxAggregateOutputType | null
+  }
+
+  type GetGameSessionGroupByPayload<T extends GameSessionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GameSessionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GameSessionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GameSessionGroupByOutputType[P]>
+            : GetScalarType<T[P], GameSessionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GameSessionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    walletId?: boolean
+    userId?: boolean
+    wagerAmount?: boolean
+    finalScore?: boolean
+    winAmount?: boolean
+    milestones?: boolean
+    startedAt?: boolean
+    endedAt?: boolean
+    completed?: boolean
+    wallet?: boolean | GameWalletDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["gameSession"]>
+
+
+
+  export type GameSessionSelectScalar = {
+    id?: boolean
+    walletId?: boolean
+    userId?: boolean
+    wagerAmount?: boolean
+    finalScore?: boolean
+    winAmount?: boolean
+    milestones?: boolean
+    startedAt?: boolean
+    endedAt?: boolean
+    completed?: boolean
+  }
+
+  export type GameSessionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "walletId" | "userId" | "wagerAmount" | "finalScore" | "winAmount" | "milestones" | "startedAt" | "endedAt" | "completed", ExtArgs["result"]["gameSession"]>
+  export type GameSessionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    wallet?: boolean | GameWalletDefaultArgs<ExtArgs>
+  }
+
+  export type $GameSessionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GameSession"
+    objects: {
+      wallet: Prisma.$GameWalletPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      walletId: string
+      userId: string
+      wagerAmount: number
+      finalScore: number
+      winAmount: number
+      milestones: Prisma.JsonValue
+      startedAt: Date
+      endedAt: Date | null
+      completed: boolean
+    }, ExtArgs["result"]["gameSession"]>
+    composites: {}
+  }
+
+  type GameSessionGetPayload<S extends boolean | null | undefined | GameSessionDefaultArgs> = $Result.GetResult<Prisma.$GameSessionPayload, S>
+
+  type GameSessionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GameSessionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GameSessionCountAggregateInputType | true
+    }
+
+  export interface GameSessionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GameSession'], meta: { name: 'GameSession' } }
+    /**
+     * Find zero or one GameSession that matches the filter.
+     * @param {GameSessionFindUniqueArgs} args - Arguments to find a GameSession
+     * @example
+     * // Get one GameSession
+     * const gameSession = await prisma.gameSession.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GameSessionFindUniqueArgs>(args: SelectSubset<T, GameSessionFindUniqueArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GameSession that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GameSessionFindUniqueOrThrowArgs} args - Arguments to find a GameSession
+     * @example
+     * // Get one GameSession
+     * const gameSession = await prisma.gameSession.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GameSessionFindUniqueOrThrowArgs>(args: SelectSubset<T, GameSessionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameSession that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionFindFirstArgs} args - Arguments to find a GameSession
+     * @example
+     * // Get one GameSession
+     * const gameSession = await prisma.gameSession.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GameSessionFindFirstArgs>(args?: SelectSubset<T, GameSessionFindFirstArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameSession that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionFindFirstOrThrowArgs} args - Arguments to find a GameSession
+     * @example
+     * // Get one GameSession
+     * const gameSession = await prisma.gameSession.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GameSessionFindFirstOrThrowArgs>(args?: SelectSubset<T, GameSessionFindFirstOrThrowArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GameSessions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GameSessions
+     * const gameSessions = await prisma.gameSession.findMany()
+     * 
+     * // Get first 10 GameSessions
+     * const gameSessions = await prisma.gameSession.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const gameSessionWithIdOnly = await prisma.gameSession.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GameSessionFindManyArgs>(args?: SelectSubset<T, GameSessionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GameSession.
+     * @param {GameSessionCreateArgs} args - Arguments to create a GameSession.
+     * @example
+     * // Create one GameSession
+     * const GameSession = await prisma.gameSession.create({
+     *   data: {
+     *     // ... data to create a GameSession
+     *   }
+     * })
+     * 
+     */
+    create<T extends GameSessionCreateArgs>(args: SelectSubset<T, GameSessionCreateArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GameSessions.
+     * @param {GameSessionCreateManyArgs} args - Arguments to create many GameSessions.
+     * @example
+     * // Create many GameSessions
+     * const gameSession = await prisma.gameSession.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GameSessionCreateManyArgs>(args?: SelectSubset<T, GameSessionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a GameSession.
+     * @param {GameSessionDeleteArgs} args - Arguments to delete one GameSession.
+     * @example
+     * // Delete one GameSession
+     * const GameSession = await prisma.gameSession.delete({
+     *   where: {
+     *     // ... filter to delete one GameSession
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GameSessionDeleteArgs>(args: SelectSubset<T, GameSessionDeleteArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GameSession.
+     * @param {GameSessionUpdateArgs} args - Arguments to update one GameSession.
+     * @example
+     * // Update one GameSession
+     * const gameSession = await prisma.gameSession.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GameSessionUpdateArgs>(args: SelectSubset<T, GameSessionUpdateArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GameSessions.
+     * @param {GameSessionDeleteManyArgs} args - Arguments to filter GameSessions to delete.
+     * @example
+     * // Delete a few GameSessions
+     * const { count } = await prisma.gameSession.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GameSessionDeleteManyArgs>(args?: SelectSubset<T, GameSessionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GameSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GameSessions
+     * const gameSession = await prisma.gameSession.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GameSessionUpdateManyArgs>(args: SelectSubset<T, GameSessionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one GameSession.
+     * @param {GameSessionUpsertArgs} args - Arguments to update or create a GameSession.
+     * @example
+     * // Update or create a GameSession
+     * const gameSession = await prisma.gameSession.upsert({
+     *   create: {
+     *     // ... data to create a GameSession
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GameSession we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GameSessionUpsertArgs>(args: SelectSubset<T, GameSessionUpsertArgs<ExtArgs>>): Prisma__GameSessionClient<$Result.GetResult<Prisma.$GameSessionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GameSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionCountArgs} args - Arguments to filter GameSessions to count.
+     * @example
+     * // Count the number of GameSessions
+     * const count = await prisma.gameSession.count({
+     *   where: {
+     *     // ... the filter for the GameSessions we want to count
+     *   }
+     * })
+    **/
+    count<T extends GameSessionCountArgs>(
+      args?: Subset<T, GameSessionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GameSessionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GameSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GameSessionAggregateArgs>(args: Subset<T, GameSessionAggregateArgs>): Prisma.PrismaPromise<GetGameSessionAggregateType<T>>
+
+    /**
+     * Group by GameSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameSessionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GameSessionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GameSessionGroupByArgs['orderBy'] }
+        : { orderBy?: GameSessionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GameSessionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGameSessionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GameSession model
+   */
+  readonly fields: GameSessionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GameSession.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GameSessionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    wallet<T extends GameWalletDefaultArgs<ExtArgs> = {}>(args?: Subset<T, GameWalletDefaultArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GameSession model
+   */
+  interface GameSessionFieldRefs {
+    readonly id: FieldRef<"GameSession", 'String'>
+    readonly walletId: FieldRef<"GameSession", 'String'>
+    readonly userId: FieldRef<"GameSession", 'String'>
+    readonly wagerAmount: FieldRef<"GameSession", 'Int'>
+    readonly finalScore: FieldRef<"GameSession", 'Int'>
+    readonly winAmount: FieldRef<"GameSession", 'Int'>
+    readonly milestones: FieldRef<"GameSession", 'Json'>
+    readonly startedAt: FieldRef<"GameSession", 'DateTime'>
+    readonly endedAt: FieldRef<"GameSession", 'DateTime'>
+    readonly completed: FieldRef<"GameSession", 'Boolean'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GameSession findUnique
+   */
+  export type GameSessionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which GameSession to fetch.
+     */
+    where: GameSessionWhereUniqueInput
+  }
+
+  /**
+   * GameSession findUniqueOrThrow
+   */
+  export type GameSessionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which GameSession to fetch.
+     */
+    where: GameSessionWhereUniqueInput
+  }
+
+  /**
+   * GameSession findFirst
+   */
+  export type GameSessionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which GameSession to fetch.
+     */
+    where?: GameSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameSessions to fetch.
+     */
+    orderBy?: GameSessionOrderByWithRelationInput | GameSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameSessions.
+     */
+    cursor?: GameSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameSessions.
+     */
+    distinct?: GameSessionScalarFieldEnum | GameSessionScalarFieldEnum[]
+  }
+
+  /**
+   * GameSession findFirstOrThrow
+   */
+  export type GameSessionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which GameSession to fetch.
+     */
+    where?: GameSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameSessions to fetch.
+     */
+    orderBy?: GameSessionOrderByWithRelationInput | GameSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameSessions.
+     */
+    cursor?: GameSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameSessions.
+     */
+    distinct?: GameSessionScalarFieldEnum | GameSessionScalarFieldEnum[]
+  }
+
+  /**
+   * GameSession findMany
+   */
+  export type GameSessionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which GameSessions to fetch.
+     */
+    where?: GameSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameSessions to fetch.
+     */
+    orderBy?: GameSessionOrderByWithRelationInput | GameSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GameSessions.
+     */
+    cursor?: GameSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameSessions.
+     */
+    distinct?: GameSessionScalarFieldEnum | GameSessionScalarFieldEnum[]
+  }
+
+  /**
+   * GameSession create
+   */
+  export type GameSessionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a GameSession.
+     */
+    data: XOR<GameSessionCreateInput, GameSessionUncheckedCreateInput>
+  }
+
+  /**
+   * GameSession createMany
+   */
+  export type GameSessionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GameSessions.
+     */
+    data: GameSessionCreateManyInput | GameSessionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GameSession update
+   */
+  export type GameSessionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a GameSession.
+     */
+    data: XOR<GameSessionUpdateInput, GameSessionUncheckedUpdateInput>
+    /**
+     * Choose, which GameSession to update.
+     */
+    where: GameSessionWhereUniqueInput
+  }
+
+  /**
+   * GameSession updateMany
+   */
+  export type GameSessionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GameSessions.
+     */
+    data: XOR<GameSessionUpdateManyMutationInput, GameSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which GameSessions to update
+     */
+    where?: GameSessionWhereInput
+    /**
+     * Limit how many GameSessions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameSession upsert
+   */
+  export type GameSessionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the GameSession to update in case it exists.
+     */
+    where: GameSessionWhereUniqueInput
+    /**
+     * In case the GameSession found by the `where` argument doesn't exist, create a new GameSession with this data.
+     */
+    create: XOR<GameSessionCreateInput, GameSessionUncheckedCreateInput>
+    /**
+     * In case the GameSession was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GameSessionUpdateInput, GameSessionUncheckedUpdateInput>
+  }
+
+  /**
+   * GameSession delete
+   */
+  export type GameSessionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+    /**
+     * Filter which GameSession to delete.
+     */
+    where: GameSessionWhereUniqueInput
+  }
+
+  /**
+   * GameSession deleteMany
+   */
+  export type GameSessionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameSessions to delete
+     */
+    where?: GameSessionWhereInput
+    /**
+     * Limit how many GameSessions to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameSession without action
+   */
+  export type GameSessionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameSession
+     */
+    select?: GameSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameSession
+     */
+    omit?: GameSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameSessionInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model GameWithdrawal
+   */
+
+  export type AggregateGameWithdrawal = {
+    _count: GameWithdrawalCountAggregateOutputType | null
+    _avg: GameWithdrawalAvgAggregateOutputType | null
+    _sum: GameWithdrawalSumAggregateOutputType | null
+    _min: GameWithdrawalMinAggregateOutputType | null
+    _max: GameWithdrawalMaxAggregateOutputType | null
+  }
+
+  export type GameWithdrawalAvgAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type GameWithdrawalSumAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type GameWithdrawalMinAggregateOutputType = {
+    id: string | null
+    walletId: string | null
+    userId: string | null
+    amount: number | null
+    method: string | null
+    accountNumber: string | null
+    accountName: string | null
+    status: $Enums.GameWithdrawalStatus | null
+    rejectionReason: string | null
+    submittedAt: Date | null
+    reviewedAt: Date | null
+    reviewedBy: string | null
+  }
+
+  export type GameWithdrawalMaxAggregateOutputType = {
+    id: string | null
+    walletId: string | null
+    userId: string | null
+    amount: number | null
+    method: string | null
+    accountNumber: string | null
+    accountName: string | null
+    status: $Enums.GameWithdrawalStatus | null
+    rejectionReason: string | null
+    submittedAt: Date | null
+    reviewedAt: Date | null
+    reviewedBy: string | null
+  }
+
+  export type GameWithdrawalCountAggregateOutputType = {
+    id: number
+    walletId: number
+    userId: number
+    amount: number
+    method: number
+    accountNumber: number
+    accountName: number
+    status: number
+    rejectionReason: number
+    submittedAt: number
+    reviewedAt: number
+    reviewedBy: number
+    _all: number
+  }
+
+
+  export type GameWithdrawalAvgAggregateInputType = {
+    amount?: true
+  }
+
+  export type GameWithdrawalSumAggregateInputType = {
+    amount?: true
+  }
+
+  export type GameWithdrawalMinAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    amount?: true
+    method?: true
+    accountNumber?: true
+    accountName?: true
+    status?: true
+    rejectionReason?: true
+    submittedAt?: true
+    reviewedAt?: true
+    reviewedBy?: true
+  }
+
+  export type GameWithdrawalMaxAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    amount?: true
+    method?: true
+    accountNumber?: true
+    accountName?: true
+    status?: true
+    rejectionReason?: true
+    submittedAt?: true
+    reviewedAt?: true
+    reviewedBy?: true
+  }
+
+  export type GameWithdrawalCountAggregateInputType = {
+    id?: true
+    walletId?: true
+    userId?: true
+    amount?: true
+    method?: true
+    accountNumber?: true
+    accountName?: true
+    status?: true
+    rejectionReason?: true
+    submittedAt?: true
+    reviewedAt?: true
+    reviewedBy?: true
+    _all?: true
+  }
+
+  export type GameWithdrawalAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameWithdrawal to aggregate.
+     */
+    where?: GameWithdrawalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWithdrawals to fetch.
+     */
+    orderBy?: GameWithdrawalOrderByWithRelationInput | GameWithdrawalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GameWithdrawalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWithdrawals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWithdrawals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GameWithdrawals
+    **/
+    _count?: true | GameWithdrawalCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GameWithdrawalAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GameWithdrawalSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GameWithdrawalMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GameWithdrawalMaxAggregateInputType
+  }
+
+  export type GetGameWithdrawalAggregateType<T extends GameWithdrawalAggregateArgs> = {
+        [P in keyof T & keyof AggregateGameWithdrawal]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGameWithdrawal[P]>
+      : GetScalarType<T[P], AggregateGameWithdrawal[P]>
+  }
+
+
+
+
+  export type GameWithdrawalGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GameWithdrawalWhereInput
+    orderBy?: GameWithdrawalOrderByWithAggregationInput | GameWithdrawalOrderByWithAggregationInput[]
+    by: GameWithdrawalScalarFieldEnum[] | GameWithdrawalScalarFieldEnum
+    having?: GameWithdrawalScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GameWithdrawalCountAggregateInputType | true
+    _avg?: GameWithdrawalAvgAggregateInputType
+    _sum?: GameWithdrawalSumAggregateInputType
+    _min?: GameWithdrawalMinAggregateInputType
+    _max?: GameWithdrawalMaxAggregateInputType
+  }
+
+  export type GameWithdrawalGroupByOutputType = {
+    id: string
+    walletId: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status: $Enums.GameWithdrawalStatus
+    rejectionReason: string | null
+    submittedAt: Date
+    reviewedAt: Date | null
+    reviewedBy: string | null
+    _count: GameWithdrawalCountAggregateOutputType | null
+    _avg: GameWithdrawalAvgAggregateOutputType | null
+    _sum: GameWithdrawalSumAggregateOutputType | null
+    _min: GameWithdrawalMinAggregateOutputType | null
+    _max: GameWithdrawalMaxAggregateOutputType | null
+  }
+
+  type GetGameWithdrawalGroupByPayload<T extends GameWithdrawalGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GameWithdrawalGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GameWithdrawalGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GameWithdrawalGroupByOutputType[P]>
+            : GetScalarType<T[P], GameWithdrawalGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GameWithdrawalSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    walletId?: boolean
+    userId?: boolean
+    amount?: boolean
+    method?: boolean
+    accountNumber?: boolean
+    accountName?: boolean
+    status?: boolean
+    rejectionReason?: boolean
+    submittedAt?: boolean
+    reviewedAt?: boolean
+    reviewedBy?: boolean
+    wallet?: boolean | GameWalletDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["gameWithdrawal"]>
+
+
+
+  export type GameWithdrawalSelectScalar = {
+    id?: boolean
+    walletId?: boolean
+    userId?: boolean
+    amount?: boolean
+    method?: boolean
+    accountNumber?: boolean
+    accountName?: boolean
+    status?: boolean
+    rejectionReason?: boolean
+    submittedAt?: boolean
+    reviewedAt?: boolean
+    reviewedBy?: boolean
+  }
+
+  export type GameWithdrawalOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "walletId" | "userId" | "amount" | "method" | "accountNumber" | "accountName" | "status" | "rejectionReason" | "submittedAt" | "reviewedAt" | "reviewedBy", ExtArgs["result"]["gameWithdrawal"]>
+  export type GameWithdrawalInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    wallet?: boolean | GameWalletDefaultArgs<ExtArgs>
+  }
+
+  export type $GameWithdrawalPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GameWithdrawal"
+    objects: {
+      wallet: Prisma.$GameWalletPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      walletId: string
+      userId: string
+      amount: number
+      method: string
+      accountNumber: string
+      accountName: string
+      status: $Enums.GameWithdrawalStatus
+      rejectionReason: string | null
+      submittedAt: Date
+      reviewedAt: Date | null
+      reviewedBy: string | null
+    }, ExtArgs["result"]["gameWithdrawal"]>
+    composites: {}
+  }
+
+  type GameWithdrawalGetPayload<S extends boolean | null | undefined | GameWithdrawalDefaultArgs> = $Result.GetResult<Prisma.$GameWithdrawalPayload, S>
+
+  type GameWithdrawalCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GameWithdrawalFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GameWithdrawalCountAggregateInputType | true
+    }
+
+  export interface GameWithdrawalDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GameWithdrawal'], meta: { name: 'GameWithdrawal' } }
+    /**
+     * Find zero or one GameWithdrawal that matches the filter.
+     * @param {GameWithdrawalFindUniqueArgs} args - Arguments to find a GameWithdrawal
+     * @example
+     * // Get one GameWithdrawal
+     * const gameWithdrawal = await prisma.gameWithdrawal.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GameWithdrawalFindUniqueArgs>(args: SelectSubset<T, GameWithdrawalFindUniqueArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GameWithdrawal that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GameWithdrawalFindUniqueOrThrowArgs} args - Arguments to find a GameWithdrawal
+     * @example
+     * // Get one GameWithdrawal
+     * const gameWithdrawal = await prisma.gameWithdrawal.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GameWithdrawalFindUniqueOrThrowArgs>(args: SelectSubset<T, GameWithdrawalFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameWithdrawal that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalFindFirstArgs} args - Arguments to find a GameWithdrawal
+     * @example
+     * // Get one GameWithdrawal
+     * const gameWithdrawal = await prisma.gameWithdrawal.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GameWithdrawalFindFirstArgs>(args?: SelectSubset<T, GameWithdrawalFindFirstArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GameWithdrawal that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalFindFirstOrThrowArgs} args - Arguments to find a GameWithdrawal
+     * @example
+     * // Get one GameWithdrawal
+     * const gameWithdrawal = await prisma.gameWithdrawal.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GameWithdrawalFindFirstOrThrowArgs>(args?: SelectSubset<T, GameWithdrawalFindFirstOrThrowArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GameWithdrawals that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GameWithdrawals
+     * const gameWithdrawals = await prisma.gameWithdrawal.findMany()
+     * 
+     * // Get first 10 GameWithdrawals
+     * const gameWithdrawals = await prisma.gameWithdrawal.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const gameWithdrawalWithIdOnly = await prisma.gameWithdrawal.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GameWithdrawalFindManyArgs>(args?: SelectSubset<T, GameWithdrawalFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GameWithdrawal.
+     * @param {GameWithdrawalCreateArgs} args - Arguments to create a GameWithdrawal.
+     * @example
+     * // Create one GameWithdrawal
+     * const GameWithdrawal = await prisma.gameWithdrawal.create({
+     *   data: {
+     *     // ... data to create a GameWithdrawal
+     *   }
+     * })
+     * 
+     */
+    create<T extends GameWithdrawalCreateArgs>(args: SelectSubset<T, GameWithdrawalCreateArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GameWithdrawals.
+     * @param {GameWithdrawalCreateManyArgs} args - Arguments to create many GameWithdrawals.
+     * @example
+     * // Create many GameWithdrawals
+     * const gameWithdrawal = await prisma.gameWithdrawal.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GameWithdrawalCreateManyArgs>(args?: SelectSubset<T, GameWithdrawalCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a GameWithdrawal.
+     * @param {GameWithdrawalDeleteArgs} args - Arguments to delete one GameWithdrawal.
+     * @example
+     * // Delete one GameWithdrawal
+     * const GameWithdrawal = await prisma.gameWithdrawal.delete({
+     *   where: {
+     *     // ... filter to delete one GameWithdrawal
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GameWithdrawalDeleteArgs>(args: SelectSubset<T, GameWithdrawalDeleteArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GameWithdrawal.
+     * @param {GameWithdrawalUpdateArgs} args - Arguments to update one GameWithdrawal.
+     * @example
+     * // Update one GameWithdrawal
+     * const gameWithdrawal = await prisma.gameWithdrawal.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GameWithdrawalUpdateArgs>(args: SelectSubset<T, GameWithdrawalUpdateArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GameWithdrawals.
+     * @param {GameWithdrawalDeleteManyArgs} args - Arguments to filter GameWithdrawals to delete.
+     * @example
+     * // Delete a few GameWithdrawals
+     * const { count } = await prisma.gameWithdrawal.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GameWithdrawalDeleteManyArgs>(args?: SelectSubset<T, GameWithdrawalDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GameWithdrawals.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GameWithdrawals
+     * const gameWithdrawal = await prisma.gameWithdrawal.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GameWithdrawalUpdateManyArgs>(args: SelectSubset<T, GameWithdrawalUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one GameWithdrawal.
+     * @param {GameWithdrawalUpsertArgs} args - Arguments to update or create a GameWithdrawal.
+     * @example
+     * // Update or create a GameWithdrawal
+     * const gameWithdrawal = await prisma.gameWithdrawal.upsert({
+     *   create: {
+     *     // ... data to create a GameWithdrawal
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GameWithdrawal we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GameWithdrawalUpsertArgs>(args: SelectSubset<T, GameWithdrawalUpsertArgs<ExtArgs>>): Prisma__GameWithdrawalClient<$Result.GetResult<Prisma.$GameWithdrawalPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GameWithdrawals.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalCountArgs} args - Arguments to filter GameWithdrawals to count.
+     * @example
+     * // Count the number of GameWithdrawals
+     * const count = await prisma.gameWithdrawal.count({
+     *   where: {
+     *     // ... the filter for the GameWithdrawals we want to count
+     *   }
+     * })
+    **/
+    count<T extends GameWithdrawalCountArgs>(
+      args?: Subset<T, GameWithdrawalCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GameWithdrawalCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GameWithdrawal.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GameWithdrawalAggregateArgs>(args: Subset<T, GameWithdrawalAggregateArgs>): Prisma.PrismaPromise<GetGameWithdrawalAggregateType<T>>
+
+    /**
+     * Group by GameWithdrawal.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GameWithdrawalGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GameWithdrawalGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GameWithdrawalGroupByArgs['orderBy'] }
+        : { orderBy?: GameWithdrawalGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GameWithdrawalGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGameWithdrawalGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GameWithdrawal model
+   */
+  readonly fields: GameWithdrawalFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GameWithdrawal.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GameWithdrawalClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    wallet<T extends GameWalletDefaultArgs<ExtArgs> = {}>(args?: Subset<T, GameWalletDefaultArgs<ExtArgs>>): Prisma__GameWalletClient<$Result.GetResult<Prisma.$GameWalletPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GameWithdrawal model
+   */
+  interface GameWithdrawalFieldRefs {
+    readonly id: FieldRef<"GameWithdrawal", 'String'>
+    readonly walletId: FieldRef<"GameWithdrawal", 'String'>
+    readonly userId: FieldRef<"GameWithdrawal", 'String'>
+    readonly amount: FieldRef<"GameWithdrawal", 'Int'>
+    readonly method: FieldRef<"GameWithdrawal", 'String'>
+    readonly accountNumber: FieldRef<"GameWithdrawal", 'String'>
+    readonly accountName: FieldRef<"GameWithdrawal", 'String'>
+    readonly status: FieldRef<"GameWithdrawal", 'GameWithdrawalStatus'>
+    readonly rejectionReason: FieldRef<"GameWithdrawal", 'String'>
+    readonly submittedAt: FieldRef<"GameWithdrawal", 'DateTime'>
+    readonly reviewedAt: FieldRef<"GameWithdrawal", 'DateTime'>
+    readonly reviewedBy: FieldRef<"GameWithdrawal", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GameWithdrawal findUnique
+   */
+  export type GameWithdrawalFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWithdrawal to fetch.
+     */
+    where: GameWithdrawalWhereUniqueInput
+  }
+
+  /**
+   * GameWithdrawal findUniqueOrThrow
+   */
+  export type GameWithdrawalFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWithdrawal to fetch.
+     */
+    where: GameWithdrawalWhereUniqueInput
+  }
+
+  /**
+   * GameWithdrawal findFirst
+   */
+  export type GameWithdrawalFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWithdrawal to fetch.
+     */
+    where?: GameWithdrawalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWithdrawals to fetch.
+     */
+    orderBy?: GameWithdrawalOrderByWithRelationInput | GameWithdrawalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameWithdrawals.
+     */
+    cursor?: GameWithdrawalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWithdrawals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWithdrawals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameWithdrawals.
+     */
+    distinct?: GameWithdrawalScalarFieldEnum | GameWithdrawalScalarFieldEnum[]
+  }
+
+  /**
+   * GameWithdrawal findFirstOrThrow
+   */
+  export type GameWithdrawalFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWithdrawal to fetch.
+     */
+    where?: GameWithdrawalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWithdrawals to fetch.
+     */
+    orderBy?: GameWithdrawalOrderByWithRelationInput | GameWithdrawalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GameWithdrawals.
+     */
+    cursor?: GameWithdrawalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWithdrawals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWithdrawals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameWithdrawals.
+     */
+    distinct?: GameWithdrawalScalarFieldEnum | GameWithdrawalScalarFieldEnum[]
+  }
+
+  /**
+   * GameWithdrawal findMany
+   */
+  export type GameWithdrawalFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * Filter, which GameWithdrawals to fetch.
+     */
+    where?: GameWithdrawalWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GameWithdrawals to fetch.
+     */
+    orderBy?: GameWithdrawalOrderByWithRelationInput | GameWithdrawalOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GameWithdrawals.
+     */
+    cursor?: GameWithdrawalWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GameWithdrawals from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GameWithdrawals.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GameWithdrawals.
+     */
+    distinct?: GameWithdrawalScalarFieldEnum | GameWithdrawalScalarFieldEnum[]
+  }
+
+  /**
+   * GameWithdrawal create
+   */
+  export type GameWithdrawalCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * The data needed to create a GameWithdrawal.
+     */
+    data: XOR<GameWithdrawalCreateInput, GameWithdrawalUncheckedCreateInput>
+  }
+
+  /**
+   * GameWithdrawal createMany
+   */
+  export type GameWithdrawalCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GameWithdrawals.
+     */
+    data: GameWithdrawalCreateManyInput | GameWithdrawalCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GameWithdrawal update
+   */
+  export type GameWithdrawalUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * The data needed to update a GameWithdrawal.
+     */
+    data: XOR<GameWithdrawalUpdateInput, GameWithdrawalUncheckedUpdateInput>
+    /**
+     * Choose, which GameWithdrawal to update.
+     */
+    where: GameWithdrawalWhereUniqueInput
+  }
+
+  /**
+   * GameWithdrawal updateMany
+   */
+  export type GameWithdrawalUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GameWithdrawals.
+     */
+    data: XOR<GameWithdrawalUpdateManyMutationInput, GameWithdrawalUncheckedUpdateManyInput>
+    /**
+     * Filter which GameWithdrawals to update
+     */
+    where?: GameWithdrawalWhereInput
+    /**
+     * Limit how many GameWithdrawals to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameWithdrawal upsert
+   */
+  export type GameWithdrawalUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * The filter to search for the GameWithdrawal to update in case it exists.
+     */
+    where: GameWithdrawalWhereUniqueInput
+    /**
+     * In case the GameWithdrawal found by the `where` argument doesn't exist, create a new GameWithdrawal with this data.
+     */
+    create: XOR<GameWithdrawalCreateInput, GameWithdrawalUncheckedCreateInput>
+    /**
+     * In case the GameWithdrawal was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GameWithdrawalUpdateInput, GameWithdrawalUncheckedUpdateInput>
+  }
+
+  /**
+   * GameWithdrawal delete
+   */
+  export type GameWithdrawalDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+    /**
+     * Filter which GameWithdrawal to delete.
+     */
+    where: GameWithdrawalWhereUniqueInput
+  }
+
+  /**
+   * GameWithdrawal deleteMany
+   */
+  export type GameWithdrawalDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GameWithdrawals to delete
+     */
+    where?: GameWithdrawalWhereInput
+    /**
+     * Limit how many GameWithdrawals to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GameWithdrawal without action
+   */
+  export type GameWithdrawalDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GameWithdrawal
+     */
+    select?: GameWithdrawalSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GameWithdrawal
+     */
+    omit?: GameWithdrawalOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GameWithdrawalInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -12804,12 +17416,14 @@ export namespace Prisma {
     id: 'id',
     name: 'name',
     email: 'email',
+    phone: 'phone',
     passwordHash: 'passwordHash',
     role: 'role',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     resetToken: 'resetToken',
-    resetTokenExpiry: 'resetTokenExpiry'
+    resetTokenExpiry: 'resetTokenExpiry',
+    blocked: 'blocked'
   };
 
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -12962,6 +17576,68 @@ export namespace Prisma {
   export type PlatformSettingScalarFieldEnum = (typeof PlatformSettingScalarFieldEnum)[keyof typeof PlatformSettingScalarFieldEnum]
 
 
+  export const GameWalletScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    balance: 'balance',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type GameWalletScalarFieldEnum = (typeof GameWalletScalarFieldEnum)[keyof typeof GameWalletScalarFieldEnum]
+
+
+  export const GameDepositScalarFieldEnum: {
+    id: 'id',
+    walletId: 'walletId',
+    userId: 'userId',
+    amount: 'amount',
+    method: 'method',
+    screenshotUrl: 'screenshotUrl',
+    status: 'status',
+    rejectionReason: 'rejectionReason',
+    submittedAt: 'submittedAt',
+    reviewedAt: 'reviewedAt',
+    reviewedBy: 'reviewedBy'
+  };
+
+  export type GameDepositScalarFieldEnum = (typeof GameDepositScalarFieldEnum)[keyof typeof GameDepositScalarFieldEnum]
+
+
+  export const GameSessionScalarFieldEnum: {
+    id: 'id',
+    walletId: 'walletId',
+    userId: 'userId',
+    wagerAmount: 'wagerAmount',
+    finalScore: 'finalScore',
+    winAmount: 'winAmount',
+    milestones: 'milestones',
+    startedAt: 'startedAt',
+    endedAt: 'endedAt',
+    completed: 'completed'
+  };
+
+  export type GameSessionScalarFieldEnum = (typeof GameSessionScalarFieldEnum)[keyof typeof GameSessionScalarFieldEnum]
+
+
+  export const GameWithdrawalScalarFieldEnum: {
+    id: 'id',
+    walletId: 'walletId',
+    userId: 'userId',
+    amount: 'amount',
+    method: 'method',
+    accountNumber: 'accountNumber',
+    accountName: 'accountName',
+    status: 'status',
+    rejectionReason: 'rejectionReason',
+    submittedAt: 'submittedAt',
+    reviewedAt: 'reviewedAt',
+    reviewedBy: 'reviewedBy'
+  };
+
+  export type GameWithdrawalScalarFieldEnum = (typeof GameWithdrawalScalarFieldEnum)[keyof typeof GameWithdrawalScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -12989,6 +17665,7 @@ export namespace Prisma {
     id: 'id',
     name: 'name',
     email: 'email',
+    phone: 'phone',
     passwordHash: 'passwordHash',
     resetToken: 'resetToken'
   };
@@ -13126,6 +17803,49 @@ export namespace Prisma {
   export type PlatformSettingOrderByRelevanceFieldEnum = (typeof PlatformSettingOrderByRelevanceFieldEnum)[keyof typeof PlatformSettingOrderByRelevanceFieldEnum]
 
 
+  export const GameWalletOrderByRelevanceFieldEnum: {
+    id: 'id',
+    userId: 'userId'
+  };
+
+  export type GameWalletOrderByRelevanceFieldEnum = (typeof GameWalletOrderByRelevanceFieldEnum)[keyof typeof GameWalletOrderByRelevanceFieldEnum]
+
+
+  export const GameDepositOrderByRelevanceFieldEnum: {
+    id: 'id',
+    walletId: 'walletId',
+    userId: 'userId',
+    screenshotUrl: 'screenshotUrl',
+    rejectionReason: 'rejectionReason',
+    reviewedBy: 'reviewedBy'
+  };
+
+  export type GameDepositOrderByRelevanceFieldEnum = (typeof GameDepositOrderByRelevanceFieldEnum)[keyof typeof GameDepositOrderByRelevanceFieldEnum]
+
+
+  export const GameSessionOrderByRelevanceFieldEnum: {
+    id: 'id',
+    walletId: 'walletId',
+    userId: 'userId'
+  };
+
+  export type GameSessionOrderByRelevanceFieldEnum = (typeof GameSessionOrderByRelevanceFieldEnum)[keyof typeof GameSessionOrderByRelevanceFieldEnum]
+
+
+  export const GameWithdrawalOrderByRelevanceFieldEnum: {
+    id: 'id',
+    walletId: 'walletId',
+    userId: 'userId',
+    method: 'method',
+    accountNumber: 'accountNumber',
+    accountName: 'accountName',
+    rejectionReason: 'rejectionReason',
+    reviewedBy: 'reviewedBy'
+  };
+
+  export type GameWithdrawalOrderByRelevanceFieldEnum = (typeof GameWithdrawalOrderByRelevanceFieldEnum)[keyof typeof GameWithdrawalOrderByRelevanceFieldEnum]
+
+
   /**
    * Field references
    */
@@ -13149,6 +17869,13 @@ export namespace Prisma {
    * Reference to a field of type 'DateTime'
    */
   export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
+    
+
+
+  /**
+   * Reference to a field of type 'Boolean'
+   */
+  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -13202,9 +17929,16 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Boolean'
+   * Reference to a field of type 'GameDepositStatus'
    */
-  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+  export type EnumGameDepositStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GameDepositStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'GameWithdrawalStatus'
+   */
+  export type EnumGameWithdrawalStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GameWithdrawalStatus'>
     
 
 
@@ -13225,40 +17959,47 @@ export namespace Prisma {
     id?: StringFilter<"User"> | string
     name?: StringFilter<"User"> | string
     email?: StringFilter<"User"> | string
+    phone?: StringNullableFilter<"User"> | string | null
     passwordHash?: StringFilter<"User"> | string
     role?: EnumRoleFilter<"User"> | $Enums.Role
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     resetToken?: StringNullableFilter<"User"> | string | null
     resetTokenExpiry?: DateTimeNullableFilter<"User"> | Date | string | null
+    blocked?: BoolFilter<"User"> | boolean
     profile?: XOR<SeekerProfileNullableScalarRelationFilter, SeekerProfileWhereInput> | null
     applications?: ApplicationListRelationFilter
     savedJobs?: SavedJobListRelationFilter
     alerts?: AlertListRelationFilter
     notifications?: NotificationListRelationFilter
+    gameWallet?: XOR<GameWalletNullableScalarRelationFilter, GameWalletWhereInput> | null
   }
 
   export type UserOrderByWithRelationInput = {
     id?: SortOrder
     name?: SortOrder
     email?: SortOrder
+    phone?: SortOrderInput | SortOrder
     passwordHash?: SortOrder
     role?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     resetToken?: SortOrderInput | SortOrder
     resetTokenExpiry?: SortOrderInput | SortOrder
+    blocked?: SortOrder
     profile?: SeekerProfileOrderByWithRelationInput
     applications?: ApplicationOrderByRelationAggregateInput
     savedJobs?: SavedJobOrderByRelationAggregateInput
     alerts?: AlertOrderByRelationAggregateInput
     notifications?: NotificationOrderByRelationAggregateInput
+    gameWallet?: GameWalletOrderByWithRelationInput
     _relevance?: UserOrderByRelevanceInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     email?: string
+    phone?: string
     AND?: UserWhereInput | UserWhereInput[]
     OR?: UserWhereInput[]
     NOT?: UserWhereInput | UserWhereInput[]
@@ -13269,23 +18010,27 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"User"> | Date | string
     resetToken?: StringNullableFilter<"User"> | string | null
     resetTokenExpiry?: DateTimeNullableFilter<"User"> | Date | string | null
+    blocked?: BoolFilter<"User"> | boolean
     profile?: XOR<SeekerProfileNullableScalarRelationFilter, SeekerProfileWhereInput> | null
     applications?: ApplicationListRelationFilter
     savedJobs?: SavedJobListRelationFilter
     alerts?: AlertListRelationFilter
     notifications?: NotificationListRelationFilter
-  }, "id" | "email">
+    gameWallet?: XOR<GameWalletNullableScalarRelationFilter, GameWalletWhereInput> | null
+  }, "id" | "email" | "phone">
 
   export type UserOrderByWithAggregationInput = {
     id?: SortOrder
     name?: SortOrder
     email?: SortOrder
+    phone?: SortOrderInput | SortOrder
     passwordHash?: SortOrder
     role?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     resetToken?: SortOrderInput | SortOrder
     resetTokenExpiry?: SortOrderInput | SortOrder
+    blocked?: SortOrder
     _count?: UserCountOrderByAggregateInput
     _max?: UserMaxOrderByAggregateInput
     _min?: UserMinOrderByAggregateInput
@@ -13298,12 +18043,14 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"User"> | string
     name?: StringWithAggregatesFilter<"User"> | string
     email?: StringWithAggregatesFilter<"User"> | string
+    phone?: StringNullableWithAggregatesFilter<"User"> | string | null
     passwordHash?: StringWithAggregatesFilter<"User"> | string
     role?: EnumRoleWithAggregatesFilter<"User"> | $Enums.Role
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     resetToken?: StringNullableWithAggregatesFilter<"User"> | string | null
     resetTokenExpiry?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+    blocked?: BoolWithAggregatesFilter<"User"> | boolean
   }
 
   export type SeekerProfileWhereInput = {
@@ -14062,108 +18809,457 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"PlatformSetting"> | Date | string
   }
 
+  export type GameWalletWhereInput = {
+    AND?: GameWalletWhereInput | GameWalletWhereInput[]
+    OR?: GameWalletWhereInput[]
+    NOT?: GameWalletWhereInput | GameWalletWhereInput[]
+    id?: StringFilter<"GameWallet"> | string
+    userId?: StringFilter<"GameWallet"> | string
+    balance?: IntFilter<"GameWallet"> | number
+    createdAt?: DateTimeFilter<"GameWallet"> | Date | string
+    updatedAt?: DateTimeFilter<"GameWallet"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    deposits?: GameDepositListRelationFilter
+    sessions?: GameSessionListRelationFilter
+    withdrawals?: GameWithdrawalListRelationFilter
+  }
+
+  export type GameWalletOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    balance?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+    deposits?: GameDepositOrderByRelationAggregateInput
+    sessions?: GameSessionOrderByRelationAggregateInput
+    withdrawals?: GameWithdrawalOrderByRelationAggregateInput
+    _relevance?: GameWalletOrderByRelevanceInput
+  }
+
+  export type GameWalletWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId?: string
+    AND?: GameWalletWhereInput | GameWalletWhereInput[]
+    OR?: GameWalletWhereInput[]
+    NOT?: GameWalletWhereInput | GameWalletWhereInput[]
+    balance?: IntFilter<"GameWallet"> | number
+    createdAt?: DateTimeFilter<"GameWallet"> | Date | string
+    updatedAt?: DateTimeFilter<"GameWallet"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    deposits?: GameDepositListRelationFilter
+    sessions?: GameSessionListRelationFilter
+    withdrawals?: GameWithdrawalListRelationFilter
+  }, "id" | "userId">
+
+  export type GameWalletOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    balance?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: GameWalletCountOrderByAggregateInput
+    _avg?: GameWalletAvgOrderByAggregateInput
+    _max?: GameWalletMaxOrderByAggregateInput
+    _min?: GameWalletMinOrderByAggregateInput
+    _sum?: GameWalletSumOrderByAggregateInput
+  }
+
+  export type GameWalletScalarWhereWithAggregatesInput = {
+    AND?: GameWalletScalarWhereWithAggregatesInput | GameWalletScalarWhereWithAggregatesInput[]
+    OR?: GameWalletScalarWhereWithAggregatesInput[]
+    NOT?: GameWalletScalarWhereWithAggregatesInput | GameWalletScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"GameWallet"> | string
+    userId?: StringWithAggregatesFilter<"GameWallet"> | string
+    balance?: IntWithAggregatesFilter<"GameWallet"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"GameWallet"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"GameWallet"> | Date | string
+  }
+
+  export type GameDepositWhereInput = {
+    AND?: GameDepositWhereInput | GameDepositWhereInput[]
+    OR?: GameDepositWhereInput[]
+    NOT?: GameDepositWhereInput | GameDepositWhereInput[]
+    id?: StringFilter<"GameDeposit"> | string
+    walletId?: StringFilter<"GameDeposit"> | string
+    userId?: StringFilter<"GameDeposit"> | string
+    amount?: IntFilter<"GameDeposit"> | number
+    method?: EnumPaymentMethodFilter<"GameDeposit"> | $Enums.PaymentMethod
+    screenshotUrl?: StringFilter<"GameDeposit"> | string
+    status?: EnumGameDepositStatusFilter<"GameDeposit"> | $Enums.GameDepositStatus
+    rejectionReason?: StringNullableFilter<"GameDeposit"> | string | null
+    submittedAt?: DateTimeFilter<"GameDeposit"> | Date | string
+    reviewedAt?: DateTimeNullableFilter<"GameDeposit"> | Date | string | null
+    reviewedBy?: StringNullableFilter<"GameDeposit"> | string | null
+    wallet?: XOR<GameWalletScalarRelationFilter, GameWalletWhereInput>
+  }
+
+  export type GameDepositOrderByWithRelationInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    screenshotUrl?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrderInput | SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrderInput | SortOrder
+    reviewedBy?: SortOrderInput | SortOrder
+    wallet?: GameWalletOrderByWithRelationInput
+    _relevance?: GameDepositOrderByRelevanceInput
+  }
+
+  export type GameDepositWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: GameDepositWhereInput | GameDepositWhereInput[]
+    OR?: GameDepositWhereInput[]
+    NOT?: GameDepositWhereInput | GameDepositWhereInput[]
+    walletId?: StringFilter<"GameDeposit"> | string
+    userId?: StringFilter<"GameDeposit"> | string
+    amount?: IntFilter<"GameDeposit"> | number
+    method?: EnumPaymentMethodFilter<"GameDeposit"> | $Enums.PaymentMethod
+    screenshotUrl?: StringFilter<"GameDeposit"> | string
+    status?: EnumGameDepositStatusFilter<"GameDeposit"> | $Enums.GameDepositStatus
+    rejectionReason?: StringNullableFilter<"GameDeposit"> | string | null
+    submittedAt?: DateTimeFilter<"GameDeposit"> | Date | string
+    reviewedAt?: DateTimeNullableFilter<"GameDeposit"> | Date | string | null
+    reviewedBy?: StringNullableFilter<"GameDeposit"> | string | null
+    wallet?: XOR<GameWalletScalarRelationFilter, GameWalletWhereInput>
+  }, "id">
+
+  export type GameDepositOrderByWithAggregationInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    screenshotUrl?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrderInput | SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrderInput | SortOrder
+    reviewedBy?: SortOrderInput | SortOrder
+    _count?: GameDepositCountOrderByAggregateInput
+    _avg?: GameDepositAvgOrderByAggregateInput
+    _max?: GameDepositMaxOrderByAggregateInput
+    _min?: GameDepositMinOrderByAggregateInput
+    _sum?: GameDepositSumOrderByAggregateInput
+  }
+
+  export type GameDepositScalarWhereWithAggregatesInput = {
+    AND?: GameDepositScalarWhereWithAggregatesInput | GameDepositScalarWhereWithAggregatesInput[]
+    OR?: GameDepositScalarWhereWithAggregatesInput[]
+    NOT?: GameDepositScalarWhereWithAggregatesInput | GameDepositScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"GameDeposit"> | string
+    walletId?: StringWithAggregatesFilter<"GameDeposit"> | string
+    userId?: StringWithAggregatesFilter<"GameDeposit"> | string
+    amount?: IntWithAggregatesFilter<"GameDeposit"> | number
+    method?: EnumPaymentMethodWithAggregatesFilter<"GameDeposit"> | $Enums.PaymentMethod
+    screenshotUrl?: StringWithAggregatesFilter<"GameDeposit"> | string
+    status?: EnumGameDepositStatusWithAggregatesFilter<"GameDeposit"> | $Enums.GameDepositStatus
+    rejectionReason?: StringNullableWithAggregatesFilter<"GameDeposit"> | string | null
+    submittedAt?: DateTimeWithAggregatesFilter<"GameDeposit"> | Date | string
+    reviewedAt?: DateTimeNullableWithAggregatesFilter<"GameDeposit"> | Date | string | null
+    reviewedBy?: StringNullableWithAggregatesFilter<"GameDeposit"> | string | null
+  }
+
+  export type GameSessionWhereInput = {
+    AND?: GameSessionWhereInput | GameSessionWhereInput[]
+    OR?: GameSessionWhereInput[]
+    NOT?: GameSessionWhereInput | GameSessionWhereInput[]
+    id?: StringFilter<"GameSession"> | string
+    walletId?: StringFilter<"GameSession"> | string
+    userId?: StringFilter<"GameSession"> | string
+    wagerAmount?: IntFilter<"GameSession"> | number
+    finalScore?: IntFilter<"GameSession"> | number
+    winAmount?: IntFilter<"GameSession"> | number
+    milestones?: JsonFilter<"GameSession">
+    startedAt?: DateTimeFilter<"GameSession"> | Date | string
+    endedAt?: DateTimeNullableFilter<"GameSession"> | Date | string | null
+    completed?: BoolFilter<"GameSession"> | boolean
+    wallet?: XOR<GameWalletScalarRelationFilter, GameWalletWhereInput>
+  }
+
+  export type GameSessionOrderByWithRelationInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+    milestones?: SortOrder
+    startedAt?: SortOrder
+    endedAt?: SortOrderInput | SortOrder
+    completed?: SortOrder
+    wallet?: GameWalletOrderByWithRelationInput
+    _relevance?: GameSessionOrderByRelevanceInput
+  }
+
+  export type GameSessionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: GameSessionWhereInput | GameSessionWhereInput[]
+    OR?: GameSessionWhereInput[]
+    NOT?: GameSessionWhereInput | GameSessionWhereInput[]
+    walletId?: StringFilter<"GameSession"> | string
+    userId?: StringFilter<"GameSession"> | string
+    wagerAmount?: IntFilter<"GameSession"> | number
+    finalScore?: IntFilter<"GameSession"> | number
+    winAmount?: IntFilter<"GameSession"> | number
+    milestones?: JsonFilter<"GameSession">
+    startedAt?: DateTimeFilter<"GameSession"> | Date | string
+    endedAt?: DateTimeNullableFilter<"GameSession"> | Date | string | null
+    completed?: BoolFilter<"GameSession"> | boolean
+    wallet?: XOR<GameWalletScalarRelationFilter, GameWalletWhereInput>
+  }, "id">
+
+  export type GameSessionOrderByWithAggregationInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+    milestones?: SortOrder
+    startedAt?: SortOrder
+    endedAt?: SortOrderInput | SortOrder
+    completed?: SortOrder
+    _count?: GameSessionCountOrderByAggregateInput
+    _avg?: GameSessionAvgOrderByAggregateInput
+    _max?: GameSessionMaxOrderByAggregateInput
+    _min?: GameSessionMinOrderByAggregateInput
+    _sum?: GameSessionSumOrderByAggregateInput
+  }
+
+  export type GameSessionScalarWhereWithAggregatesInput = {
+    AND?: GameSessionScalarWhereWithAggregatesInput | GameSessionScalarWhereWithAggregatesInput[]
+    OR?: GameSessionScalarWhereWithAggregatesInput[]
+    NOT?: GameSessionScalarWhereWithAggregatesInput | GameSessionScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"GameSession"> | string
+    walletId?: StringWithAggregatesFilter<"GameSession"> | string
+    userId?: StringWithAggregatesFilter<"GameSession"> | string
+    wagerAmount?: IntWithAggregatesFilter<"GameSession"> | number
+    finalScore?: IntWithAggregatesFilter<"GameSession"> | number
+    winAmount?: IntWithAggregatesFilter<"GameSession"> | number
+    milestones?: JsonWithAggregatesFilter<"GameSession">
+    startedAt?: DateTimeWithAggregatesFilter<"GameSession"> | Date | string
+    endedAt?: DateTimeNullableWithAggregatesFilter<"GameSession"> | Date | string | null
+    completed?: BoolWithAggregatesFilter<"GameSession"> | boolean
+  }
+
+  export type GameWithdrawalWhereInput = {
+    AND?: GameWithdrawalWhereInput | GameWithdrawalWhereInput[]
+    OR?: GameWithdrawalWhereInput[]
+    NOT?: GameWithdrawalWhereInput | GameWithdrawalWhereInput[]
+    id?: StringFilter<"GameWithdrawal"> | string
+    walletId?: StringFilter<"GameWithdrawal"> | string
+    userId?: StringFilter<"GameWithdrawal"> | string
+    amount?: IntFilter<"GameWithdrawal"> | number
+    method?: StringFilter<"GameWithdrawal"> | string
+    accountNumber?: StringFilter<"GameWithdrawal"> | string
+    accountName?: StringFilter<"GameWithdrawal"> | string
+    status?: EnumGameWithdrawalStatusFilter<"GameWithdrawal"> | $Enums.GameWithdrawalStatus
+    rejectionReason?: StringNullableFilter<"GameWithdrawal"> | string | null
+    submittedAt?: DateTimeFilter<"GameWithdrawal"> | Date | string
+    reviewedAt?: DateTimeNullableFilter<"GameWithdrawal"> | Date | string | null
+    reviewedBy?: StringNullableFilter<"GameWithdrawal"> | string | null
+    wallet?: XOR<GameWalletScalarRelationFilter, GameWalletWhereInput>
+  }
+
+  export type GameWithdrawalOrderByWithRelationInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    accountNumber?: SortOrder
+    accountName?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrderInput | SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrderInput | SortOrder
+    reviewedBy?: SortOrderInput | SortOrder
+    wallet?: GameWalletOrderByWithRelationInput
+    _relevance?: GameWithdrawalOrderByRelevanceInput
+  }
+
+  export type GameWithdrawalWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: GameWithdrawalWhereInput | GameWithdrawalWhereInput[]
+    OR?: GameWithdrawalWhereInput[]
+    NOT?: GameWithdrawalWhereInput | GameWithdrawalWhereInput[]
+    walletId?: StringFilter<"GameWithdrawal"> | string
+    userId?: StringFilter<"GameWithdrawal"> | string
+    amount?: IntFilter<"GameWithdrawal"> | number
+    method?: StringFilter<"GameWithdrawal"> | string
+    accountNumber?: StringFilter<"GameWithdrawal"> | string
+    accountName?: StringFilter<"GameWithdrawal"> | string
+    status?: EnumGameWithdrawalStatusFilter<"GameWithdrawal"> | $Enums.GameWithdrawalStatus
+    rejectionReason?: StringNullableFilter<"GameWithdrawal"> | string | null
+    submittedAt?: DateTimeFilter<"GameWithdrawal"> | Date | string
+    reviewedAt?: DateTimeNullableFilter<"GameWithdrawal"> | Date | string | null
+    reviewedBy?: StringNullableFilter<"GameWithdrawal"> | string | null
+    wallet?: XOR<GameWalletScalarRelationFilter, GameWalletWhereInput>
+  }, "id">
+
+  export type GameWithdrawalOrderByWithAggregationInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    accountNumber?: SortOrder
+    accountName?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrderInput | SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrderInput | SortOrder
+    reviewedBy?: SortOrderInput | SortOrder
+    _count?: GameWithdrawalCountOrderByAggregateInput
+    _avg?: GameWithdrawalAvgOrderByAggregateInput
+    _max?: GameWithdrawalMaxOrderByAggregateInput
+    _min?: GameWithdrawalMinOrderByAggregateInput
+    _sum?: GameWithdrawalSumOrderByAggregateInput
+  }
+
+  export type GameWithdrawalScalarWhereWithAggregatesInput = {
+    AND?: GameWithdrawalScalarWhereWithAggregatesInput | GameWithdrawalScalarWhereWithAggregatesInput[]
+    OR?: GameWithdrawalScalarWhereWithAggregatesInput[]
+    NOT?: GameWithdrawalScalarWhereWithAggregatesInput | GameWithdrawalScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"GameWithdrawal"> | string
+    walletId?: StringWithAggregatesFilter<"GameWithdrawal"> | string
+    userId?: StringWithAggregatesFilter<"GameWithdrawal"> | string
+    amount?: IntWithAggregatesFilter<"GameWithdrawal"> | number
+    method?: StringWithAggregatesFilter<"GameWithdrawal"> | string
+    accountNumber?: StringWithAggregatesFilter<"GameWithdrawal"> | string
+    accountName?: StringWithAggregatesFilter<"GameWithdrawal"> | string
+    status?: EnumGameWithdrawalStatusWithAggregatesFilter<"GameWithdrawal"> | $Enums.GameWithdrawalStatus
+    rejectionReason?: StringNullableWithAggregatesFilter<"GameWithdrawal"> | string | null
+    submittedAt?: DateTimeWithAggregatesFilter<"GameWithdrawal"> | Date | string
+    reviewedAt?: DateTimeNullableWithAggregatesFilter<"GameWithdrawal"> | Date | string | null
+    reviewedBy?: StringNullableWithAggregatesFilter<"GameWithdrawal"> | string | null
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileCreateNestedOneWithoutUserInput
     applications?: ApplicationCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobCreateNestedManyWithoutUserInput
     alerts?: AlertCreateNestedManyWithoutUserInput
     notifications?: NotificationCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileUncheckedCreateNestedOneWithoutUserInput
     applications?: ApplicationUncheckedCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobUncheckedCreateNestedManyWithoutUserInput
     alerts?: AlertUncheckedCreateNestedManyWithoutUserInput
     notifications?: NotificationUncheckedCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUpdateOneWithoutUserNestedInput
     applications?: ApplicationUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUpdateManyWithoutUserNestedInput
     alerts?: AlertUpdateManyWithoutUserNestedInput
     notifications?: NotificationUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUncheckedUpdateOneWithoutUserNestedInput
     applications?: ApplicationUncheckedUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUncheckedUpdateManyWithoutUserNestedInput
     alerts?: AlertUncheckedUpdateManyWithoutUserNestedInput
     notifications?: NotificationUncheckedUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
   }
 
   export type UserUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type UserUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type SeekerProfileCreateInput = {
@@ -14989,6 +20085,364 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type GameWalletCreateInput = {
+    id?: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutGameWalletInput
+    deposits?: GameDepositCreateNestedManyWithoutWalletInput
+    sessions?: GameSessionCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletUncheckedCreateInput = {
+    id?: string
+    userId: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deposits?: GameDepositUncheckedCreateNestedManyWithoutWalletInput
+    sessions?: GameSessionUncheckedCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalUncheckedCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutGameWalletNestedInput
+    deposits?: GameDepositUpdateManyWithoutWalletNestedInput
+    sessions?: GameSessionUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deposits?: GameDepositUncheckedUpdateManyWithoutWalletNestedInput
+    sessions?: GameSessionUncheckedUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUncheckedUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletCreateManyInput = {
+    id?: string
+    userId: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type GameWalletUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GameWalletUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GameDepositCreateInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status?: $Enums.GameDepositStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+    wallet: GameWalletCreateNestedOneWithoutDepositsInput
+  }
+
+  export type GameDepositUncheckedCreateInput = {
+    id?: string
+    walletId: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status?: $Enums.GameDepositStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameDepositUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    wallet?: GameWalletUpdateOneRequiredWithoutDepositsNestedInput
+  }
+
+  export type GameDepositUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    walletId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameDepositCreateManyInput = {
+    id?: string
+    walletId: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status?: $Enums.GameDepositStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameDepositUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameDepositUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    walletId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameSessionCreateInput = {
+    id?: string
+    userId: string
+    wagerAmount: number
+    finalScore?: number
+    winAmount?: number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: Date | string
+    endedAt?: Date | string | null
+    completed?: boolean
+    wallet: GameWalletCreateNestedOneWithoutSessionsInput
+  }
+
+  export type GameSessionUncheckedCreateInput = {
+    id?: string
+    walletId: string
+    userId: string
+    wagerAmount: number
+    finalScore?: number
+    winAmount?: number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: Date | string
+    endedAt?: Date | string | null
+    completed?: boolean
+  }
+
+  export type GameSessionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+    wallet?: GameWalletUpdateOneRequiredWithoutSessionsNestedInput
+  }
+
+  export type GameSessionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    walletId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type GameSessionCreateManyInput = {
+    id?: string
+    walletId: string
+    userId: string
+    wagerAmount: number
+    finalScore?: number
+    winAmount?: number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: Date | string
+    endedAt?: Date | string | null
+    completed?: boolean
+  }
+
+  export type GameSessionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type GameSessionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    walletId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type GameWithdrawalCreateInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status?: $Enums.GameWithdrawalStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+    wallet: GameWalletCreateNestedOneWithoutWithdrawalsInput
+  }
+
+  export type GameWithdrawalUncheckedCreateInput = {
+    id?: string
+    walletId: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status?: $Enums.GameWithdrawalStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameWithdrawalUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    wallet?: GameWalletUpdateOneRequiredWithoutWithdrawalsNestedInput
+  }
+
+  export type GameWithdrawalUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    walletId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameWithdrawalCreateManyInput = {
+    id?: string
+    walletId: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status?: $Enums.GameWithdrawalStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameWithdrawalUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameWithdrawalUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    walletId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -15002,6 +20456,21 @@ export namespace Prisma {
     endsWith?: string | StringFieldRefInput<$PrismaModel>
     search?: string
     not?: NestedStringFilter<$PrismaModel> | string
+  }
+
+  export type StringNullableFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | null
+    notIn?: string[] | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    search?: string
+    not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
   export type EnumRoleFilter<$PrismaModel = never> = {
@@ -15022,21 +20491,6 @@ export namespace Prisma {
     not?: NestedDateTimeFilter<$PrismaModel> | Date | string
   }
 
-  export type StringNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | null
-    notIn?: string[] | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    search?: string
-    not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
   export type DateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | null
@@ -15046,6 +20500,11 @@ export namespace Prisma {
     gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
   export type SeekerProfileNullableScalarRelationFilter = {
@@ -15075,6 +20534,11 @@ export namespace Prisma {
     every?: NotificationWhereInput
     some?: NotificationWhereInput
     none?: NotificationWhereInput
+  }
+
+  export type GameWalletNullableScalarRelationFilter = {
+    is?: GameWalletWhereInput | null
+    isNot?: GameWalletWhereInput | null
   }
 
   export type SortOrderInput = {
@@ -15108,36 +20572,42 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     email?: SortOrder
+    phone?: SortOrder
     passwordHash?: SortOrder
     role?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     resetToken?: SortOrder
     resetTokenExpiry?: SortOrder
+    blocked?: SortOrder
   }
 
   export type UserMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     email?: SortOrder
+    phone?: SortOrder
     passwordHash?: SortOrder
     role?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     resetToken?: SortOrder
     resetTokenExpiry?: SortOrder
+    blocked?: SortOrder
   }
 
   export type UserMinOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     email?: SortOrder
+    phone?: SortOrder
     passwordHash?: SortOrder
     role?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     resetToken?: SortOrder
     resetTokenExpiry?: SortOrder
+    blocked?: SortOrder
   }
 
   export type StringWithAggregatesFilter<$PrismaModel = never> = {
@@ -15156,6 +20626,24 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedStringFilter<$PrismaModel>
     _max?: NestedStringFilter<$PrismaModel>
+  }
+
+  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | null
+    notIn?: string[] | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    search?: string
+    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedStringNullableFilter<$PrismaModel>
+    _max?: NestedStringNullableFilter<$PrismaModel>
   }
 
   export type EnumRoleWithAggregatesFilter<$PrismaModel = never> = {
@@ -15182,24 +20670,6 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
-  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | null
-    notIn?: string[] | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    search?: string
-    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
   export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | null
@@ -15212,6 +20682,14 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
   export type JsonFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -15628,11 +21106,6 @@ export namespace Prisma {
     _max?: NestedEnumPaymentStatusFilter<$PrismaModel>
   }
 
-  export type BoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
   export type PaymentSettingOrderByRelevanceInput = {
     fields: PaymentSettingOrderByRelevanceFieldEnum | PaymentSettingOrderByRelevanceFieldEnum[]
     sort: SortOrder
@@ -15667,14 +21140,6 @@ export namespace Prisma {
     address?: SortOrder
     active?: SortOrder
     updatedAt?: SortOrder
-  }
-
-  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type SavedJobOrderByRelevanceInput = {
@@ -15861,6 +21326,283 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type GameDepositListRelationFilter = {
+    every?: GameDepositWhereInput
+    some?: GameDepositWhereInput
+    none?: GameDepositWhereInput
+  }
+
+  export type GameSessionListRelationFilter = {
+    every?: GameSessionWhereInput
+    some?: GameSessionWhereInput
+    none?: GameSessionWhereInput
+  }
+
+  export type GameWithdrawalListRelationFilter = {
+    every?: GameWithdrawalWhereInput
+    some?: GameWithdrawalWhereInput
+    none?: GameWithdrawalWhereInput
+  }
+
+  export type GameDepositOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type GameSessionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type GameWithdrawalOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type GameWalletOrderByRelevanceInput = {
+    fields: GameWalletOrderByRelevanceFieldEnum | GameWalletOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type GameWalletCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    balance?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GameWalletAvgOrderByAggregateInput = {
+    balance?: SortOrder
+  }
+
+  export type GameWalletMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    balance?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GameWalletMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    balance?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GameWalletSumOrderByAggregateInput = {
+    balance?: SortOrder
+  }
+
+  export type EnumGameDepositStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameDepositStatus | EnumGameDepositStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameDepositStatus[]
+    notIn?: $Enums.GameDepositStatus[]
+    not?: NestedEnumGameDepositStatusFilter<$PrismaModel> | $Enums.GameDepositStatus
+  }
+
+  export type GameWalletScalarRelationFilter = {
+    is?: GameWalletWhereInput
+    isNot?: GameWalletWhereInput
+  }
+
+  export type GameDepositOrderByRelevanceInput = {
+    fields: GameDepositOrderByRelevanceFieldEnum | GameDepositOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type GameDepositCountOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    screenshotUrl?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrder
+    reviewedBy?: SortOrder
+  }
+
+  export type GameDepositAvgOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type GameDepositMaxOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    screenshotUrl?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrder
+    reviewedBy?: SortOrder
+  }
+
+  export type GameDepositMinOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    screenshotUrl?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrder
+    reviewedBy?: SortOrder
+  }
+
+  export type GameDepositSumOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type EnumGameDepositStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameDepositStatus | EnumGameDepositStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameDepositStatus[]
+    notIn?: $Enums.GameDepositStatus[]
+    not?: NestedEnumGameDepositStatusWithAggregatesFilter<$PrismaModel> | $Enums.GameDepositStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumGameDepositStatusFilter<$PrismaModel>
+    _max?: NestedEnumGameDepositStatusFilter<$PrismaModel>
+  }
+
+  export type GameSessionOrderByRelevanceInput = {
+    fields: GameSessionOrderByRelevanceFieldEnum | GameSessionOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type GameSessionCountOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+    milestones?: SortOrder
+    startedAt?: SortOrder
+    endedAt?: SortOrder
+    completed?: SortOrder
+  }
+
+  export type GameSessionAvgOrderByAggregateInput = {
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+  }
+
+  export type GameSessionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+    startedAt?: SortOrder
+    endedAt?: SortOrder
+    completed?: SortOrder
+  }
+
+  export type GameSessionMinOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+    startedAt?: SortOrder
+    endedAt?: SortOrder
+    completed?: SortOrder
+  }
+
+  export type GameSessionSumOrderByAggregateInput = {
+    wagerAmount?: SortOrder
+    finalScore?: SortOrder
+    winAmount?: SortOrder
+  }
+
+  export type EnumGameWithdrawalStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameWithdrawalStatus | EnumGameWithdrawalStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameWithdrawalStatus[]
+    notIn?: $Enums.GameWithdrawalStatus[]
+    not?: NestedEnumGameWithdrawalStatusFilter<$PrismaModel> | $Enums.GameWithdrawalStatus
+  }
+
+  export type GameWithdrawalOrderByRelevanceInput = {
+    fields: GameWithdrawalOrderByRelevanceFieldEnum | GameWithdrawalOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type GameWithdrawalCountOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    accountNumber?: SortOrder
+    accountName?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrder
+    reviewedBy?: SortOrder
+  }
+
+  export type GameWithdrawalAvgOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type GameWithdrawalMaxOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    accountNumber?: SortOrder
+    accountName?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrder
+    reviewedBy?: SortOrder
+  }
+
+  export type GameWithdrawalMinOrderByAggregateInput = {
+    id?: SortOrder
+    walletId?: SortOrder
+    userId?: SortOrder
+    amount?: SortOrder
+    method?: SortOrder
+    accountNumber?: SortOrder
+    accountName?: SortOrder
+    status?: SortOrder
+    rejectionReason?: SortOrder
+    submittedAt?: SortOrder
+    reviewedAt?: SortOrder
+    reviewedBy?: SortOrder
+  }
+
+  export type GameWithdrawalSumOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type EnumGameWithdrawalStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameWithdrawalStatus | EnumGameWithdrawalStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameWithdrawalStatus[]
+    notIn?: $Enums.GameWithdrawalStatus[]
+    not?: NestedEnumGameWithdrawalStatusWithAggregatesFilter<$PrismaModel> | $Enums.GameWithdrawalStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumGameWithdrawalStatusFilter<$PrismaModel>
+    _max?: NestedEnumGameWithdrawalStatusFilter<$PrismaModel>
+  }
+
   export type SeekerProfileCreateNestedOneWithoutUserInput = {
     create?: XOR<SeekerProfileCreateWithoutUserInput, SeekerProfileUncheckedCreateWithoutUserInput>
     connectOrCreate?: SeekerProfileCreateOrConnectWithoutUserInput
@@ -15893,6 +21635,12 @@ export namespace Prisma {
     connectOrCreate?: NotificationCreateOrConnectWithoutUserInput | NotificationCreateOrConnectWithoutUserInput[]
     createMany?: NotificationCreateManyUserInputEnvelope
     connect?: NotificationWhereUniqueInput | NotificationWhereUniqueInput[]
+  }
+
+  export type GameWalletCreateNestedOneWithoutUserInput = {
+    create?: XOR<GameWalletCreateWithoutUserInput, GameWalletUncheckedCreateWithoutUserInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutUserInput
+    connect?: GameWalletWhereUniqueInput
   }
 
   export type SeekerProfileUncheckedCreateNestedOneWithoutUserInput = {
@@ -15929,8 +21677,18 @@ export namespace Prisma {
     connect?: NotificationWhereUniqueInput | NotificationWhereUniqueInput[]
   }
 
+  export type GameWalletUncheckedCreateNestedOneWithoutUserInput = {
+    create?: XOR<GameWalletCreateWithoutUserInput, GameWalletUncheckedCreateWithoutUserInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutUserInput
+    connect?: GameWalletWhereUniqueInput
+  }
+
   export type StringFieldUpdateOperationsInput = {
     set?: string
+  }
+
+  export type NullableStringFieldUpdateOperationsInput = {
+    set?: string | null
   }
 
   export type EnumRoleFieldUpdateOperationsInput = {
@@ -15941,12 +21699,12 @@ export namespace Prisma {
     set?: Date | string
   }
 
-  export type NullableStringFieldUpdateOperationsInput = {
-    set?: string | null
-  }
-
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
+  }
+
+  export type BoolFieldUpdateOperationsInput = {
+    set?: boolean
   }
 
   export type SeekerProfileUpdateOneWithoutUserNestedInput = {
@@ -16015,6 +21773,16 @@ export namespace Prisma {
     deleteMany?: NotificationScalarWhereInput | NotificationScalarWhereInput[]
   }
 
+  export type GameWalletUpdateOneWithoutUserNestedInput = {
+    create?: XOR<GameWalletCreateWithoutUserInput, GameWalletUncheckedCreateWithoutUserInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutUserInput
+    upsert?: GameWalletUpsertWithoutUserInput
+    disconnect?: GameWalletWhereInput | boolean
+    delete?: GameWalletWhereInput | boolean
+    connect?: GameWalletWhereUniqueInput
+    update?: XOR<XOR<GameWalletUpdateToOneWithWhereWithoutUserInput, GameWalletUpdateWithoutUserInput>, GameWalletUncheckedUpdateWithoutUserInput>
+  }
+
   export type SeekerProfileUncheckedUpdateOneWithoutUserNestedInput = {
     create?: XOR<SeekerProfileCreateWithoutUserInput, SeekerProfileUncheckedCreateWithoutUserInput>
     connectOrCreate?: SeekerProfileCreateOrConnectWithoutUserInput
@@ -16079,6 +21847,16 @@ export namespace Prisma {
     update?: NotificationUpdateWithWhereUniqueWithoutUserInput | NotificationUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: NotificationUpdateManyWithWhereWithoutUserInput | NotificationUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: NotificationScalarWhereInput | NotificationScalarWhereInput[]
+  }
+
+  export type GameWalletUncheckedUpdateOneWithoutUserNestedInput = {
+    create?: XOR<GameWalletCreateWithoutUserInput, GameWalletUncheckedCreateWithoutUserInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutUserInput
+    upsert?: GameWalletUpsertWithoutUserInput
+    disconnect?: GameWalletWhereInput | boolean
+    delete?: GameWalletWhereInput | boolean
+    connect?: GameWalletWhereUniqueInput
+    update?: XOR<XOR<GameWalletUpdateToOneWithWhereWithoutUserInput, GameWalletUpdateWithoutUserInput>, GameWalletUncheckedUpdateWithoutUserInput>
   }
 
   export type UserCreateNestedOneWithoutProfileInput = {
@@ -16285,10 +22063,6 @@ export namespace Prisma {
     update?: XOR<XOR<ApplicationUpdateToOneWithWhereWithoutPaymentInput, ApplicationUpdateWithoutPaymentInput>, ApplicationUncheckedUpdateWithoutPaymentInput>
   }
 
-  export type BoolFieldUpdateOperationsInput = {
-    set?: boolean
-  }
-
   export type UserCreateNestedOneWithoutSavedJobsInput = {
     create?: XOR<UserCreateWithoutSavedJobsInput, UserUncheckedCreateWithoutSavedJobsInput>
     connectOrCreate?: UserCreateOrConnectWithoutSavedJobsInput
@@ -16345,6 +22119,196 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutNotificationsInput, UserUpdateWithoutNotificationsInput>, UserUncheckedUpdateWithoutNotificationsInput>
   }
 
+  export type UserCreateNestedOneWithoutGameWalletInput = {
+    create?: XOR<UserCreateWithoutGameWalletInput, UserUncheckedCreateWithoutGameWalletInput>
+    connectOrCreate?: UserCreateOrConnectWithoutGameWalletInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type GameDepositCreateNestedManyWithoutWalletInput = {
+    create?: XOR<GameDepositCreateWithoutWalletInput, GameDepositUncheckedCreateWithoutWalletInput> | GameDepositCreateWithoutWalletInput[] | GameDepositUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameDepositCreateOrConnectWithoutWalletInput | GameDepositCreateOrConnectWithoutWalletInput[]
+    createMany?: GameDepositCreateManyWalletInputEnvelope
+    connect?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+  }
+
+  export type GameSessionCreateNestedManyWithoutWalletInput = {
+    create?: XOR<GameSessionCreateWithoutWalletInput, GameSessionUncheckedCreateWithoutWalletInput> | GameSessionCreateWithoutWalletInput[] | GameSessionUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameSessionCreateOrConnectWithoutWalletInput | GameSessionCreateOrConnectWithoutWalletInput[]
+    createMany?: GameSessionCreateManyWalletInputEnvelope
+    connect?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+  }
+
+  export type GameWithdrawalCreateNestedManyWithoutWalletInput = {
+    create?: XOR<GameWithdrawalCreateWithoutWalletInput, GameWithdrawalUncheckedCreateWithoutWalletInput> | GameWithdrawalCreateWithoutWalletInput[] | GameWithdrawalUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameWithdrawalCreateOrConnectWithoutWalletInput | GameWithdrawalCreateOrConnectWithoutWalletInput[]
+    createMany?: GameWithdrawalCreateManyWalletInputEnvelope
+    connect?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+  }
+
+  export type GameDepositUncheckedCreateNestedManyWithoutWalletInput = {
+    create?: XOR<GameDepositCreateWithoutWalletInput, GameDepositUncheckedCreateWithoutWalletInput> | GameDepositCreateWithoutWalletInput[] | GameDepositUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameDepositCreateOrConnectWithoutWalletInput | GameDepositCreateOrConnectWithoutWalletInput[]
+    createMany?: GameDepositCreateManyWalletInputEnvelope
+    connect?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+  }
+
+  export type GameSessionUncheckedCreateNestedManyWithoutWalletInput = {
+    create?: XOR<GameSessionCreateWithoutWalletInput, GameSessionUncheckedCreateWithoutWalletInput> | GameSessionCreateWithoutWalletInput[] | GameSessionUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameSessionCreateOrConnectWithoutWalletInput | GameSessionCreateOrConnectWithoutWalletInput[]
+    createMany?: GameSessionCreateManyWalletInputEnvelope
+    connect?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+  }
+
+  export type GameWithdrawalUncheckedCreateNestedManyWithoutWalletInput = {
+    create?: XOR<GameWithdrawalCreateWithoutWalletInput, GameWithdrawalUncheckedCreateWithoutWalletInput> | GameWithdrawalCreateWithoutWalletInput[] | GameWithdrawalUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameWithdrawalCreateOrConnectWithoutWalletInput | GameWithdrawalCreateOrConnectWithoutWalletInput[]
+    createMany?: GameWithdrawalCreateManyWalletInputEnvelope
+    connect?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+  }
+
+  export type UserUpdateOneRequiredWithoutGameWalletNestedInput = {
+    create?: XOR<UserCreateWithoutGameWalletInput, UserUncheckedCreateWithoutGameWalletInput>
+    connectOrCreate?: UserCreateOrConnectWithoutGameWalletInput
+    upsert?: UserUpsertWithoutGameWalletInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutGameWalletInput, UserUpdateWithoutGameWalletInput>, UserUncheckedUpdateWithoutGameWalletInput>
+  }
+
+  export type GameDepositUpdateManyWithoutWalletNestedInput = {
+    create?: XOR<GameDepositCreateWithoutWalletInput, GameDepositUncheckedCreateWithoutWalletInput> | GameDepositCreateWithoutWalletInput[] | GameDepositUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameDepositCreateOrConnectWithoutWalletInput | GameDepositCreateOrConnectWithoutWalletInput[]
+    upsert?: GameDepositUpsertWithWhereUniqueWithoutWalletInput | GameDepositUpsertWithWhereUniqueWithoutWalletInput[]
+    createMany?: GameDepositCreateManyWalletInputEnvelope
+    set?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    disconnect?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    delete?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    connect?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    update?: GameDepositUpdateWithWhereUniqueWithoutWalletInput | GameDepositUpdateWithWhereUniqueWithoutWalletInput[]
+    updateMany?: GameDepositUpdateManyWithWhereWithoutWalletInput | GameDepositUpdateManyWithWhereWithoutWalletInput[]
+    deleteMany?: GameDepositScalarWhereInput | GameDepositScalarWhereInput[]
+  }
+
+  export type GameSessionUpdateManyWithoutWalletNestedInput = {
+    create?: XOR<GameSessionCreateWithoutWalletInput, GameSessionUncheckedCreateWithoutWalletInput> | GameSessionCreateWithoutWalletInput[] | GameSessionUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameSessionCreateOrConnectWithoutWalletInput | GameSessionCreateOrConnectWithoutWalletInput[]
+    upsert?: GameSessionUpsertWithWhereUniqueWithoutWalletInput | GameSessionUpsertWithWhereUniqueWithoutWalletInput[]
+    createMany?: GameSessionCreateManyWalletInputEnvelope
+    set?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    disconnect?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    delete?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    connect?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    update?: GameSessionUpdateWithWhereUniqueWithoutWalletInput | GameSessionUpdateWithWhereUniqueWithoutWalletInput[]
+    updateMany?: GameSessionUpdateManyWithWhereWithoutWalletInput | GameSessionUpdateManyWithWhereWithoutWalletInput[]
+    deleteMany?: GameSessionScalarWhereInput | GameSessionScalarWhereInput[]
+  }
+
+  export type GameWithdrawalUpdateManyWithoutWalletNestedInput = {
+    create?: XOR<GameWithdrawalCreateWithoutWalletInput, GameWithdrawalUncheckedCreateWithoutWalletInput> | GameWithdrawalCreateWithoutWalletInput[] | GameWithdrawalUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameWithdrawalCreateOrConnectWithoutWalletInput | GameWithdrawalCreateOrConnectWithoutWalletInput[]
+    upsert?: GameWithdrawalUpsertWithWhereUniqueWithoutWalletInput | GameWithdrawalUpsertWithWhereUniqueWithoutWalletInput[]
+    createMany?: GameWithdrawalCreateManyWalletInputEnvelope
+    set?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    disconnect?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    delete?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    connect?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    update?: GameWithdrawalUpdateWithWhereUniqueWithoutWalletInput | GameWithdrawalUpdateWithWhereUniqueWithoutWalletInput[]
+    updateMany?: GameWithdrawalUpdateManyWithWhereWithoutWalletInput | GameWithdrawalUpdateManyWithWhereWithoutWalletInput[]
+    deleteMany?: GameWithdrawalScalarWhereInput | GameWithdrawalScalarWhereInput[]
+  }
+
+  export type GameDepositUncheckedUpdateManyWithoutWalletNestedInput = {
+    create?: XOR<GameDepositCreateWithoutWalletInput, GameDepositUncheckedCreateWithoutWalletInput> | GameDepositCreateWithoutWalletInput[] | GameDepositUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameDepositCreateOrConnectWithoutWalletInput | GameDepositCreateOrConnectWithoutWalletInput[]
+    upsert?: GameDepositUpsertWithWhereUniqueWithoutWalletInput | GameDepositUpsertWithWhereUniqueWithoutWalletInput[]
+    createMany?: GameDepositCreateManyWalletInputEnvelope
+    set?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    disconnect?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    delete?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    connect?: GameDepositWhereUniqueInput | GameDepositWhereUniqueInput[]
+    update?: GameDepositUpdateWithWhereUniqueWithoutWalletInput | GameDepositUpdateWithWhereUniqueWithoutWalletInput[]
+    updateMany?: GameDepositUpdateManyWithWhereWithoutWalletInput | GameDepositUpdateManyWithWhereWithoutWalletInput[]
+    deleteMany?: GameDepositScalarWhereInput | GameDepositScalarWhereInput[]
+  }
+
+  export type GameSessionUncheckedUpdateManyWithoutWalletNestedInput = {
+    create?: XOR<GameSessionCreateWithoutWalletInput, GameSessionUncheckedCreateWithoutWalletInput> | GameSessionCreateWithoutWalletInput[] | GameSessionUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameSessionCreateOrConnectWithoutWalletInput | GameSessionCreateOrConnectWithoutWalletInput[]
+    upsert?: GameSessionUpsertWithWhereUniqueWithoutWalletInput | GameSessionUpsertWithWhereUniqueWithoutWalletInput[]
+    createMany?: GameSessionCreateManyWalletInputEnvelope
+    set?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    disconnect?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    delete?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    connect?: GameSessionWhereUniqueInput | GameSessionWhereUniqueInput[]
+    update?: GameSessionUpdateWithWhereUniqueWithoutWalletInput | GameSessionUpdateWithWhereUniqueWithoutWalletInput[]
+    updateMany?: GameSessionUpdateManyWithWhereWithoutWalletInput | GameSessionUpdateManyWithWhereWithoutWalletInput[]
+    deleteMany?: GameSessionScalarWhereInput | GameSessionScalarWhereInput[]
+  }
+
+  export type GameWithdrawalUncheckedUpdateManyWithoutWalletNestedInput = {
+    create?: XOR<GameWithdrawalCreateWithoutWalletInput, GameWithdrawalUncheckedCreateWithoutWalletInput> | GameWithdrawalCreateWithoutWalletInput[] | GameWithdrawalUncheckedCreateWithoutWalletInput[]
+    connectOrCreate?: GameWithdrawalCreateOrConnectWithoutWalletInput | GameWithdrawalCreateOrConnectWithoutWalletInput[]
+    upsert?: GameWithdrawalUpsertWithWhereUniqueWithoutWalletInput | GameWithdrawalUpsertWithWhereUniqueWithoutWalletInput[]
+    createMany?: GameWithdrawalCreateManyWalletInputEnvelope
+    set?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    disconnect?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    delete?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    connect?: GameWithdrawalWhereUniqueInput | GameWithdrawalWhereUniqueInput[]
+    update?: GameWithdrawalUpdateWithWhereUniqueWithoutWalletInput | GameWithdrawalUpdateWithWhereUniqueWithoutWalletInput[]
+    updateMany?: GameWithdrawalUpdateManyWithWhereWithoutWalletInput | GameWithdrawalUpdateManyWithWhereWithoutWalletInput[]
+    deleteMany?: GameWithdrawalScalarWhereInput | GameWithdrawalScalarWhereInput[]
+  }
+
+  export type GameWalletCreateNestedOneWithoutDepositsInput = {
+    create?: XOR<GameWalletCreateWithoutDepositsInput, GameWalletUncheckedCreateWithoutDepositsInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutDepositsInput
+    connect?: GameWalletWhereUniqueInput
+  }
+
+  export type EnumGameDepositStatusFieldUpdateOperationsInput = {
+    set?: $Enums.GameDepositStatus
+  }
+
+  export type GameWalletUpdateOneRequiredWithoutDepositsNestedInput = {
+    create?: XOR<GameWalletCreateWithoutDepositsInput, GameWalletUncheckedCreateWithoutDepositsInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutDepositsInput
+    upsert?: GameWalletUpsertWithoutDepositsInput
+    connect?: GameWalletWhereUniqueInput
+    update?: XOR<XOR<GameWalletUpdateToOneWithWhereWithoutDepositsInput, GameWalletUpdateWithoutDepositsInput>, GameWalletUncheckedUpdateWithoutDepositsInput>
+  }
+
+  export type GameWalletCreateNestedOneWithoutSessionsInput = {
+    create?: XOR<GameWalletCreateWithoutSessionsInput, GameWalletUncheckedCreateWithoutSessionsInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutSessionsInput
+    connect?: GameWalletWhereUniqueInput
+  }
+
+  export type GameWalletUpdateOneRequiredWithoutSessionsNestedInput = {
+    create?: XOR<GameWalletCreateWithoutSessionsInput, GameWalletUncheckedCreateWithoutSessionsInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutSessionsInput
+    upsert?: GameWalletUpsertWithoutSessionsInput
+    connect?: GameWalletWhereUniqueInput
+    update?: XOR<XOR<GameWalletUpdateToOneWithWhereWithoutSessionsInput, GameWalletUpdateWithoutSessionsInput>, GameWalletUncheckedUpdateWithoutSessionsInput>
+  }
+
+  export type GameWalletCreateNestedOneWithoutWithdrawalsInput = {
+    create?: XOR<GameWalletCreateWithoutWithdrawalsInput, GameWalletUncheckedCreateWithoutWithdrawalsInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutWithdrawalsInput
+    connect?: GameWalletWhereUniqueInput
+  }
+
+  export type EnumGameWithdrawalStatusFieldUpdateOperationsInput = {
+    set?: $Enums.GameWithdrawalStatus
+  }
+
+  export type GameWalletUpdateOneRequiredWithoutWithdrawalsNestedInput = {
+    create?: XOR<GameWalletCreateWithoutWithdrawalsInput, GameWalletUncheckedCreateWithoutWithdrawalsInput>
+    connectOrCreate?: GameWalletCreateOrConnectWithoutWithdrawalsInput
+    upsert?: GameWalletUpsertWithoutWithdrawalsInput
+    connect?: GameWalletWhereUniqueInput
+    update?: XOR<XOR<GameWalletUpdateToOneWithWhereWithoutWithdrawalsInput, GameWalletUpdateWithoutWithdrawalsInput>, GameWalletUncheckedUpdateWithoutWithdrawalsInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -16358,6 +22322,21 @@ export namespace Prisma {
     endsWith?: string | StringFieldRefInput<$PrismaModel>
     search?: string
     not?: NestedStringFilter<$PrismaModel> | string
+  }
+
+  export type NestedStringNullableFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | null
+    notIn?: string[] | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    search?: string
+    not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
   export type NestedEnumRoleFilter<$PrismaModel = never> = {
@@ -16378,21 +22357,6 @@ export namespace Prisma {
     not?: NestedDateTimeFilter<$PrismaModel> | Date | string
   }
 
-  export type NestedStringNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | null
-    notIn?: string[] | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    search?: string
-    not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
   export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | null
@@ -16402,6 +22366,11 @@ export namespace Prisma {
     gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
   export type NestedStringWithAggregatesFilter<$PrismaModel = never> = {
@@ -16433,30 +22402,6 @@ export namespace Prisma {
     not?: NestedIntFilter<$PrismaModel> | number
   }
 
-  export type NestedEnumRoleWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.Role | EnumRoleFieldRefInput<$PrismaModel>
-    in?: $Enums.Role[]
-    notIn?: $Enums.Role[]
-    not?: NestedEnumRoleWithAggregatesFilter<$PrismaModel> | $Enums.Role
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumRoleFilter<$PrismaModel>
-    _max?: NestedEnumRoleFilter<$PrismaModel>
-  }
-
-  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[]
-    notIn?: Date[] | string[]
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedDateTimeFilter<$PrismaModel>
-    _max?: NestedDateTimeFilter<$PrismaModel>
-  }
-
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | null
@@ -16486,6 +22431,30 @@ export namespace Prisma {
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
+  export type NestedEnumRoleWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.Role | EnumRoleFieldRefInput<$PrismaModel>
+    in?: $Enums.Role[]
+    notIn?: $Enums.Role[]
+    not?: NestedEnumRoleWithAggregatesFilter<$PrismaModel> | $Enums.Role
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumRoleFilter<$PrismaModel>
+    _max?: NestedEnumRoleFilter<$PrismaModel>
+  }
+
+  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[]
+    notIn?: Date[] | string[]
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedDateTimeFilter<$PrismaModel>
+    _max?: NestedDateTimeFilter<$PrismaModel>
+  }
+
   export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | null
@@ -16498,6 +22467,14 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
   export type NestedJsonFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -16645,17 +22622,38 @@ export namespace Prisma {
     _max?: NestedEnumPaymentStatusFilter<$PrismaModel>
   }
 
-  export type NestedBoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
+  export type NestedEnumGameDepositStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameDepositStatus | EnumGameDepositStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameDepositStatus[]
+    notIn?: $Enums.GameDepositStatus[]
+    not?: NestedEnumGameDepositStatusFilter<$PrismaModel> | $Enums.GameDepositStatus
   }
 
-  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+  export type NestedEnumGameDepositStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameDepositStatus | EnumGameDepositStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameDepositStatus[]
+    notIn?: $Enums.GameDepositStatus[]
+    not?: NestedEnumGameDepositStatusWithAggregatesFilter<$PrismaModel> | $Enums.GameDepositStatus
     _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
+    _min?: NestedEnumGameDepositStatusFilter<$PrismaModel>
+    _max?: NestedEnumGameDepositStatusFilter<$PrismaModel>
+  }
+
+  export type NestedEnumGameWithdrawalStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameWithdrawalStatus | EnumGameWithdrawalStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameWithdrawalStatus[]
+    notIn?: $Enums.GameWithdrawalStatus[]
+    not?: NestedEnumGameWithdrawalStatusFilter<$PrismaModel> | $Enums.GameWithdrawalStatus
+  }
+
+  export type NestedEnumGameWithdrawalStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.GameWithdrawalStatus | EnumGameWithdrawalStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GameWithdrawalStatus[]
+    notIn?: $Enums.GameWithdrawalStatus[]
+    not?: NestedEnumGameWithdrawalStatusWithAggregatesFilter<$PrismaModel> | $Enums.GameWithdrawalStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumGameWithdrawalStatusFilter<$PrismaModel>
+    _max?: NestedEnumGameWithdrawalStatusFilter<$PrismaModel>
   }
 
   export type SeekerProfileCreateWithoutUserInput = {
@@ -16813,6 +22811,31 @@ export namespace Prisma {
   export type NotificationCreateManyUserInputEnvelope = {
     data: NotificationCreateManyUserInput | NotificationCreateManyUserInput[]
     skipDuplicates?: boolean
+  }
+
+  export type GameWalletCreateWithoutUserInput = {
+    id?: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deposits?: GameDepositCreateNestedManyWithoutWalletInput
+    sessions?: GameSessionCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletUncheckedCreateWithoutUserInput = {
+    id?: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deposits?: GameDepositUncheckedCreateNestedManyWithoutWalletInput
+    sessions?: GameSessionUncheckedCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalUncheckedCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletCreateOrConnectWithoutUserInput = {
+    where: GameWalletWhereUniqueInput
+    create: XOR<GameWalletCreateWithoutUserInput, GameWalletUncheckedCreateWithoutUserInput>
   }
 
   export type SeekerProfileUpsertWithoutUserInput = {
@@ -16980,36 +23003,73 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Notification"> | Date | string
   }
 
+  export type GameWalletUpsertWithoutUserInput = {
+    update: XOR<GameWalletUpdateWithoutUserInput, GameWalletUncheckedUpdateWithoutUserInput>
+    create: XOR<GameWalletCreateWithoutUserInput, GameWalletUncheckedCreateWithoutUserInput>
+    where?: GameWalletWhereInput
+  }
+
+  export type GameWalletUpdateToOneWithWhereWithoutUserInput = {
+    where?: GameWalletWhereInput
+    data: XOR<GameWalletUpdateWithoutUserInput, GameWalletUncheckedUpdateWithoutUserInput>
+  }
+
+  export type GameWalletUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deposits?: GameDepositUpdateManyWithoutWalletNestedInput
+    sessions?: GameSessionUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deposits?: GameDepositUncheckedUpdateManyWithoutWalletNestedInput
+    sessions?: GameSessionUncheckedUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUncheckedUpdateManyWithoutWalletNestedInput
+  }
+
   export type UserCreateWithoutProfileInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     applications?: ApplicationCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobCreateNestedManyWithoutUserInput
     alerts?: AlertCreateNestedManyWithoutUserInput
     notifications?: NotificationCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutProfileInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     applications?: ApplicationUncheckedCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobUncheckedCreateNestedManyWithoutUserInput
     alerts?: AlertUncheckedCreateNestedManyWithoutUserInput
     notifications?: NotificationUncheckedCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutProfileInput = {
@@ -17032,32 +23092,38 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     applications?: ApplicationUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUpdateManyWithoutUserNestedInput
     alerts?: AlertUpdateManyWithoutUserNestedInput
     notifications?: NotificationUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutProfileInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     applications?: ApplicationUncheckedUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUncheckedUpdateManyWithoutUserNestedInput
     alerts?: AlertUncheckedUpdateManyWithoutUserNestedInput
     notifications?: NotificationUncheckedUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type ApplicationCreateWithoutJobInput = {
@@ -17148,32 +23214,38 @@ export namespace Prisma {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileCreateNestedOneWithoutUserInput
     savedJobs?: SavedJobCreateNestedManyWithoutUserInput
     alerts?: AlertCreateNestedManyWithoutUserInput
     notifications?: NotificationCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutApplicationsInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileUncheckedCreateNestedOneWithoutUserInput
     savedJobs?: SavedJobUncheckedCreateNestedManyWithoutUserInput
     alerts?: AlertUncheckedCreateNestedManyWithoutUserInput
     notifications?: NotificationUncheckedCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutApplicationsInput = {
@@ -17270,32 +23342,38 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUpdateOneWithoutUserNestedInput
     savedJobs?: SavedJobUpdateManyWithoutUserNestedInput
     alerts?: AlertUpdateManyWithoutUserNestedInput
     notifications?: NotificationUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutApplicationsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUncheckedUpdateOneWithoutUserNestedInput
     savedJobs?: SavedJobUncheckedUpdateManyWithoutUserNestedInput
     alerts?: AlertUncheckedUpdateManyWithoutUserNestedInput
     notifications?: NotificationUncheckedUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type JobUpsertWithoutApplicationsInput = {
@@ -17444,32 +23522,38 @@ export namespace Prisma {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileCreateNestedOneWithoutUserInput
     applications?: ApplicationCreateNestedManyWithoutUserInput
     alerts?: AlertCreateNestedManyWithoutUserInput
     notifications?: NotificationCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutSavedJobsInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileUncheckedCreateNestedOneWithoutUserInput
     applications?: ApplicationUncheckedCreateNestedManyWithoutUserInput
     alerts?: AlertUncheckedCreateNestedManyWithoutUserInput
     notifications?: NotificationUncheckedCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutSavedJobsInput = {
@@ -17535,32 +23619,38 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUpdateOneWithoutUserNestedInput
     applications?: ApplicationUpdateManyWithoutUserNestedInput
     alerts?: AlertUpdateManyWithoutUserNestedInput
     notifications?: NotificationUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSavedJobsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUncheckedUpdateOneWithoutUserNestedInput
     applications?: ApplicationUncheckedUpdateManyWithoutUserNestedInput
     alerts?: AlertUncheckedUpdateManyWithoutUserNestedInput
     notifications?: NotificationUncheckedUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type JobUpsertWithoutSavedByInput = {
@@ -17616,32 +23706,38 @@ export namespace Prisma {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileCreateNestedOneWithoutUserInput
     applications?: ApplicationCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobCreateNestedManyWithoutUserInput
     notifications?: NotificationCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAlertsInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileUncheckedCreateNestedOneWithoutUserInput
     applications?: ApplicationUncheckedCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobUncheckedCreateNestedManyWithoutUserInput
     notifications?: NotificationUncheckedCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAlertsInput = {
@@ -17664,64 +23760,76 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUpdateOneWithoutUserNestedInput
     applications?: ApplicationUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUpdateManyWithoutUserNestedInput
     notifications?: NotificationUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAlertsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUncheckedUpdateOneWithoutUserNestedInput
     applications?: ApplicationUncheckedUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUncheckedUpdateManyWithoutUserNestedInput
     notifications?: NotificationUncheckedUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type UserCreateWithoutNotificationsInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileCreateNestedOneWithoutUserInput
     applications?: ApplicationCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobCreateNestedManyWithoutUserInput
     alerts?: AlertCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutNotificationsInput = {
     id?: string
     name: string
     email: string
+    phone?: string | null
     passwordHash: string
     role?: $Enums.Role
     createdAt?: Date | string
     updatedAt?: Date | string
     resetToken?: string | null
     resetTokenExpiry?: Date | string | null
+    blocked?: boolean
     profile?: SeekerProfileUncheckedCreateNestedOneWithoutUserInput
     applications?: ApplicationUncheckedCreateNestedManyWithoutUserInput
     savedJobs?: SavedJobUncheckedCreateNestedManyWithoutUserInput
     alerts?: AlertUncheckedCreateNestedManyWithoutUserInput
+    gameWallet?: GameWalletUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutNotificationsInput = {
@@ -17744,32 +23852,505 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUpdateOneWithoutUserNestedInput
     applications?: ApplicationUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUpdateManyWithoutUserNestedInput
     alerts?: AlertUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutNotificationsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
     passwordHash?: StringFieldUpdateOperationsInput | string
     role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resetToken?: NullableStringFieldUpdateOperationsInput | string | null
     resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
     profile?: SeekerProfileUncheckedUpdateOneWithoutUserNestedInput
     applications?: ApplicationUncheckedUpdateManyWithoutUserNestedInput
     savedJobs?: SavedJobUncheckedUpdateManyWithoutUserNestedInput
     alerts?: AlertUncheckedUpdateManyWithoutUserNestedInput
+    gameWallet?: GameWalletUncheckedUpdateOneWithoutUserNestedInput
+  }
+
+  export type UserCreateWithoutGameWalletInput = {
+    id?: string
+    name: string
+    email: string
+    phone?: string | null
+    passwordHash: string
+    role?: $Enums.Role
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    resetToken?: string | null
+    resetTokenExpiry?: Date | string | null
+    blocked?: boolean
+    profile?: SeekerProfileCreateNestedOneWithoutUserInput
+    applications?: ApplicationCreateNestedManyWithoutUserInput
+    savedJobs?: SavedJobCreateNestedManyWithoutUserInput
+    alerts?: AlertCreateNestedManyWithoutUserInput
+    notifications?: NotificationCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutGameWalletInput = {
+    id?: string
+    name: string
+    email: string
+    phone?: string | null
+    passwordHash: string
+    role?: $Enums.Role
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    resetToken?: string | null
+    resetTokenExpiry?: Date | string | null
+    blocked?: boolean
+    profile?: SeekerProfileUncheckedCreateNestedOneWithoutUserInput
+    applications?: ApplicationUncheckedCreateNestedManyWithoutUserInput
+    savedJobs?: SavedJobUncheckedCreateNestedManyWithoutUserInput
+    alerts?: AlertUncheckedCreateNestedManyWithoutUserInput
+    notifications?: NotificationUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutGameWalletInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutGameWalletInput, UserUncheckedCreateWithoutGameWalletInput>
+  }
+
+  export type GameDepositCreateWithoutWalletInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status?: $Enums.GameDepositStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameDepositUncheckedCreateWithoutWalletInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status?: $Enums.GameDepositStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameDepositCreateOrConnectWithoutWalletInput = {
+    where: GameDepositWhereUniqueInput
+    create: XOR<GameDepositCreateWithoutWalletInput, GameDepositUncheckedCreateWithoutWalletInput>
+  }
+
+  export type GameDepositCreateManyWalletInputEnvelope = {
+    data: GameDepositCreateManyWalletInput | GameDepositCreateManyWalletInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type GameSessionCreateWithoutWalletInput = {
+    id?: string
+    userId: string
+    wagerAmount: number
+    finalScore?: number
+    winAmount?: number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: Date | string
+    endedAt?: Date | string | null
+    completed?: boolean
+  }
+
+  export type GameSessionUncheckedCreateWithoutWalletInput = {
+    id?: string
+    userId: string
+    wagerAmount: number
+    finalScore?: number
+    winAmount?: number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: Date | string
+    endedAt?: Date | string | null
+    completed?: boolean
+  }
+
+  export type GameSessionCreateOrConnectWithoutWalletInput = {
+    where: GameSessionWhereUniqueInput
+    create: XOR<GameSessionCreateWithoutWalletInput, GameSessionUncheckedCreateWithoutWalletInput>
+  }
+
+  export type GameSessionCreateManyWalletInputEnvelope = {
+    data: GameSessionCreateManyWalletInput | GameSessionCreateManyWalletInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type GameWithdrawalCreateWithoutWalletInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status?: $Enums.GameWithdrawalStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameWithdrawalUncheckedCreateWithoutWalletInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status?: $Enums.GameWithdrawalStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameWithdrawalCreateOrConnectWithoutWalletInput = {
+    where: GameWithdrawalWhereUniqueInput
+    create: XOR<GameWithdrawalCreateWithoutWalletInput, GameWithdrawalUncheckedCreateWithoutWalletInput>
+  }
+
+  export type GameWithdrawalCreateManyWalletInputEnvelope = {
+    data: GameWithdrawalCreateManyWalletInput | GameWithdrawalCreateManyWalletInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserUpsertWithoutGameWalletInput = {
+    update: XOR<UserUpdateWithoutGameWalletInput, UserUncheckedUpdateWithoutGameWalletInput>
+    create: XOR<UserCreateWithoutGameWalletInput, UserUncheckedCreateWithoutGameWalletInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutGameWalletInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutGameWalletInput, UserUncheckedUpdateWithoutGameWalletInput>
+  }
+
+  export type UserUpdateWithoutGameWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    resetToken?: NullableStringFieldUpdateOperationsInput | string | null
+    resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
+    profile?: SeekerProfileUpdateOneWithoutUserNestedInput
+    applications?: ApplicationUpdateManyWithoutUserNestedInput
+    savedJobs?: SavedJobUpdateManyWithoutUserNestedInput
+    alerts?: AlertUpdateManyWithoutUserNestedInput
+    notifications?: NotificationUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutGameWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    resetToken?: NullableStringFieldUpdateOperationsInput | string | null
+    resetTokenExpiry?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    blocked?: BoolFieldUpdateOperationsInput | boolean
+    profile?: SeekerProfileUncheckedUpdateOneWithoutUserNestedInput
+    applications?: ApplicationUncheckedUpdateManyWithoutUserNestedInput
+    savedJobs?: SavedJobUncheckedUpdateManyWithoutUserNestedInput
+    alerts?: AlertUncheckedUpdateManyWithoutUserNestedInput
+    notifications?: NotificationUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type GameDepositUpsertWithWhereUniqueWithoutWalletInput = {
+    where: GameDepositWhereUniqueInput
+    update: XOR<GameDepositUpdateWithoutWalletInput, GameDepositUncheckedUpdateWithoutWalletInput>
+    create: XOR<GameDepositCreateWithoutWalletInput, GameDepositUncheckedCreateWithoutWalletInput>
+  }
+
+  export type GameDepositUpdateWithWhereUniqueWithoutWalletInput = {
+    where: GameDepositWhereUniqueInput
+    data: XOR<GameDepositUpdateWithoutWalletInput, GameDepositUncheckedUpdateWithoutWalletInput>
+  }
+
+  export type GameDepositUpdateManyWithWhereWithoutWalletInput = {
+    where: GameDepositScalarWhereInput
+    data: XOR<GameDepositUpdateManyMutationInput, GameDepositUncheckedUpdateManyWithoutWalletInput>
+  }
+
+  export type GameDepositScalarWhereInput = {
+    AND?: GameDepositScalarWhereInput | GameDepositScalarWhereInput[]
+    OR?: GameDepositScalarWhereInput[]
+    NOT?: GameDepositScalarWhereInput | GameDepositScalarWhereInput[]
+    id?: StringFilter<"GameDeposit"> | string
+    walletId?: StringFilter<"GameDeposit"> | string
+    userId?: StringFilter<"GameDeposit"> | string
+    amount?: IntFilter<"GameDeposit"> | number
+    method?: EnumPaymentMethodFilter<"GameDeposit"> | $Enums.PaymentMethod
+    screenshotUrl?: StringFilter<"GameDeposit"> | string
+    status?: EnumGameDepositStatusFilter<"GameDeposit"> | $Enums.GameDepositStatus
+    rejectionReason?: StringNullableFilter<"GameDeposit"> | string | null
+    submittedAt?: DateTimeFilter<"GameDeposit"> | Date | string
+    reviewedAt?: DateTimeNullableFilter<"GameDeposit"> | Date | string | null
+    reviewedBy?: StringNullableFilter<"GameDeposit"> | string | null
+  }
+
+  export type GameSessionUpsertWithWhereUniqueWithoutWalletInput = {
+    where: GameSessionWhereUniqueInput
+    update: XOR<GameSessionUpdateWithoutWalletInput, GameSessionUncheckedUpdateWithoutWalletInput>
+    create: XOR<GameSessionCreateWithoutWalletInput, GameSessionUncheckedCreateWithoutWalletInput>
+  }
+
+  export type GameSessionUpdateWithWhereUniqueWithoutWalletInput = {
+    where: GameSessionWhereUniqueInput
+    data: XOR<GameSessionUpdateWithoutWalletInput, GameSessionUncheckedUpdateWithoutWalletInput>
+  }
+
+  export type GameSessionUpdateManyWithWhereWithoutWalletInput = {
+    where: GameSessionScalarWhereInput
+    data: XOR<GameSessionUpdateManyMutationInput, GameSessionUncheckedUpdateManyWithoutWalletInput>
+  }
+
+  export type GameSessionScalarWhereInput = {
+    AND?: GameSessionScalarWhereInput | GameSessionScalarWhereInput[]
+    OR?: GameSessionScalarWhereInput[]
+    NOT?: GameSessionScalarWhereInput | GameSessionScalarWhereInput[]
+    id?: StringFilter<"GameSession"> | string
+    walletId?: StringFilter<"GameSession"> | string
+    userId?: StringFilter<"GameSession"> | string
+    wagerAmount?: IntFilter<"GameSession"> | number
+    finalScore?: IntFilter<"GameSession"> | number
+    winAmount?: IntFilter<"GameSession"> | number
+    milestones?: JsonFilter<"GameSession">
+    startedAt?: DateTimeFilter<"GameSession"> | Date | string
+    endedAt?: DateTimeNullableFilter<"GameSession"> | Date | string | null
+    completed?: BoolFilter<"GameSession"> | boolean
+  }
+
+  export type GameWithdrawalUpsertWithWhereUniqueWithoutWalletInput = {
+    where: GameWithdrawalWhereUniqueInput
+    update: XOR<GameWithdrawalUpdateWithoutWalletInput, GameWithdrawalUncheckedUpdateWithoutWalletInput>
+    create: XOR<GameWithdrawalCreateWithoutWalletInput, GameWithdrawalUncheckedCreateWithoutWalletInput>
+  }
+
+  export type GameWithdrawalUpdateWithWhereUniqueWithoutWalletInput = {
+    where: GameWithdrawalWhereUniqueInput
+    data: XOR<GameWithdrawalUpdateWithoutWalletInput, GameWithdrawalUncheckedUpdateWithoutWalletInput>
+  }
+
+  export type GameWithdrawalUpdateManyWithWhereWithoutWalletInput = {
+    where: GameWithdrawalScalarWhereInput
+    data: XOR<GameWithdrawalUpdateManyMutationInput, GameWithdrawalUncheckedUpdateManyWithoutWalletInput>
+  }
+
+  export type GameWithdrawalScalarWhereInput = {
+    AND?: GameWithdrawalScalarWhereInput | GameWithdrawalScalarWhereInput[]
+    OR?: GameWithdrawalScalarWhereInput[]
+    NOT?: GameWithdrawalScalarWhereInput | GameWithdrawalScalarWhereInput[]
+    id?: StringFilter<"GameWithdrawal"> | string
+    walletId?: StringFilter<"GameWithdrawal"> | string
+    userId?: StringFilter<"GameWithdrawal"> | string
+    amount?: IntFilter<"GameWithdrawal"> | number
+    method?: StringFilter<"GameWithdrawal"> | string
+    accountNumber?: StringFilter<"GameWithdrawal"> | string
+    accountName?: StringFilter<"GameWithdrawal"> | string
+    status?: EnumGameWithdrawalStatusFilter<"GameWithdrawal"> | $Enums.GameWithdrawalStatus
+    rejectionReason?: StringNullableFilter<"GameWithdrawal"> | string | null
+    submittedAt?: DateTimeFilter<"GameWithdrawal"> | Date | string
+    reviewedAt?: DateTimeNullableFilter<"GameWithdrawal"> | Date | string | null
+    reviewedBy?: StringNullableFilter<"GameWithdrawal"> | string | null
+  }
+
+  export type GameWalletCreateWithoutDepositsInput = {
+    id?: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutGameWalletInput
+    sessions?: GameSessionCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletUncheckedCreateWithoutDepositsInput = {
+    id?: string
+    userId: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    sessions?: GameSessionUncheckedCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalUncheckedCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletCreateOrConnectWithoutDepositsInput = {
+    where: GameWalletWhereUniqueInput
+    create: XOR<GameWalletCreateWithoutDepositsInput, GameWalletUncheckedCreateWithoutDepositsInput>
+  }
+
+  export type GameWalletUpsertWithoutDepositsInput = {
+    update: XOR<GameWalletUpdateWithoutDepositsInput, GameWalletUncheckedUpdateWithoutDepositsInput>
+    create: XOR<GameWalletCreateWithoutDepositsInput, GameWalletUncheckedCreateWithoutDepositsInput>
+    where?: GameWalletWhereInput
+  }
+
+  export type GameWalletUpdateToOneWithWhereWithoutDepositsInput = {
+    where?: GameWalletWhereInput
+    data: XOR<GameWalletUpdateWithoutDepositsInput, GameWalletUncheckedUpdateWithoutDepositsInput>
+  }
+
+  export type GameWalletUpdateWithoutDepositsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutGameWalletNestedInput
+    sessions?: GameSessionUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletUncheckedUpdateWithoutDepositsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    sessions?: GameSessionUncheckedUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUncheckedUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletCreateWithoutSessionsInput = {
+    id?: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutGameWalletInput
+    deposits?: GameDepositCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletUncheckedCreateWithoutSessionsInput = {
+    id?: string
+    userId: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deposits?: GameDepositUncheckedCreateNestedManyWithoutWalletInput
+    withdrawals?: GameWithdrawalUncheckedCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletCreateOrConnectWithoutSessionsInput = {
+    where: GameWalletWhereUniqueInput
+    create: XOR<GameWalletCreateWithoutSessionsInput, GameWalletUncheckedCreateWithoutSessionsInput>
+  }
+
+  export type GameWalletUpsertWithoutSessionsInput = {
+    update: XOR<GameWalletUpdateWithoutSessionsInput, GameWalletUncheckedUpdateWithoutSessionsInput>
+    create: XOR<GameWalletCreateWithoutSessionsInput, GameWalletUncheckedCreateWithoutSessionsInput>
+    where?: GameWalletWhereInput
+  }
+
+  export type GameWalletUpdateToOneWithWhereWithoutSessionsInput = {
+    where?: GameWalletWhereInput
+    data: XOR<GameWalletUpdateWithoutSessionsInput, GameWalletUncheckedUpdateWithoutSessionsInput>
+  }
+
+  export type GameWalletUpdateWithoutSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutGameWalletNestedInput
+    deposits?: GameDepositUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletUncheckedUpdateWithoutSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deposits?: GameDepositUncheckedUpdateManyWithoutWalletNestedInput
+    withdrawals?: GameWithdrawalUncheckedUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletCreateWithoutWithdrawalsInput = {
+    id?: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutGameWalletInput
+    deposits?: GameDepositCreateNestedManyWithoutWalletInput
+    sessions?: GameSessionCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletUncheckedCreateWithoutWithdrawalsInput = {
+    id?: string
+    userId: string
+    balance?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deposits?: GameDepositUncheckedCreateNestedManyWithoutWalletInput
+    sessions?: GameSessionUncheckedCreateNestedManyWithoutWalletInput
+  }
+
+  export type GameWalletCreateOrConnectWithoutWithdrawalsInput = {
+    where: GameWalletWhereUniqueInput
+    create: XOR<GameWalletCreateWithoutWithdrawalsInput, GameWalletUncheckedCreateWithoutWithdrawalsInput>
+  }
+
+  export type GameWalletUpsertWithoutWithdrawalsInput = {
+    update: XOR<GameWalletUpdateWithoutWithdrawalsInput, GameWalletUncheckedUpdateWithoutWithdrawalsInput>
+    create: XOR<GameWalletCreateWithoutWithdrawalsInput, GameWalletUncheckedCreateWithoutWithdrawalsInput>
+    where?: GameWalletWhereInput
+  }
+
+  export type GameWalletUpdateToOneWithWhereWithoutWithdrawalsInput = {
+    where?: GameWalletWhereInput
+    data: XOR<GameWalletUpdateWithoutWithdrawalsInput, GameWalletUncheckedUpdateWithoutWithdrawalsInput>
+  }
+
+  export type GameWalletUpdateWithoutWithdrawalsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutGameWalletNestedInput
+    deposits?: GameDepositUpdateManyWithoutWalletNestedInput
+    sessions?: GameSessionUpdateManyWithoutWalletNestedInput
+  }
+
+  export type GameWalletUncheckedUpdateWithoutWithdrawalsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    balance?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deposits?: GameDepositUncheckedUpdateManyWithoutWalletNestedInput
+    sessions?: GameSessionUncheckedUpdateManyWithoutWalletNestedInput
   }
 
   export type ApplicationCreateManyUserInput = {
@@ -17978,6 +24559,162 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
     savedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GameDepositCreateManyWalletInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: $Enums.PaymentMethod
+    screenshotUrl: string
+    status?: $Enums.GameDepositStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameSessionCreateManyWalletInput = {
+    id?: string
+    userId: string
+    wagerAmount: number
+    finalScore?: number
+    winAmount?: number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: Date | string
+    endedAt?: Date | string | null
+    completed?: boolean
+  }
+
+  export type GameWithdrawalCreateManyWalletInput = {
+    id?: string
+    userId: string
+    amount: number
+    method: string
+    accountNumber: string
+    accountName: string
+    status?: $Enums.GameWithdrawalStatus
+    rejectionReason?: string | null
+    submittedAt?: Date | string
+    reviewedAt?: Date | string | null
+    reviewedBy?: string | null
+  }
+
+  export type GameDepositUpdateWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameDepositUncheckedUpdateWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameDepositUncheckedUpdateManyWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    screenshotUrl?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameDepositStatusFieldUpdateOperationsInput | $Enums.GameDepositStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameSessionUpdateWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type GameSessionUncheckedUpdateWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type GameSessionUncheckedUpdateManyWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    wagerAmount?: IntFieldUpdateOperationsInput | number
+    finalScore?: IntFieldUpdateOperationsInput | number
+    winAmount?: IntFieldUpdateOperationsInput | number
+    milestones?: JsonNullValueInput | InputJsonValue
+    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    completed?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type GameWithdrawalUpdateWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameWithdrawalUncheckedUpdateWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type GameWithdrawalUncheckedUpdateManyWithoutWalletInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    amount?: IntFieldUpdateOperationsInput | number
+    method?: StringFieldUpdateOperationsInput | string
+    accountNumber?: StringFieldUpdateOperationsInput | string
+    accountName?: StringFieldUpdateOperationsInput | string
+    status?: EnumGameWithdrawalStatusFieldUpdateOperationsInput | $Enums.GameWithdrawalStatus
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    submittedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    reviewedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
 

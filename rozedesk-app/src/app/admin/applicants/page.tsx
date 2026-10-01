@@ -22,6 +22,7 @@ import { useSearchParams } from "next/navigation";
 import Badge from "@/components/Badge";
 import SkeletonCard from "@/components/dashboard/SkeletonCard";
 import { useToast } from "@/components/Toast";
+import { safeFetch, ApiError } from "@/lib/api";
 
 function Icon({ path, className = "w-5 h-5" }: { path: string; className?: string }) {
   return (
@@ -128,13 +129,14 @@ function ApplicantsPageInner() {
     try {
       const params = new URLSearchParams();
       if (jobFilter !== "all") params.set("job", jobFilter);
-      const res = await fetch(`/api/admin/applicants?${params}`, {
-        headers: authHeaders(), credentials: "include",
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? "Failed to load");
-      setApplicants(await res.json());
+      /* safeFetch: single parse, throws ApiError on !ok or non-JSON */
+      const data = await safeFetch<Applicant[]>(
+        `/api/admin/applicants?${params}`,
+        { headers: authHeaders(), credentials: "include" },
+      );
+      setApplicants(data);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load applicants.");
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to load applicants.");
     } finally {
       setLoading(false);
     }
@@ -147,16 +149,19 @@ function ApplicantsPageInner() {
     setUpdating(p => ({ ...p, [id]: true }));
     setError("");
     try {
-      const res = await fetch(`/api/admin/applicants/${id}`, {
+      /* safeFetch: single parse, throws ApiError on !ok */
+      await safeFetch(`/api/admin/applicants/${id}`, {
         method: "PATCH", headers: authHeaders(), credentials: "include",
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error((await res.json()).message);
       setApplicants(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-      const LABELS: Record<string,string> = { SHORTLISTED:"Shortlisted ✓", HIRED:"Hired 🎉", REJECTED:"Marked as rejected", CV_UNDER_REVIEW:"Moved to CV review" };
+      const LABELS: Record<string, string> = {
+        SHORTLISTED: "Shortlisted", HIRED: "Hired",
+        REJECTED: "Marked as rejected", CV_UNDER_REVIEW: "Moved to CV review",
+      };
       toast.success(LABELS[status] ?? `Status updated to ${status}`);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Status update failed.";
+      const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Status update failed.";
       setError(msg);
       toast.error(msg);
     } finally {

@@ -40,6 +40,15 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     if (!String(body.company ?? "").trim()) return err(400, "Company is required.");
     if (!String(body.location?? "").trim()) return err(400, "Location is required.");
 
+    /* Validate deadline is a real date if provided */
+    let deadline: Date | null = null;
+    if (body.deadline) {
+      deadline = new Date(body.deadline);
+      if (isNaN(deadline.getTime())) {
+        return err(400, "Invalid deadline date.");
+      }
+    }
+
     const job = await db.job.update({
       where: { id },
       data: {
@@ -53,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
         benefits:     Array.isArray(body.benefits)     ? body.benefits     : [],
         salaryMin:    body.salaryMin ? Number(body.salaryMin) : null,
         salaryMax:    body.salaryMax ? Number(body.salaryMax) : null,
-        deadline:     body.deadline  ? new Date(body.deadline) : null,
+        deadline,
       },
     });
     return NextResponse.json(job);

@@ -1,73 +1,92 @@
 /**
  * POST /api/auth/signin
- * Body: { email, password, rememberMe? }
+ * Body: { phone, password, rememberMe? }
  * Returns: { token, user, expiresIn }
  *
+ * Auth identifier: Pakistani mobile number (03XXXXXXXXX).
  * rememberMe=true  → 30-day JWT + 30-day cookie
- * rememberMe=false → 24-hour JWT + session cookie (no maxAge = expires on browser close)
+ * rememberMe=false → 24-hour JWT + session cookie
  *
- * Backend SOP Hard Rule 1: server validates credentials — never trusts client claims.
- * DRY: JWT_SECRET and cookie names defined once, reused in callback route.
+ * Backend SOP Hard Rule 1: server validates — never trusts client claims.
+ * Security: timing-safe bcrypt compare; generic error message prevents user enumeration.
+ * DRY: JWT_SECRET and cookie names defined once.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { db }          from "@/lib/db";
+import bcrypt          from "bcryptjs";
+import jwt             from "jsonwebtoken";
 import { getInitials } from "@/lib/auth";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret";
 
+/** Strip spaces/dashes from a phone number before DB lookup */
+function normalisePhone(v: string) {
+  return v.replace(/[\s\-]/g, "");
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, rememberMe } = await req.json() as {
-      email?:      string;
+    const { phone, password, rememberMe } = await req.json() as {
+      phone?:      string;
       password?:   string;
       rememberMe?: boolean;
     };
 
-    if (!email?.trim() || !password) {
-      return err(400, "Email and password are required.");
+    /* ── Server-side validation ── */
+    if (!phone?.trim() || !password) {
+      return err(400, "Mobile number and password are required.");
+    }
+    if (!/^03\d{9}$/.test(normalisePhone(phone))) {
+      return err(400, "Enter a valid Pakistani mobile number (e.g. 03001234567).");
     }
 
-    const user = await db.user.findUnique({ where: { email: email.toLowerCase() } });
-    if (!user) return err(401, "Incorrect email or password.");
+    const normPhone = normalisePhone(phone);
+    const user = await db.user.findFirst({ where: { phone: normPhone } });
 
-    /* OAuth users (passwordHash starts with "oauth:") cannot use password login */
+    /* Generic message — prevents user enumeration */
+    if (!user) return err(401, "Incorrect mobile number or password.");
+
+    /* OAuth users cannot use password login */
     if (user.passwordHash.startsWith("oauth:")) {
       return err(401, "This account uses Google sign-in. Please use the Google button.");
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return err(401, "Incorrect email or password.");
+    if (!valid) return err(401, "Incorrect mobile number or password.");
 
-    /* rememberMe: true → 30d, false → 24h */
+    /* Token lifetime */
     const expiresIn = rememberMe ? "30d" : "24h";
     const maxAge    = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24;
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, phone: user.phone, role: user.role },
       JWT_SECRET,
-      { expiresIn }
+      { expiresIn },
     );
 
     const userPayload = {
       id:       user.id,
       name:     user.name,
-      email:    user.email,
+      phone:    user.phone,
       role:     user.role,
       initials: getInitials(user.name),
     };
 
+    const isProd = process.env.NODE_ENV === "production";
+
     const response = NextResponse.json({ token, user: userPayload, expiresIn });
 
-    /* HttpOnly cookie — middleware reads this */
     response.cookies.set("rozedesk-token", token, {
       httpOnly: true,
+      secure:   isProd,
+      sameSite: "lax",
       path:     "/",
-      ...(rememberMe ? { maxAge } : {}), // session cookie if not rememberMe
+      ...(rememberMe ? { maxAge } : {}),
     });
     response.cookies.set("rozedesk-role", user.role.toLowerCase(), {
       httpOnly: true,
+      secure:   isProd,
+      sameSite: "lax",
       path:     "/",
       ...(rememberMe ? { maxAge } : {}),
     });

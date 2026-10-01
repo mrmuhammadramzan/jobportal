@@ -124,12 +124,14 @@ exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   name: 'name',
   email: 'email',
+  phone: 'phone',
   passwordHash: 'passwordHash',
   role: 'role',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   resetToken: 'resetToken',
-  resetTokenExpiry: 'resetTokenExpiry'
+  resetTokenExpiry: 'resetTokenExpiry',
+  blocked: 'blocked'
 };
 
 exports.Prisma.SeekerProfileScalarFieldEnum = {
@@ -249,6 +251,56 @@ exports.Prisma.PlatformSettingScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.GameWalletScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  balance: 'balance',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.GameDepositScalarFieldEnum = {
+  id: 'id',
+  walletId: 'walletId',
+  userId: 'userId',
+  amount: 'amount',
+  method: 'method',
+  screenshotUrl: 'screenshotUrl',
+  status: 'status',
+  rejectionReason: 'rejectionReason',
+  submittedAt: 'submittedAt',
+  reviewedAt: 'reviewedAt',
+  reviewedBy: 'reviewedBy'
+};
+
+exports.Prisma.GameSessionScalarFieldEnum = {
+  id: 'id',
+  walletId: 'walletId',
+  userId: 'userId',
+  wagerAmount: 'wagerAmount',
+  finalScore: 'finalScore',
+  winAmount: 'winAmount',
+  milestones: 'milestones',
+  startedAt: 'startedAt',
+  endedAt: 'endedAt',
+  completed: 'completed'
+};
+
+exports.Prisma.GameWithdrawalScalarFieldEnum = {
+  id: 'id',
+  walletId: 'walletId',
+  userId: 'userId',
+  amount: 'amount',
+  method: 'method',
+  accountNumber: 'accountNumber',
+  accountName: 'accountName',
+  status: 'status',
+  rejectionReason: 'rejectionReason',
+  submittedAt: 'submittedAt',
+  reviewedAt: 'reviewedAt',
+  reviewedBy: 'reviewedBy'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -267,6 +319,7 @@ exports.Prisma.UserOrderByRelevanceFieldEnum = {
   id: 'id',
   name: 'name',
   email: 'email',
+  phone: 'phone',
   passwordHash: 'passwordHash',
   resetToken: 'resetToken'
 };
@@ -364,6 +417,37 @@ exports.Prisma.PlatformSettingOrderByRelevanceFieldEnum = {
   key: 'key',
   value: 'value'
 };
+
+exports.Prisma.GameWalletOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId'
+};
+
+exports.Prisma.GameDepositOrderByRelevanceFieldEnum = {
+  id: 'id',
+  walletId: 'walletId',
+  userId: 'userId',
+  screenshotUrl: 'screenshotUrl',
+  rejectionReason: 'rejectionReason',
+  reviewedBy: 'reviewedBy'
+};
+
+exports.Prisma.GameSessionOrderByRelevanceFieldEnum = {
+  id: 'id',
+  walletId: 'walletId',
+  userId: 'userId'
+};
+
+exports.Prisma.GameWithdrawalOrderByRelevanceFieldEnum = {
+  id: 'id',
+  walletId: 'walletId',
+  userId: 'userId',
+  method: 'method',
+  accountNumber: 'accountNumber',
+  accountName: 'accountName',
+  rejectionReason: 'rejectionReason',
+  reviewedBy: 'reviewedBy'
+};
 exports.Role = exports.$Enums.Role = {
   SEEKER: 'SEEKER',
   ADMIN: 'ADMIN'
@@ -397,6 +481,18 @@ exports.PaymentStatus = exports.$Enums.PaymentStatus = {
   REFUNDED: 'REFUNDED'
 };
 
+exports.GameDepositStatus = exports.$Enums.GameDepositStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+};
+
+exports.GameWithdrawalStatus = exports.$Enums.GameWithdrawalStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   SeekerProfile: 'SeekerProfile',
@@ -408,7 +504,11 @@ exports.Prisma.ModelName = {
   Alert: 'Alert',
   AnalyticsSummary: 'AnalyticsSummary',
   Notification: 'Notification',
-  PlatformSetting: 'PlatformSetting'
+  PlatformSetting: 'PlatformSetting',
+  GameWallet: 'GameWallet',
+  GameDeposit: 'GameDeposit',
+  GameSession: 'GameSession',
+  GameWithdrawal: 'GameWithdrawal'
 };
 
 /**

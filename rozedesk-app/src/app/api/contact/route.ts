@@ -24,24 +24,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Invalid email address." }, { status: 400 });
     }
 
-    /* Send email if SMTP is configured */
     const host = process.env.SMTP_HOST;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
     const adminEmail = process.env.SMTP_USER ?? "admin@rozedesk.com";
     const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+    /** Escape HTML special characters to prevent HTML injection in email body */
+    const esc = (s: string) =>
+      s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+       .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+    const safeName    = esc(name.trim());
+    const safeEmail   = esc(email.trim());
+    const safeSubject = esc(subject?.trim() ?? "");
+    const safeMessage = esc(message.trim());
+
     if (host && user && pass) {
-      const port      = parseInt(process.env.SMTP_PORT ?? "587", 10);
+      const port        = parseInt(process.env.SMTP_PORT ?? "587", 10);
       const transporter = nodemailer.createTransport({
         host, port, secure: port === 465,
         auth: { user, pass },
         connectionTimeout: 10_000,
       });
 
-      const subjectLine = subject?.trim()
-        ? `[RozeDesk Contact] ${subject.trim()}`
-        : `[RozeDesk Contact] Message from ${name.trim()}`;
+      const subjectLine = safeSubject
+        ? `[RozeDesk Contact] ${safeSubject}`
+        : `[RozeDesk Contact] Message from ${safeName}`;
 
       await transporter.sendMail({
         from:    process.env.SMTP_FROM ?? `RozeDesk <${user}>`,
@@ -49,19 +58,18 @@ export async function POST(req: NextRequest) {
         replyTo: email,
         subject: subjectLine,
         html: `
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Subject:</strong> ${subject ?? "—"}</p>
+          <p><strong>Name:</strong> ${safeName}</p>
+          <p><strong>Email:</strong> ${safeEmail}</p>
+          <p><strong>Subject:</strong> ${safeSubject || "—"}</p>
           <hr/>
           <p><strong>Message:</strong></p>
-          <p style="white-space:pre-wrap">${message}</p>
+          <p style="white-space:pre-wrap">${safeMessage}</p>
           <hr/>
           <p style="color:#9ca3af;font-size:12px">Sent via ${appUrl}/contact</p>
         `,
         text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject ?? "—"}\n\nMessage:\n${message}`,
       }).catch(e => console.error("[POST /api/contact] Email send failed:", e));
     } else {
-      /* No SMTP configured — log to console */
       console.log("[POST /api/contact] Message received (no SMTP configured):", {
         from: `${name} <${email}>`,
         subject: subject ?? "(no subject)",
