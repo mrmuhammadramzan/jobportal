@@ -1,0 +1,19 @@
+# nixpacks.toml — Explicit Nixpacks config for Railway deployment
+# DevOps SOP: no guessing — pin versions, declare phases explicitly.
+#
+# Railway docs: https://nixpacks.com/docs/config
+
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm ci --prefix rozedesk-app --ignore-engines"]
+
+[phases.build]
+cmds = [
+  "cd rozedesk-app && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma",
+  "cd rozedesk-app && ./node_modules/.bin/next build",
+]
+
+[start]
+cmd = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=../prisma/schema.prisma --skip-generate --accept-data-loss && node_modules/.bin/next start -p ${PORT:-3000}"

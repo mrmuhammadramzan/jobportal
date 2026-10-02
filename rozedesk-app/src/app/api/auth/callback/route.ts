@@ -17,10 +17,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { db } from "@/lib/db";
 import jwt from "jsonwebtoken";
-import { getInitials } from "@/lib/auth";
+import { getInitials }  from "@/lib/auth";
+import { getJwtSecret } from "@/lib/apiAuth";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret";
-const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export async function GET(req: NextRequest) {
   try {
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     /* 3. Issue our JWT — 30d for OAuth users (they re-consent via Google) */
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "30d" }
     );
 

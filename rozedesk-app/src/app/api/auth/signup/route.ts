@@ -13,9 +13,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db }          from "@/lib/db";
 import bcrypt          from "bcryptjs";
 import jwt             from "jsonwebtoken";
-import { getInitials } from "@/lib/auth";
-
-const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret";
+import { getInitials }  from "@/lib/auth";
+import { getJwtSecret } from "@/lib/apiAuth";
 
 function isValidPKPhone(v: string): boolean {
   return /^03\d{9}$/.test(v.replace(/[\s\-]/g, ""));
@@ -77,7 +76,7 @@ export async function POST(req: NextRequest) {
     /* ── JWT — phone as identity claim ── */
     const token = jwt.sign(
       { id: user.id, phone: user.phone, role: user.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "30d" },
     );
 

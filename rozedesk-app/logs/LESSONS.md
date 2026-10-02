@@ -9230,3 +9230,95 @@ startCommand = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=../
 - `railway.toml` — `startCommand` now includes `prisma db push` before `next start`
 
 **Related SOP section:** DevOps SOP §Hard Rule 1 (no secrets in code — all from env), §4 (environment parity — dev and prod must read from the same variable resolution path), Backend SOP §Hard Rule 1 (never trust env var names — verify against platform docs)
+
+---
+
+## DevOps Lessons
+
+### 2026-09-26 — Railway nixpacks: `$NIXPACKS_PATH` undefined-var + build exit 1 from Dockerfile in subdirectory
+
+**What happened:**
+Railway deployment failed with:
+```
+UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
+Build Failed: exit code: 1
+```
+The build log showed nixpacks was running correctly through `npm ci`, then failing at `next build`.
+
+**Root causes (two separate problems):**
+
+**Problem 1 — Orphaned `Dockerfile` in a subdirectory:**
+`rozedesk-app/Dockerfile` existed from an earlier standalone Docker deployment attempt.
+Railway's nixpacks builder scans the entire build context for Dockerfiles.
+When it found `rozedesk-app/Dockerfile`, it tried to parse/validate it.
+Line 18 was `COPY ../prisma ./prisma` — this is **illegal in a Docker build context**:
+`..` escapes the build context root, which Docker/Buildkit rejects.
+Buildkit's Dockerfile lint emits `UndefinedVar: $NIXPACKS_PATH` because nixpacks injects
+`$NIXPACKS_PATH` as a build arg in its own generated Dockerfile, but the orphaned
+`rozedesk-app/Dockerfile` never declared it with `ARG NIXPACKS_PATH`.
+
+**Problem 2 — No explicit nixpacks phase config:**
+`railway.toml` set `builder = "nixpacks"` and `buildCommand` but did not have a
+matching `nixpacks.toml`. This meant nixpacks guessed the build phases, which could
+re-order or skip `prisma generate` relative to `next build`.
+
+**Correct fix:**
+
+1. **Delete the orphaned `Dockerfile`** — it was dead code: `output: "standalone"` was
+   disabled in `next.config.ts`, so the Dockerfile's `COPY --from=builder .next/standalone`
+   would have produced an empty image anyway.
+
+2. **Create `nixpacks.toml` at the repo root** to explicitly declare all build phases:
+   ```toml
+   [phases.setup]
+   nixPkgs = ["nodejs_22"]
+
+   [phases.install]
+   cmds = ["npm ci --prefix rozedesk-app --ignore-engines"]
+
+   [phases.build]
+   cmds = [
+     "cd rozedesk-app && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma",
+     "cd rozedesk-app && ./node_modules/.bin/next build",
+   ]
+
+   [start]
+   cmd = "cd rozedesk-app && node_modules/.bin/next start -p ${PORT:-3000}"
+   ```
+
+3. **Remove `buildCommand` from `railway.toml`** — when `nixpacks.toml` is present,
+   `railway.toml`'s `buildCommand` overrides it entirely (it does NOT merge/extend).
+   Setting `buildCommand` in `railway.toml` AND having `nixpacks.toml` means only
+   `railway.toml` runs, silently ignoring `nixpacks.toml`. Choose one or the other.
+
+4. **Add `.railwayignore`** to keep the upload snapshot lean and prevent Railway
+   from picking up leftover Dockerfiles, `.env` files, or `node_modules/` from
+   subdirectories.
+
+**Prevention rules:**
+
+1. **Never leave a `Dockerfile` in a subdirectory of a nixpacks project.**
+   Railway's builder scans all subdirectories. Any `Dockerfile` it finds will be
+   validated by Docker's Buildkit lint. If the file uses paths that escape the
+   build context (`COPY ../`), the build fails with confusing lint errors.
+
+2. **`railway.toml` `buildCommand` vs `nixpacks.toml` — pick one, not both.**
+   They do not compose. `railway.toml` `buildCommand` always wins and silently
+   discards `nixpacks.toml` phases. Use `nixpacks.toml` for phase control; use
+   `railway.toml` only for deploy-time settings (`startCommand`, health check,
+   restart policy).
+
+3. **`COPY ../` in a Dockerfile is always wrong.**
+   Docker build context is a tree rooted at the path you pass to `docker build`.
+   You cannot reference files outside that root. For monorepos, either:
+   - Run `docker build` from the monorepo root with `-f rozedesk-app/Dockerfile`
+   - Or copy needed files into the app directory before building
+
+4. **Pin the Node version in `nixpacks.toml`**, not just in `.nvmrc`.**
+   Nixpacks reads `.nvmrc` / `.node-version` but only as hints. Pinning in
+   `nixpacks.toml` under `[phases.setup] nixPkgs = ["nodejs_22"]` is authoritative
+   and survives nixpacks provider version changes.
+
+**Related SOP section:** DevOps SOP §4 (self-contained deployment unit), §Hard Rule 1
+(no secrets baked in — also applies to not baking broken build artifacts), §3 (CI/CD
+pipeline config must be explicit, not guessed by the builder)

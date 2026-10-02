@@ -23,9 +23,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db }          from "@/lib/db";
 import bcrypt          from "bcryptjs";
 import jwt             from "jsonwebtoken";
-import { getInitials } from "@/lib/auth";
+import { getInitials }  from "@/lib/auth";
+import { getJwtSecret } from "@/lib/apiAuth";
 
-const JWT_SECRET      = process.env.JWT_SECRET ?? "dev_secret";
 const TOKEN_COOKIE    = "rozedesk-token";
 const ROLE_COOKIE     = "rozedesk-role";
 const EXPIRES_IN      = "24h";
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     /* ── 5. Sign JWT ── */
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: admin.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: EXPIRES_IN },
     );
 

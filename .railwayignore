@@ -1,0 +1,19 @@
+# .railwayignore — files excluded from Railway's build context
+# Keeps the uploaded snapshot lean and avoids builder confusion.
+
+# Local env files — never uploaded; secrets are set in Railway's env var UI
+.env
+.env.local
+.env*.local
+rozedesk-app/.env.local
+rozedesk-app/.env.production.example
+
+# Build artifacts — rebuilt in Railway's build phase
+rozedesk-app/.next/
+rozedesk-app/node_modules/
+node_modules/
+
+# Dev tooling
+*.log
+.DS_Store
+Thumbs.db

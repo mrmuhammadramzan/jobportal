@@ -15,9 +15,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db }          from "@/lib/db";
 import bcrypt          from "bcryptjs";
 import jwt             from "jsonwebtoken";
-import { getInitials } from "@/lib/auth";
-
-const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret";
+import { getInitials }  from "@/lib/auth";
+import { getJwtSecret } from "@/lib/apiAuth";
 
 /** Strip spaces/dashes from a phone number before DB lookup */
 function normalisePhone(v: string) {
@@ -60,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     const token = jwt.sign(
       { id: user.id, phone: user.phone, role: user.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn },
     );
 
