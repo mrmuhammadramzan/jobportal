@@ -325,3 +325,47 @@ The schema at prisma/schema.prisma is valid
 - `rozedesk-app/package.json` — `db:push` script updated with `--config` flag
 
 ---
+
+---
+
+## #006 — Railway MySQL Env Vars Not Seen by prisma7.config.ts — Use `--url` Override
+
+**Date:** 2026-10-02
+**Error:**
+```
+Datasource "db": MySQL database "build" at "localhost:3306"
+Error: P1001: Can't reach database server at localhost:3306
+```
+
+### What went wrong
+`prisma7.config.ts` fell through to Tier 4 (build dummy `localhost:3306`) because
+`MYSQLHOST` and `MYSQLDATABASE` were not visible to the TypeScript config at evaluation
+time. Root cause: Railway's MySQL plugin vars use reference syntax (`${{VAR}}`) that
+only resolves within the same service scope. When linked across services, the actual
+resolved values must be explicitly referenced in the receiving service's variable panel.
+
+### The correct fix
+Pass `--url` directly on the CLI to **override** the config's URL with shell-expanded
+env vars. Railway injects `MYSQLPASSWORD`, `MYSQLHOST`, `MYSQLDATABASE` as real shell
+env vars into the container — the shell expands them before Prisma sees them:
+
+```bash
+prisma db push \
+  --schema=./prisma/schema.prisma \
+  --config=./prisma7.config.ts \
+  --url=mysql://root:${MYSQLPASSWORD}@${MYSQLHOST}:3306/${MYSQLDATABASE} \
+  --accept-data-loss
+```
+
+`--url` requires a base config to exist (Prisma 7 behavior: override, not standalone).
+
+### Also fixed
+Removed the silent `localhost:3306` Tier 4 fallback in production. Now throws loudly
+if no real URL is configured — prevents silent connection to wrong host.
+
+### Rule going forward
+**Never rely on a TypeScript config file to read Railway env vars at Prisma CLI eval
+time.** Always use `--url` on the CLI for `db push`/`migrate` in deployment scripts
+to guarantee the correct connection string via shell expansion.
+
+---

@@ -17,4 +17,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=./prisma/schema.prisma --config=./prisma7.config.ts --accept-data-loss && node_modules/.bin/next start -p ${PORT:-3000}"
+cmd = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=./prisma/schema.prisma --config=./prisma7.config.ts --url=mysql://root:${MYSQLPASSWORD}@${MYSQLHOST}:3306/${MYSQLDATABASE} --accept-data-loss && node_modules/.bin/next start -p ${PORT:-3000}"
