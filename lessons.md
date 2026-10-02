@@ -232,3 +232,39 @@ to `"../src/generated/prisma"` (same final absolute path, shorter relative hop).
 - `prisma7.config.ts` — schema path updated
 
 ---
+
+---
+
+## #004 — Prisma 7 Removed `--skip-generate` Flag from `db push`
+
+**Date:** 2026-10-02
+**Affected files:** `railway.toml`, `nixpacks.toml`
+**Runtime error:**
+```
+! unknown or unexpected option: --skip-generate
+```
+
+### What went wrong
+The `startCommand` used `prisma db push --skip-generate` which was valid in
+Prisma 5/6. Prisma 7 removed this flag entirely. Railway container started,
+ran `db push`, hit the unknown flag error, and exited before `next start`.
+
+### Fix
+Remove `--skip-generate` from all `prisma db push` calls. In Prisma 7,
+`db push` never re-runs generate — the client was already generated at build
+time. The flag is simply gone.
+
+```bash
+# ❌ Prisma 5/6
+prisma db push --schema=./prisma/schema.prisma --skip-generate --accept-data-loss
+
+# ✅ Prisma 7
+prisma db push --schema=./prisma/schema.prisma --accept-data-loss
+```
+
+### Rule going forward
+When upgrading Prisma major versions, audit ALL CLI flags used in deployment
+scripts (`railway.toml`, `nixpacks.toml`, `package.json` scripts). Prisma 7
+is a breaking-change release — several CLI flags were renamed or removed.
+
+---
