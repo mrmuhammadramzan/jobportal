@@ -12,7 +12,7 @@
         "build": "prisma generate --schema=./prisma/schema.prisma && next build",
         "start": "next start",
         "lint": "eslint",
-        "db:push": "node_modules/.bin/prisma db push --schema=./prisma/schema.prisma",
+        "db:push": "node_modules/.bin/prisma db push --schema=./prisma/schema.prisma --config=./prisma7.config.ts",
         "db:generate": "node_modules/.bin/prisma generate --schema=./prisma/schema.prisma"
     },
     "dependencies": {

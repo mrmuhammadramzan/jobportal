@@ -268,3 +268,60 @@ scripts (`railway.toml`, `nixpacks.toml`, `package.json` scripts). Prisma 7
 is a breaking-change release — several CLI flags were renamed or removed.
 
 ---
+
+---
+
+## #005 — Prisma 7: `db push` Requires `datasource.url` in Config File — Schema URL Removed
+
+**Date:** 2026-10-02
+**Affected files:** `railway.toml`, `nixpacks.toml`, `rozedesk-app/prisma7.config.ts` (new)
+**Runtime error:**
+```
+Error: The datasource.url property is required in your Prisma config file when using prisma db push.
+```
+
+### What went wrong
+Prisma 7 completely removed `url` from `schema.prisma`'s datasource block (P1012 error
+if you try to set it). The URL must come from `prisma7.config.ts`. `prisma db push`
+finds this config by walking up from CWD — but when CWD is `/app/rozedesk-app/` and
+the config is at `/app/prisma7.config.ts`, Prisma did NOT reliably find it without
+an explicit `--config` flag.
+
+Attempts that failed:
+1. `--url=${MYSQL_URL}` flag — Prisma 7 ignores `--url` when no base config exists
+2. `url = env("MYSQL_URL")` in schema — P1012 error; Prisma 7 removed this entirely
+3. Relying on auto-discovery walking up directories — inconsistent
+
+### The correct fix
+1. **Co-locate `prisma7.config.ts` inside `rozedesk-app/`** (same directory as CWD
+   during all prisma commands). This eliminates cross-directory resolution entirely.
+2. **Pass `--config=./prisma7.config.ts` explicitly** to all `prisma db push` and
+   `prisma generate` calls.
+
+```bash
+# ✅ Correct Prisma 7 db push
+prisma db push --schema=./prisma/schema.prisma --config=./prisma7.config.ts --accept-data-loss
+```
+
+### Verified
+`prisma validate --schema=./prisma/schema.prisma --config=./prisma7.config.ts` outputs:
+```
+Loaded Prisma config from prisma7.config.ts.
+The schema at prisma/schema.prisma is valid
+```
+
+### Rules going forward
+1. **In Prisma 7, `datasource.url` lives ONLY in `prisma7.config.ts`** — never in schema.
+2. **Always pass `--config` explicitly** on `db push`, `migrate`, and any CLI command
+   that needs the datasource URL. Never rely on auto-discovery.
+3. **Co-locate `prisma7.config.ts` with the app directory** (same CWD as all commands).
+4. **`prisma generate` does NOT need `--config`** — it only needs `--schema` since
+   generate doesn't connect to the database.
+
+### Files changed
+- `rozedesk-app/prisma7.config.ts` — created (copied from root, schema path updated to `prisma/schema.prisma`)
+- `railway.toml` — `--config=./prisma7.config.ts` added to startCommand
+- `nixpacks.toml` — `--config=./prisma7.config.ts` added to start cmd
+- `rozedesk-app/package.json` — `db:push` script updated with `--config` flag
+
+---
