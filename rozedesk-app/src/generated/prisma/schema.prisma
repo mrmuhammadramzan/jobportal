@@ -12,7 +12,8 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  // NOTE: In Prisma 7, url is configured in prisma7.config.ts NOT here
+  // NOTE: In Prisma 7, url is configured in prisma7.config.ts — NOT here.
+  // datasource.url in schema.prisma is removed in Prisma 7 (P1012 error).
 }
 
 // ─────────────────────────────────────────

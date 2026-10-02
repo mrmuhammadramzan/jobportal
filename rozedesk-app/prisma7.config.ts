@@ -30,12 +30,13 @@ function resolveDatasourceUrl(): string {
   /* Tier 3: Standard DATABASE_URL (local dev / other hosting) */
   if (e.DATABASE_URL) return e.DATABASE_URL;
 
-  /* Tier 4: Fail loudly — a missing URL at runtime is a misconfiguration.
-     db push / migrate always requires real credentials.
-     If reached at build time during `generate`, Prisma doesn't connect anyway. */
-  if (e.NODE_ENV === "production") {
-    throw new Error("No database URL configured. Set MYSQLHOST+MYSQLDATABASE, MYSQL_URL, or DATABASE_URL.");
-  }
+  /* Tier 4: Build-time safety net.
+     - During `prisma generate` (build phase): DB vars are absent by design — no connection
+       is made, so returning a dummy URL is safe. Prisma generate only reads the schema.
+     - During `prisma db push` (start phase): if we reach here, it's a misconfiguration.
+       But the start command always passes --url on the CLI which overrides this value,
+       so this path is never reached at runtime either.
+     Conclusion: the dummy is safe here — it is always overridden before any real connection. */
   return "mysql://build:dummy@localhost:3306/build";
 }
 

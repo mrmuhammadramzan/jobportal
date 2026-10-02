@@ -369,3 +369,44 @@ time.** Always use `--url` on the CLI for `db push`/`migrate` in deployment scri
 to guarantee the correct connection string via shell expansion.
 
 ---
+
+---
+
+## #007 — Never Throw in prisma7.config.ts at Tier 4 — Build vs Runtime Context
+
+**Date:** 2026-10-02
+**Error:**
+```
+Failed to load config file "/app/rozedesk-app/prisma7.config.ts"
+Error: No database URL configured. Set MYSQLHOST+MYSQLDATABASE, MYSQL_URL, or DATABASE_URL.
+```
+
+### What went wrong
+After co-locating `prisma7.config.ts` inside `rozedesk-app/`, Prisma auto-discovers and
+evaluates it during BOTH `prisma generate` (build phase) AND `prisma db push` (runtime).
+We added a production guard that threw if no DB URL was configured. But during `prisma generate`
+at build time: `NODE_ENV=production` AND no MySQL vars exist → guard threw → build failed.
+
+### Why the guard was wrong
+`prisma generate` never opens a database connection — it only reads the schema and generates
+TypeScript types. A missing DB URL at generate time is **by design, not an error**.
+The production throw guard conflated two completely different execution contexts.
+
+### The correct model
+| Command | Phase | DB connection? | Dummy URL safe? |
+|---|---|---|---|
+| `prisma generate` | Build | Never | Yes — always |
+| `prisma db push` | Runtime start | Yes | No — but `--url` CLI flag overrides it |
+
+The Tier 4 dummy is always safe because:
+- `generate` never connects regardless of URL value
+- `db push` always receives `--url=mysql://root:${MYSQLPASSWORD}@...` from the CLI which overrides the config
+
+### Rule going forward
+**`prisma7.config.ts` must never throw at Tier 4.** The dummy URL is the correct
+build-time safety net. Real connection failures are caught by Prisma at actual
+connection time (P1001/P1002), not at config evaluation time.
+If you need a production guard, put it as a pre-flight check in the start script,
+not in the config file that is also evaluated during build.
+
+---

@@ -30,12 +30,7 @@ function resolveDatasourceUrl(): string {
   /* Tier 3: Standard DATABASE_URL (local dev / other hosting) */
   if (e.DATABASE_URL) return e.DATABASE_URL;
 
-  /* Tier 4: Fail loudly — a missing URL at runtime is a misconfiguration.
-     db push / migrate always requires real credentials.
-     If reached at build time during `generate`, Prisma doesn't connect anyway. */
-  if (e.NODE_ENV === "production") {
-    throw new Error("No database URL configured. Set MYSQLHOST+MYSQLDATABASE, MYSQL_URL, or DATABASE_URL.");
-  }
+  /* Tier 4: Build-time safety net — see rozedesk-app/prisma7.config.ts for explanation. */
   return "mysql://build:dummy@localhost:3306/build";
 }
 
