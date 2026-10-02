@@ -17,7 +17,7 @@ builder = "nixpacks"
 #      --accept-data-loss: safe for additive schema changes; remove once you
 #      switch to prisma migrate for production.
 #   2. next start      — serves the app.
-startCommand = "cd rozedesk-app && node_modules/.bin/prisma db push --schema=./prisma/schema.prisma --config=./prisma7.config.ts --url=mysql://root:${MYSQLPASSWORD}@${MYSQLHOST}:3306/${MYSQLDATABASE} --accept-data-loss && node_modules/.bin/next start -p ${PORT:-3000}"
+startCommand = "cd rozedesk-app && node scripts/start.mjs"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"

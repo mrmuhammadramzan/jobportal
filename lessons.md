@@ -410,3 +410,50 @@ If you need a production guard, put it as a pre-flight check in the start script
 not in the config file that is also evaluated during build.
 
 ---
+
+---
+
+## #008 — Shell ${VAR} Expansion Unreliable for DB URL in Railway Start Command
+
+**Date:** 2026-10-02
+**Error:**
+```
+P1013: The provided database string is invalid. empty host in database URL.
+```
+
+### What went wrong
+The start command used shell string interpolation to build the DB URL:
+```bash
+--url=mysql://root:${MYSQLPASSWORD}@${MYSQLHOST}:3306/${MYSQLDATABASE}
+```
+`${MYSQLHOST}` expanded to empty string → `mysql://root:PASSWORD@:3306/DATABASE` →
+Prisma P1013 error.
+
+Root cause: Railway's MySQL plugin vars (`MYSQLHOST`, `MYSQLDATABASE`, etc.) use
+reference syntax (`${{RAILWAY_PRIVATE_DOMAIN}}`) that resolves within the plugin's
+own service scope. The app service receives them, but shell expansion in the nixpacks
+`CMD` layer is unreliable — especially when vars contain special characters or when
+the resolution hasn't completed by the time the shell evaluates the string.
+
+### The correct fix
+Replace the shell one-liner with a **Node.js start script** (`scripts/start.mjs`).
+Node reads `process.env` reliably at runtime — no shell quoting issues, no expansion
+failures, URL-encodes credentials properly, and fails with a clear message if vars
+are missing.
+
+```
+start command: cd rozedesk-app && node scripts/start.mjs
+```
+
+The script:
+1. Reads MYSQLHOST/MYSQLPASSWORD/MYSQLDATABASE from process.env
+2. Builds the URL with encodeURIComponent on credentials (handles special chars)
+3. Runs `prisma db push` via execFileSync (no shell — args passed as array)
+4. Execs `next start` with inherited stdio
+
+### Rule going forward
+**Never build a database URL in a shell start command using ${VAR} interpolation.**
+Shell quoting and expansion is fragile with passwords containing `@`, `#`, `?`, etc.
+Always use a Node.js script that reads process.env and builds URLs programmatically.
+
+---
