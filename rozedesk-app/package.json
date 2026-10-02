@@ -9,11 +9,11 @@
         "dev": "next dev",
         "clean": "node -e \"const fs=require('fs');fs.rmSync('.next',{recursive:true,force:true});console.log('.next cleared');\"",
         "dev:clean": "npm run clean && npm run dev",
-        "build": "prisma generate --schema=../prisma/schema.prisma && next build",
+        "build": "prisma generate --schema=./prisma/schema.prisma && next build",
         "start": "next start",
         "lint": "eslint",
-        "db:push": "node ../node_modules/prisma/build/index.js db push --config ../prisma7.config.ts",
-        "db:generate": "node ../node_modules/prisma/build/index.js generate --config ../prisma7.config.ts"
+        "db:push": "node_modules/.bin/prisma db push --schema=./prisma/schema.prisma",
+        "db:generate": "node_modules/.bin/prisma generate --schema=./prisma/schema.prisma"
     },
     "dependencies": {
         "@pixi/particle-emitter": "5.0.8",

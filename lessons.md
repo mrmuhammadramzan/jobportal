@@ -155,3 +155,80 @@ nixPkgs = ["nodejs_22", "openssl"]
 - `nixpacks.toml` — install changed from `--prefix` to `cd rozedesk-app && npm ci --ignore-engines`; `openssl` restored to nixPkgs
 
 ---
+
+---
+
+## #003 — Prisma 7 Resolves @prisma/client from SCHEMA Location, Not Output Location
+
+**Date:** 2026-10-02
+**Affected files:** `prisma/schema.prisma`, `nixpacks.toml`, `railway.toml`, `rozedesk-app/package.json`, `prisma7.config.ts`
+**Build error:**
+```
+Error: Could not resolve @prisma/client.
+Please try to install it with npm i @prisma/client and rerun npx "prisma generate"
+```
+
+### What went wrong
+`schema.prisma` lived at `/app/prisma/schema.prisma` (monorepo root). All
+dependencies (`@prisma/client`, `prisma` CLI) were installed into
+`rozedesk-app/node_modules/`. Prisma 7's `generate` command resolves
+`@prisma/client` by walking up the directory tree **from the schema file's
+location**, not from the output directory or the CWD where the CLI runs.
+
+```
+Schema at:   /app/prisma/schema.prisma
+Resolution:  /app/prisma/node_modules/ → not found
+             /app/node_modules/         → not found (never installed here)
+             STOPS — @prisma/client never found
+```
+
+`rozedesk-app/node_modules/@prisma/client` is never checked because it is not
+in the parent chain of `/app/prisma/`.
+
+### Why previous cd-fix didn't help
+Changing `npm ci --prefix rozedesk-app` to `cd rozedesk-app && npm ci` fixed
+the install CWD, but Prisma's resolver ignores the process CWD — it uses the
+**schema file's filesystem location** to walk the module tree.
+
+### The correct fix
+Move `schema.prisma` **inside** `rozedesk-app/prisma/schema.prisma` so it is
+co-located with its dependencies. Now Node resolution from the schema walks:
+
+```
+Schema at:   /app/rozedesk-app/prisma/schema.prisma
+Resolution:  /app/rozedesk-app/prisma/node_modules/ → not found
+             /app/rozedesk-app/node_modules/         → FOUND ✓
+```
+
+Update the `output` path in schema from `"../rozedesk-app/src/generated/prisma"`
+to `"../src/generated/prisma"` (same final absolute path, shorter relative hop).
+
+### All config files to update when moving schema
+| File | Old path | New path |
+|---|---|---|
+| `schema.prisma` generator output | `../rozedesk-app/src/generated/prisma` | `../src/generated/prisma` |
+| `nixpacks.toml` build + start | `--schema=../prisma/schema.prisma` | `--schema=./prisma/schema.prisma` |
+| `railway.toml` startCommand | `--schema=../prisma/schema.prisma` | `--schema=./prisma/schema.prisma` |
+| `rozedesk-app/package.json` scripts | `--schema=../prisma/schema.prisma` | `--schema=./prisma/schema.prisma` |
+| `prisma7.config.ts` | `"prisma/schema.prisma"` | `"rozedesk-app/prisma/schema.prisma"` |
+
+### Rules going forward
+1. **In a monorepo, always co-locate `schema.prisma` with the app that owns it.**
+   Prisma resolves `@prisma/client` from the schema file's directory — not from
+   the CWD and not from the output directory.
+2. **Never split the schema from its `node_modules`.** If the schema is outside
+   the app directory, Prisma's module resolution will fail unless you also install
+   deps at the schema's ancestor level.
+3. **When prisma generate fails with "Could not resolve @prisma/client"**, the
+   first thing to check is: where is `schema.prisma`? Where is `node_modules/@prisma/client`?
+   Is the schema's directory in the parent chain of the node_modules directory?
+
+### Files changed
+- `rozedesk-app/prisma/schema.prisma` — created (moved from root `prisma/`)
+- `prisma/schema.prisma` — left in place with redirect comment (ref only)
+- `nixpacks.toml` — schema path updated
+- `railway.toml` — schema path updated
+- `rozedesk-app/package.json` — schema paths updated, db scripts simplified
+- `prisma7.config.ts` — schema path updated
+
+---

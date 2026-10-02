@@ -36,7 +36,7 @@ function resolveDatasourceUrl(): string {
 }
 
 export default defineConfig({
-  schema:     "prisma/schema.prisma",
+  schema:     "rozedesk-app/prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
   datasource: {
     url: resolveDatasourceUrl(),

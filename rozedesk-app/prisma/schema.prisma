@@ -1,7 +1,3 @@
-// MOVED: This schema has moved to rozedesk-app/prisma/schema.prisma
-// All tooling (Railway, nixpacks, prisma7.config.ts) now uses that location.
-// This file is kept only as a reference — do NOT edit it; edit the one in rozedesk-app/prisma/.
-//
 // RozeDesk — Prisma Schema (MySQL / XAMPP)
 // Switched from PostgreSQL to MySQL.
 // MySQL differences:
@@ -11,7 +7,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../rozedesk-app/src/generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
