@@ -84,3 +84,74 @@ hole. All were refactored to call `getJwtSecret()` from `apiAuth.ts`.
 - `src/app/api/admin/signin/route.ts` — uses `getJwtSecret()`
 
 ---
+
+---
+
+## #002 — Prisma Generate Fails: `--prefix` vs Real `cd` in Nixpacks Monorepo
+
+**Date:** 2026-10-01
+**Affected file:** `nixpacks.toml`
+**Build error:**
+```
+Error: Could not resolve @prisma/client.
+Please try to install it with npm i @prisma/client and rerun npx "prisma generate"
+```
+
+### What went wrong
+The nixpacks install phase used `npm ci --prefix rozedesk-app`. This installs
+dependencies into `rozedesk-app/node_modules/` but the **working directory
+remains `/app` (the monorepo root)**. When `prisma generate` then runs as
+`cd rozedesk-app && ./node_modules/.bin/prisma generate --schema=../prisma/schema.prisma`,
+Prisma's generator resolves `@prisma/client` using Node's module resolution
+starting from the schema file's location (`/app/prisma/`), not from
+`rozedesk-app/`. Since `@prisma/client` is only in `rozedesk-app/node_modules/`,
+resolution fails.
+
+```toml
+# ❌ WRONG — --prefix installs deps but leaves CWD at /app
+[phases.install]
+cmds = ["npm ci --prefix rozedesk-app --ignore-engines"]
+```
+
+### Why it failed
+`npm ci --prefix <dir>` is equivalent to `cd <dir> && npm ci` for the install
+itself, but it does **not** persist the working directory for subsequent commands.
+Each nixpacks phase command starts fresh from the WORKDIR (`/app`). So the
+install succeeded, but `prisma generate` ran with a stale CWD context where
+`@prisma/client` wasn't on the Node resolution path.
+
+### The correct fix
+Use a real `cd` inside the install command so the working directory is explicit
+and consistent with the build phase commands:
+
+```toml
+# ✅ CORRECT — cd makes CWD explicit, consistent across all phases
+[phases.install]
+cmds = ["cd rozedesk-app && npm ci --ignore-engines"]
+```
+
+### Second issue: missing `openssl` in nixPkgs
+Prisma's query-engine binary requires OpenSSL at both build and runtime.
+Removing it from `nixPkgs` causes silent failures or binary-not-found errors
+on some Prisma operations. Always include it:
+
+```toml
+# ✅ Always include openssl for Prisma
+[phases.setup]
+nixPkgs = ["nodejs_22", "openssl"]
+```
+
+### Rules going forward
+1. **Never use `npm ci --prefix` in nixpacks** for a monorepo where subsequent
+   commands depend on a consistent CWD. Always use `cd <dir> && npm ci`.
+2. **All nixpacks phases must share the same CWD convention.** If install does
+   `cd rozedesk-app`, then build and start must also `cd rozedesk-app`.
+3. **Always include `openssl` in nixPkgs** for any project using Prisma.
+4. **When a build breaks after a nixpacks.toml change**, compare the working
+   build's Nixpacks plan output vs the failing one — the phase commands shown
+   in the Railway log reveal exactly what changed.
+
+### Files changed
+- `nixpacks.toml` — install changed from `--prefix` to `cd rozedesk-app && npm ci --ignore-engines`; `openssl` restored to nixPkgs
+
+---

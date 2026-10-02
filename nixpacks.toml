@@ -1,13 +1,20 @@
-# nixpacks.toml — Explicit Nixpacks config for Railway deployment
-# DevOps SOP: no guessing — pin versions, declare phases explicitly.
+# nixpacks.toml — Nixpacks build config for Railway deployment
+# Monorepo: prisma/ at root, rozedesk-app/ is the Next.js app.
 #
-# Railway docs: https://nixpacks.com/docs/config
+# KEY RULE: install phase MUST use `cd rozedesk-app && npm ci`, NOT
+# `npm ci --prefix rozedesk-app`. The --prefix flag installs into
+# rozedesk-app/node_modules but leaves CWD at /app (root), so
+# `prisma generate` cannot resolve @prisma/client via Node module
+# resolution from the schema's output path. Using a real `cd` keeps
+# the working directory consistent across install → build phases.
+#
+# openssl is required by Prisma's query-engine binary — always include it.
 
 [phases.setup]
-nixPkgs = ["nodejs_22"]
+nixPkgs = ["nodejs_22", "openssl"]
 
 [phases.install]
-cmds = ["npm ci --prefix rozedesk-app --ignore-engines"]
+cmds = ["cd rozedesk-app && npm ci --ignore-engines"]
 
 [phases.build]
 cmds = [
