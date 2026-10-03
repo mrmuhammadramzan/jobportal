@@ -103,7 +103,7 @@ function createPrismaClient(): PrismaClient {
     user:            cfg.user,
     password:        cfg.password,
     database:        cfg.database,
-    connectionLimit: parseInt(process.env.DB_POOL_SIZE       ?? "5",  10),
+    connectionLimit: parseInt(process.env.DB_POOL_SIZE       ?? "15", 10),
     connectTimeout:  parseInt(process.env.DB_CONNECT_TIMEOUT ?? "10", 10),
   });
 

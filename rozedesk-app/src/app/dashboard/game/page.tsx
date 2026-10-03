@@ -16,8 +16,21 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useToast }          from "@/components/Toast";
 import { GAME }              from "@/lib/gameConstants";
 import { safeFetch, ApiError } from "@/lib/api";
-import FlappyBird            from "./FlappyBird";
+import dynamic               from "next/dynamic";
 import DepositModal          from "@/components/game/DepositModal";
+
+/* FlappyBird uses PixiJS/WebGL — large bundle, client-only.
+   Dynamic import prevents it from being included in the initial JS bundle
+   and avoids SSR errors from WebGL APIs that don't exist server-side.    */
+const FlappyBird = dynamic(() => import("./FlappyBird"), {
+  ssr:     false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center"
+      style={{ background: "rgba(255,255,255,0.02)" }}>
+      <div className="w-6 h-6 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+    </div>
+  ),
+});
 
 /* ── Types ── */
 interface SessionRecord { id:string; wagerAmount:number; finalScore:number; winAmount:number; startedAt:string; }

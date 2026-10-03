@@ -457,3 +457,95 @@ Shell quoting and expansion is fragile with passwords containing `@`, `#`, `?`, 
 Always use a Node.js script that reads process.env and builds URLs programmatically.
 
 ---
+
+---
+
+## #009 — Railway MySQL Plugin Vars Not Shared to App Service Automatically
+
+**Date:** 2026-10-02
+**Error:**
+```
+Error: [start.mjs] No database URL found. Set MYSQLHOST+MYSQLDATABASE, MYSQL_URL, or DATABASE_URL in Railway variables.
+```
+
+### What went wrong
+Railway MySQL plugin defines vars like `MYSQLHOST="${{RAILWAY_PRIVATE_DOMAIN}}"` within
+its own service scope. These are NOT automatically injected into other services.
+The app service container had none of `MYSQLHOST`, `MYSQLDATABASE`, `MYSQL_URL` set —
+all three tiers in `buildMysqlUrl()` failed → threw.
+
+### The correct fix
+In the **app service** Variables tab, add explicit references to the MySQL service:
+```
+MYSQLHOST=${{MySQL.RAILWAY_PRIVATE_DOMAIN}}
+MYSQLPASSWORD=${{MySQL.MYSQL_ROOT_PASSWORD}}
+MYSQLDATABASE=${{MySQL.MYSQL_DATABASE}}
+MYSQLUSER=${{MySQL.MYSQLUSER}}
+MYSQLPORT=3306
+```
+Replace `MySQL` with the actual service name shown in Railway sidebar.
+Railway resolves `${{ServiceName.VAR}}` cross-service references at deploy time.
+
+### Debug pattern added
+Added env var presence logging to `start.mjs` (values masked):
+```
+[start.mjs] DB env check: MYSQLHOST=SET, MYSQLDATABASE=SET, MYSQLPASSWORD=SET, ...
+```
+This makes Railway variable injection failures instantly visible in logs.
+
+### Rule going forward
+**Never assume Railway plugin vars are available in other services.**
+Always explicitly reference them using `${{ServiceName.VAR}}` in the receiving
+service's Variables tab. Add debug logging to start scripts that check env var
+presence so misconfiguration is immediately visible without guessing.
+
+---
+
+---
+
+## #010 — Never Write Bcrypt Hashes from Memory — Always Compute Them
+
+**Date:** 2026-10-03
+**Mistake:** Provided a bcrypt hash written from memory/assumption for a known password.
+Bcrypt hashes are not deterministic across different salts — you cannot write one
+from memory and expect it to verify correctly.
+
+### Rule going forward
+**Always compute bcrypt hashes using the actual bcryptjs package:**
+```bash
+node -e "const b=require('./node_modules/bcryptjs');b.hash('PASSWORD',12).then(h=>console.log(h))"
+```
+Never provide a hash value that wasn't computed right now by running real code.
+A wrong hash causes silent "Incorrect password" failures that are very hard to debug.
+
+---
+
+---
+
+## #011 — Performance Optimization Audit (Oct 2026)
+
+**Date:** 2026-10-03
+**Files changed:** 7
+
+### Issues found and fixed
+
+| # | Issue | Fix | Impact |
+|---|-------|-----|--------|
+| 1 | DB pool default = 5 — too small for 30-60 parallel analytics queries | Default raised to 15 (`DB_POOL_SIZE ?? "15"`) | High |
+| 2 | Analytics route fires 30–60 parallel DB queries with zero caching | 1-min TTL `Map` cache keyed by period+range, evicts stale entries | High |
+| 3 | Applicants route had no pagination, returned full table + base64 receiptUrl | Added `page`/`limit` params (max 100), `receiptUrl` excluded from list | High |
+| 4 | Jobs search had no debounce — every keystroke fired a fetch | 300ms debounce via `useRef` + `clearTimeout` pattern | Medium |
+| 5 | FlappyBird (PixiJS/WebGL) eagerly imported on game page | `dynamic(() => import("./FlappyBird"), { ssr: false })` | Medium |
+| 6 | Wallet route made 4 separate `getIntSetting()` calls (4 round-trips) | Merged into `getIntSettings()` batch getter — 1 `findMany` | Low-Medium |
+| 7 | No Cache-Control headers, no image optimization config | Added `images` config + headers for `/api/jobs`, `/api/admin/analytics`, `/assets/` | Medium |
+
+### Rules going forward
+1. **Always paginate unbounded list endpoints** — never `take: undefined`.
+2. **Always exclude large fields (base64, blobs) from list responses** — return them only from detail endpoints.
+3. **Debounce all search inputs** — minimum 300ms before firing an API call.
+4. **Cache expensive aggregate queries** with a simple TTL Map — no extra dep needed.
+5. **Always `dynamic()` import WebGL/Canvas/heavy libs** with `ssr: false`.
+6. **Batch single-key DB lookups** into `findMany({ where: { key: { in: [...] } } })`.
+7. **Default DB pool size should match your parallel query patterns** — analytics with 30+ parallel queries needs pool ≥ 15.
+
+---

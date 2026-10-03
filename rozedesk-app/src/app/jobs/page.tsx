@@ -5,7 +5,7 @@
  * DRY: NavBar, Footer, Button, Badge — all from components.
  * LESSON: useSearchParams requires Suspense boundary in Next.js 16 for static prerender.
  */
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import NavBar        from "@/components/NavBar";
 import Footer        from "@/components/Footer";
@@ -43,6 +43,7 @@ function JobsPageInner() {
   const [jobs,     setJobs]     = useState<Job[]>([]);
   const [total,    setTotal]    = useState(0);
   const [loading,  setLoading]  = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Sync URL query params on mount */
   useEffect(() => {
@@ -52,22 +53,33 @@ function JobsPageInner() {
     if (c) setCategory(c);
   }, [searchParams]);
 
-  /* Fetch jobs whenever filters change */
+  /* Fetch jobs whenever filters change.
+     Search input is debounced 300ms to avoid a DB hit on every keystroke.
+     Category/location/type/sort changes are instant (button clicks, not typing). */
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (search && search !== "")    params.set("q",        search);
-    if (category !== "All")         params.set("category", category);
-    if (location !== "All")         params.set("location", location);
-    if (jobType  !== "All")         params.set("type",     jobType);
-    params.set("sort",  sortBy);
-    params.set("limit", "50");
+    /* Immediate fetch for non-search filter changes */
+    const DEBOUNCE = 300;
 
-    setLoading(true);
-    fetch(`/api/jobs?${params.toString()}`)
-      .then(r => r.ok ? r.json() : { jobs: [], total: 0 })
-      .then(data => { setJobs(data.jobs ?? []); setTotal(data.total ?? 0); })
-      .catch(() => { setJobs([]); setTotal(0); })
-      .finally(() => setLoading(false));
+    const doFetch = () => {
+      const params = new URLSearchParams();
+      if (search && search !== "")  params.set("q",        search);
+      if (category !== "All")       params.set("category", category);
+      if (location !== "All")       params.set("location", location);
+      if (jobType  !== "All")       params.set("type",     jobType);
+      params.set("sort",  sortBy);
+      params.set("limit", "50");
+
+      setLoading(true);
+      fetch(`/api/jobs?${params.toString()}`)
+        .then(r => r.ok ? r.json() : { jobs: [], total: 0 })
+        .then(data => { setJobs(data.jobs ?? []); setTotal(data.total ?? 0); })
+        .catch(() => { setJobs([]); setTotal(0); })
+        .finally(() => setLoading(false));
+    };
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(doFetch, DEBOUNCE);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search, category, location, jobType, sortBy]);
 
   function formatDate(iso: string) {

@@ -18,6 +18,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/apiAuth";
 
+/* ── 1-minute in-memory cache — eliminates 30-60 parallel DB queries per page load.
+   Analytics data is never real-time critical; 60s staleness is acceptable.
+   Cache is keyed by period+from+to so different date ranges are cached independently.
+   OOP: plain Map acts as a cache store — TTL check on read, no background timer needed. ── */
+interface CacheEntry { data: unknown; expiresAt: number; }
+const analyticsCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS   = 60_000; // 1 minute
+
+function getCached(key: string): unknown | null {
+  const entry = analyticsCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { analyticsCache.delete(key); return null; }
+  return entry.data;
+}
+function setCached(key: string, data: unknown): void {
+  analyticsCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  // Evict stale entries to prevent unbounded Map growth (at most ~10 keys realistically)
+  if (analyticsCache.size > 50) {
+    const now = Date.now();
+    for (const [k, v] of analyticsCache) if (now > v.expiresAt) analyticsCache.delete(k);
+  }
+}
+
 /** Returns { from, to } as Date objects for any period value. */
 function resolveDateRange(
   period: string,
@@ -67,6 +90,11 @@ export async function GET(req: NextRequest) {
     const sp     = req.nextUrl.searchParams;
     const period = sp.get("period") ?? "today";
     const { from, to } = resolveDateRange(period, sp.get("from"), sp.get("to"));
+
+    /* ── Cache key — unique per period + date range ── */
+    const cacheKey = `${period}|${from.toISOString()}|${to.toISOString()}`;
+    const cached = getCached(cacheKey);
+    if (cached) return NextResponse.json(cached);
 
     /* ── KPI counts — both from AND to bounds ── */
     const [listings, applicants, newUsers, revenueAgg] = await Promise.all([
@@ -204,7 +232,7 @@ export async function GET(req: NextRequest) {
       conversionPct: "—",
     }));
 
-    return NextResponse.json({
+    const result = {
       kpi: {
         listings,
         applicants,
@@ -217,7 +245,10 @@ export async function GET(req: NextRequest) {
       chartLabels,
       funnel,
       topJobs: topJobsWithConversion,
-    });
+    };
+
+    setCached(cacheKey, result);
+    return NextResponse.json(result);
 
   } catch (e) {
     if (e instanceof Response) return e;

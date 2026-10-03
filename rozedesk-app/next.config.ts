@@ -24,30 +24,56 @@ const nextConfig: NextConfig = {
    */
 
   /**
+   * Image optimization — Next.js serves WebP/AVIF automatically.
+   * remotePatterns allows <Image> to load from Supabase storage + any https origin.
+   */
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      { protocol: "https", hostname: "**.supabase.co" },
+      { protocol: "https", hostname: "**.supabase.in" },
+      { protocol: "https", hostname: "**" }, // catch-all for job company logos etc.
+    ],
+    minimumCacheTTL: 3600, // cache optimised images for 1 hour
+  },
+
+  /**
    * Security headers — applied to every response.
    * DevOps SOP Hard Rule 4: private by default; no unintentional exposure.
-   * These headers protect against common web vulnerabilities.
    */
   async headers() {
     return [
+      /* ── Global security headers ── */
       {
         source: "/(.*)",
         headers: [
-          /* Prevent clickjacking */
-          { key: "X-Frame-Options",           value: "DENY" },
-          /* Stop MIME-type sniffing */
-          { key: "X-Content-Type-Options",    value: "nosniff" },
-          /* Block reflected XSS */
-          { key: "X-XSS-Protection",          value: "1; mode=block" },
-          /* Restrict referrer info */
-          { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
-          /* Permissions policy — disable unused browser features */
-          { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=()" },
-          /* HSTS — prod only (dev uses http) */
-          ...(isProd ? [{
-            key:   "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          }] : []),
+          { key: "X-Frame-Options",        value: "DENY" },
+          { key: "X-Content-Type-Options",  value: "nosniff" },
+          { key: "X-XSS-Protection",        value: "1; mode=block" },
+          { key: "Referrer-Policy",          value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy",       value: "camera=(), microphone=(), geolocation=()" },
+          ...(isProd ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }] : []),
+        ],
+      },
+      /* ── Public job listings — safe to cache at CDN edge for 60s ── */
+      {
+        source: "/api/jobs",
+        headers: [
+          { key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" },
+        ],
+      },
+      /* ── Admin analytics — private, cache 60s at server only ── */
+      {
+        source: "/api/admin/analytics",
+        headers: [
+          { key: "Cache-Control", value: "private, max-age=60" },
+        ],
+      },
+      /* ── Static public assets — aggressive caching ── */
+      {
+        source: "/assets/(.*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];
