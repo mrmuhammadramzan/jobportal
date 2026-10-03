@@ -28,8 +28,9 @@ import { getAuthUser } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
-const POLL_MS      = parseInt(process.env.NEXT_PUBLIC_SSE_POLL_MS ?? "4000", 10);
-const HEARTBEAT_MS = 25_000; // keep connection alive through proxies
+const POLL_MS      = parseInt(process.env.NEXT_PUBLIC_SSE_POLL_MS ?? "8000", 10); // 8s default — halves DB load vs 4s
+const HEARTBEAT_MS = 25_000;
+const MAX_CONN_MS  = parseInt(process.env.SSE_MAX_CONN_MS ?? "300000", 10); // 5-min max — client reconnects automatically
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req);
@@ -63,6 +64,15 @@ export async function GET(req: NextRequest) {
 
       /* Initial connection ack */
       send("connected", { ts: new Date().toISOString() });
+
+      /* Auto-close after MAX_CONN_MS — client EventSource reconnects automatically.
+         This prevents zombie connections from leaking memory on the 1GB server.   */
+      const maxConnId = setTimeout(() => {
+        closed = true;
+        clearInterval(pollId);
+        clearInterval(heartbeatId);
+        try { controller.close(); } catch { /* already closed */ }
+      }, MAX_CONN_MS);
 
       /* Poll DB for new notifications */
       const pollId = setInterval(async () => {
@@ -103,6 +113,7 @@ export async function GET(req: NextRequest) {
         closed = true;
         clearInterval(pollId);
         clearInterval(heartbeatId);
+        clearTimeout(maxConnId);
         try { controller.close(); } catch { /* already closed */ }
       });
     },
