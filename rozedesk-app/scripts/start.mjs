@@ -26,6 +26,12 @@ const BIN   = path.join(APP, "node_modules/.bin");
 function buildMysqlUrl() {
   const e = process.env;
 
+  // Debug: log which vars are present (values masked for security)
+  const present = ["MYSQLHOST","MYSQLDATABASE","MYSQLPASSWORD","MYSQLUSER","MYSQLPORT","MYSQL_URL","DATABASE_URL"]
+    .map(k => `${k}=${e[k] ? "SET" : "MISSING"}`)
+    .join(", ");
+  console.log(`[start.mjs] DB env check: ${present}`);
+
   /* Tier 1 — Railway individual vars (most specific) */
   if (e.MYSQLHOST && e.MYSQLDATABASE) {
     const user = encodeURIComponent(e.MYSQLUSER     ?? "root");
