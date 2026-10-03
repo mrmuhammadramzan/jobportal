@@ -16,11 +16,12 @@
  *   payout when cashout=false. This prevents a bird that escapes at 5× from
  *   triggering a payout — the client cannot forge a win by sending a high score.
  */
-import { NextRequest, NextResponse }                from "next/server";
-import { db }                                       from "@/lib/db";
-import { requireAuth }                              from "@/lib/apiAuth";
-import { createNotification }                       from "@/lib/notify";
-import { GAME, calculateCrashWin }               from "@/lib/gameConstants";
+import { NextRequest, NextResponse }  from "next/server";
+import { db }                        from "@/lib/db";
+import { requireAuth }               from "@/lib/apiAuth";
+import { createNotification }        from "@/lib/notify";
+import { calculateCrashWin }         from "@/lib/gameConstants";
+import { readLiveWagerLimits }       from "@/lib/gameConfig.server";
 
 /* ── START SESSION ── */
 export async function POST(req: NextRequest) {
@@ -31,14 +32,19 @@ export async function POST(req: NextRequest) {
     if (!wagerAmount || typeof wagerAmount !== "number") {
       return NextResponse.json({ message: "wagerAmount is required." }, { status: 400 });
     }
-    if (wagerAmount < GAME.MIN_WAGER) {
+
+    /* Read live wager limits from DB — never hardcoded constants.
+       Admin changes in /admin/game-settings take effect on the next session start. */
+    const limits = await readLiveWagerLimits();
+
+    if (wagerAmount < limits.minWager) {
       return NextResponse.json({
-        message: `Minimum wager is Rs. ${GAME.MIN_WAGER}.`,
+        message: `Minimum wager is Rs. ${limits.minWager}.`,
       }, { status: 400 });
     }
-    if (wagerAmount > GAME.MAX_WAGER) {
+    if (wagerAmount > limits.maxWager) {
       return NextResponse.json({
-        message: `Maximum wager is Rs. ${GAME.MAX_WAGER}.`,
+        message: `Maximum wager is Rs. ${limits.maxWager}.`,
       }, { status: 400 });
     }
 

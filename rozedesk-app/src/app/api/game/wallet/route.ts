@@ -14,46 +14,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db }                       from "@/lib/db";
 import { requireAuth }               from "@/lib/apiAuth";
-import { GAME }                          from "@/lib/gameConstants";
-import { readLiveGameConfig }              from "@/lib/gameConfig.server";
-
-/** Read multiple integer platform settings in ONE query — DRY, one round-trip. */
-async function getIntSettings(
-  keys: string[],
-  fallbacks: Record<string, number>,
-): Promise<Record<string, number>> {
-  try {
-    const rows = await db.platformSetting.findMany({ where: { key: { in: keys } } });
-    const map: Record<string, number> = {};
-    for (const k of keys) {
-      const row = rows.find(r => r.key === k);
-      const v   = row ? parseInt(row.value, 10) : NaN;
-      map[k]    = isNaN(v) || v < 1 ? fallbacks[k] ?? 0 : v;
-    }
-    return map;
-  } catch {
-    return Object.fromEntries(keys.map(k => [k, fallbacks[k] ?? 0]));
-  }
-}
+import { readLiveGameConfig, readLiveWagerLimits } from "@/lib/gameConfig.server";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = requireAuth(req);
 
-    /* Load limits + wallet + earning config in parallel — Backend SOP §6.
-       Keys MUST use "game." prefix to match what /api/admin/game-settings writes.
-       Old keys "gameMinDeposit" etc. (no dot) never matched → admin changes silently ignored. */
-    const settings = await getIntSettings(
-      ["game.minDeposit", "game.minWager", "game.maxWager", "game.minWithdraw"],
-      {
-        "game.minDeposit":  GAME.MIN_DEPOSIT,
-        "game.minWager":    GAME.MIN_WAGER,
-        "game.maxWager":    GAME.MAX_WAGER,
-        "game.minWithdraw": GAME.MIN_WITHDRAW,
-      },
-    );
-
-    const [liveCfg, wallet] = await Promise.all([
+    /* Load limits + wallet + earning config in parallel */
+    const [settings, liveCfg, wallet] = await Promise.all([
+      readLiveWagerLimits(),
       readLiveGameConfig(),
       db.gameWallet.upsert({
         where:  { userId: auth.id },
@@ -87,10 +56,10 @@ export async function GET(req: NextRequest) {
       deposits:   wallet.deposits,
       sessions:   wallet.sessions,
       totalGames: wallet._count.sessions,
-      minDeposit:  settings["game.minDeposit"],
-      minWager:    settings["game.minWager"],
-      maxWager:    settings["game.maxWager"],
-      minWithdraw: settings["game.minWithdraw"],
+      minDeposit:  settings.minDeposit,
+      minWager:    settings.minWager,
+      maxWager:    settings.maxWager,
+      minWithdraw: settings.minWithdraw,
       /* Live earning config — used by prize preview and wager selector */
       winInterval:       liveCfg.winInterval,
       winPerStep:        liveCfg.winPerStep,
