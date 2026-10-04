@@ -9,6 +9,7 @@
 import React from "react";
 import Logo from "./Logo";
 import { ROUTES } from "@/lib/routes";
+import { GAME }   from "@/lib/gameConstants";
 
 /* Single source of truth for footer columns — DRY Hard Rule 2 */
 const FOOTER_LINKS = {
@@ -75,8 +76,8 @@ export default function Footer() {
           <div className="col-span-2 flex flex-col gap-4">
             <Logo href={ROUTES.home} />
             <p className="text-[var(--text-secondary)] text-[var(--text-sm)] leading-relaxed max-w-xs">
-              HUNT lets you track the eagle and earn real PKR. Secure the bird at the right
-              multiplier. Every 100 score = Rs. 10. Minimum deposit Rs. 120.
+              HUNT lets you track the eagle and earn real PKR. Deposit Rs. {GAME.MIN_DEPOSIT}, watch the
+              multiplier climb, and press SECURE at the right moment. Wager × multiplier is yours.
             </p>
             <div className="flex flex-wrap gap-2 mt-1">
               {SOCIALS.map(s => (

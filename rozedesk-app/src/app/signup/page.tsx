@@ -19,7 +19,7 @@ import FormInput   from "@/components/FormInput";
 import Button      from "@/components/Button";
 import { ROUTES }  from "@/lib/routes";
 import { saveSession } from "@/lib/auth";
-import { BRAND }   from "@/lib/gameConstants";
+import { BRAND, GAME } from "@/lib/gameConstants";
 
 /* ── Types ── */
 interface FormFields {
@@ -239,15 +239,15 @@ function SignUpPageInner() {
 
   return (
     <AuthLayout
-      quote="I registered on Tuesday, deposited Rs. 200, and earned Rs. 60 in my first two games. Genuinely surprised."
+      quote="I registered on Tuesday, deposited Rs. 200, secured at 4× and earned Rs. 800. Withdrew the same day."
       quoteAuthor="Ayesha Malik"
       quoteRole={`Player — ${BRAND.name}`}
       features={[
         "Register free in under 2 minutes",
-        "Deposit Rs. 120 minimum to start",
-        "Earn Rs. 10 for every 100 points",
-        "Score 1,000+ to recover your full wager",
-        "Instant balance updates after each game",
+        `Deposit Rs. ${GAME.MIN_DEPOSIT} minimum to start`,
+        "Watch the eagle fly — multiplier climbs live",
+        "Press SECURE at any moment to lock your win",
+        "Instant balance updates after each hunt",
       ]}
     >
       {/* ── Success state ── */}
@@ -355,7 +355,7 @@ function SignUpPageInner() {
               <svg className="w-3 h-3 text-[var(--color-success)] flex-shrink-0" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M6 1a5 5 0 100 10A5 5 0 006 1zM4.5 6.5l1 1 2.5-2.5-.7-.7-1.8 1.8-.3-.3-.7.7z" clipRule="evenodd" />
               </svg>
-              Free to register · Minimum deposit Rs. 120 · Withdraw anytime
+              Free to register · Minimum deposit Rs. {GAME.MIN_DEPOSIT} · Withdraw anytime
             </p>
           </form>
 

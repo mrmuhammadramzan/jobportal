@@ -54,7 +54,7 @@ import Link         from "next/link";
 import Logo         from "./Logo";
 import ThemeToggle  from "./ThemeToggle";
 import { ROUTES }   from "@/lib/routes";
-import { BRAND }    from "@/lib/gameConstants";
+import { BRAND, GAME } from "@/lib/gameConstants";
 
 interface AuthLayoutProps {
   children:      React.ReactNode;
@@ -65,11 +65,11 @@ interface AuthLayoutProps {
 }
 
 const DEFAULT_FEATURES = [
-  "Deposit Rs. 120 minimum to start",
-  "Play Flappy Bird — tap to fly",
-  "Every 100 points earns Rs. 10",
-  "Score 1,000+ and get your wager back",
-  "Score 1,200+ and earn 20% profit",
+  `Deposit Rs. ${GAME.MIN_DEPOSIT} minimum to start`,
+  "Watch the eagle fly live",
+  "Press SECURE — earn wager × multiplier",
+  "Higher multiplier = bigger reward",
+  "Withdraw anytime via JazzCash or Easypaisa",
 ];
 
 const DEFAULT_QUOTE  = "I deposited Rs. 200, scored 1,400 on my second game, and withdrew Rs. 280 the same day. This is real.";
@@ -159,8 +159,8 @@ export default function AuthLayout({
             </h2>
             <p className="text-base leading-relaxed max-w-sm"
               style={{ color: "rgba(253,240,208,0.72)" }}>
-              Deposit Rs. 120, track the bird, and secure your multiplier before
-              it escapes. Every round is a real payout opportunity.
+              Deposit Rs. {GAME.MIN_DEPOSIT}, watch the eagle fly, and press SECURE before it escapes.
+              Your reward = wager × multiplier. Higher means more.
             </p>
           </div>
           <ul className="flex flex-col gap-3">

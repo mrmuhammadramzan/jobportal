@@ -21,6 +21,7 @@ import ScrollReveal    from "@/components/ScrollReveal";
 import CountUp         from "@/components/CountUp";
 import FAQItem         from "@/components/FAQItem";
 import { ROUTES }      from "@/lib/routes";
+import { GAME }        from "@/lib/gameConstants";
 
 function Icon({ path, className = "w-6 h-6" }: { path: string; className?: string }) {
   return (
@@ -40,7 +41,7 @@ const STATS: Stat[] = [
   { value: 1240,   suffix: "+",   label: "Active Hunters",    description: "Registered and hunting today",        decimals: 0 },
   { value: 385000, suffix: "+",   label: "PKR Paid Out",      description: "Real winnings sent to players",       decimals: 0 },
   { value: 98,     suffix: "%",   label: "Payout Rate",       description: "Approved withdrawals processed",      decimals: 0 },
-  { value: 120,    suffix: " Rs", label: "Min. Deposit",      description: "Start hunting in minutes",            decimals: 0 },
+  { value: GAME.MIN_DEPOSIT, suffix: " Rs", label: "Min. Deposit", description: "Start hunting in minutes",        decimals: 0 },
 ];
 
 interface Step { num: string; title: string; description: string; iconPath: string }
@@ -54,24 +55,24 @@ const STEPS: Step[] = [
   {
     num: "02",
     title: "Deposit & Hunt",
-    description: "Deposit min Rs. 120 via JazzCash or Easypaisa. Pick your wager and start the hunt.",
+    description: `Deposit min Rs. ${GAME.MIN_DEPOSIT} via JazzCash or Easypaisa. Pick your wager and start the hunt.`,
     iconPath: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
   },
   {
     num: "03",
-    title: "Score & Earn",
-    description: "Every 100 score earns Rs. 10. Score 1,000+ to recover your wager. Score 1,200+ for 20% profit.",
+    title: "Secure & Earn",
+    description: "Watch the eagle fly as your multiplier climbs. Press SECURE before it escapes — your wager × multiplier is yours.",
     iconPath: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   },
 ];
 
-interface Milestone { score: string; earn: string; note: string; highlight: boolean }
+interface Milestone { mult: string; earn: string; note: string; highlight: boolean }
 const MILESTONES: Milestone[] = [
-  { score: "100",   earn: "+Rs. 10",         note: "Per milestone",  highlight: false },
-  { score: "200",   earn: "+Rs. 20",         note: "Cumulative",     highlight: false },
-  { score: "500",   earn: "+Rs. 50",         note: "Cumulative",     highlight: false },
-  { score: "1,000", earn: "Full wager back", note: "Break even",     highlight: true  },
-  { score: "1,200", earn: "Wager × 1.2",     note: "20% profit",    highlight: true  },
+  { mult: "1.5×",  earn: "+50% of wager",  note: "Early secure",   highlight: false },
+  { mult: "2×",    earn: "+100% of wager", note: "Double up",      highlight: false },
+  { mult: "3×",    earn: "+200% of wager", note: "Triple threat",  highlight: false },
+  { mult: "5×",    earn: "+400% of wager", note: "High risk",      highlight: true  },
+  { mult: "10×",   earn: "+900% of wager", note: "Eagle's peak",   highlight: true  },
 ];
 
 interface Feature { iconPath: string; title: string; description: string; accentColor: string; badge?: string }
@@ -141,10 +142,10 @@ const TESTIMONIALS: Testimonial[] = [
 interface FAQ { q: string; a: string }
 const FAQS: FAQ[] = [
   { q: "Is HUNT free to join?",            a: "Yes — registration is completely free. You only spend when you deposit and wager on a hunt." },
-  { q: "What is the minimum deposit?",     a: "Minimum deposit is Rs. 120. That's also the minimum wager per hunt. No maximum limit." },
+  { q: "What is the minimum deposit?",     a: `Minimum deposit is Rs. ${GAME.MIN_DEPOSIT}. Minimum wager per hunt is Rs. ${GAME.MIN_WAGER}. No maximum limit.` },
   { q: "How do I deposit?",                a: "Send payment via JazzCash or Easypaisa, screenshot the transaction, upload it in your wallet. Admin verifies — usually within an hour." },
-  { q: "How do I earn money?",             a: "Every 100 score earns Rs. 10. Score 1,000+ to recover your full wager. Score 1,200+ for 20% profit on top." },
-  { q: "What is the multiplier?",          a: "As the eagle flies, a live multiplier climbs. Press SECURE to lock your winnings. If the bird escapes before you act, the round is lost." },
+  { q: "How do I earn money?",             a: "Watch the eagle fly as the multiplier climbs. Press SECURE at any moment — your winnings are wager × multiplier at that instant. The higher the multiplier when you secure, the more you earn." },
+  { q: "What happens if I don't secure?",  a: "If the eagle escapes before you press SECURE, the hunt is lost and your wager is forfeited. Timing is everything." },
   { q: "How do I withdraw?",               a: "Winnings go to your in-app wallet. Contact support to withdraw to JazzCash or Easypaisa." },
 ];
 
@@ -203,7 +204,7 @@ export default function HomePage() {
                 Hunt the Eagle.{" "}
                 <span className="gradient-text">
                   <TypewriterText
-                    words={["Earn Rs. 10 per 100 pts","Secure at the right moment","Score 1,200 for profit","Withdraw anytime"]}
+                    words={["Secure the multiplier","Earn wager × multiplier","Withdraw real PKR","Press SECURE to win"]}
                     speed={60} deleteSpeed={35} pauseTime={2400}
                   />
                 </span>
@@ -212,8 +213,8 @@ export default function HomePage() {
 
             <ScrollReveal direction="up" delay={160}>
               <p className="text-[var(--text-secondary)] text-[clamp(1rem,2.5vw,1.2rem)] leading-relaxed max-w-lg">
-                Deposit Rs. 120, watch the eagle fly, and press SECURE at the perfect multiplier.
-                Score 1,000 to break even. Score 1,200 for 20% profit. Every hunt pays.
+                Deposit Rs. {GAME.MIN_DEPOSIT}, watch the eagle fly, and press SECURE at the perfect multiplier.
+                The higher you wait, the more you earn. Every hunt pays instantly.
               </p>
             </ScrollReveal>
 
@@ -234,10 +235,10 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
                 <span className="text-[var(--text-muted)] font-medium">Prize guide:</span>
                 {[
-                  { label: "100 pts = Rs. 10",      color: "var(--brand-500)"      },
-                  { label: "500 pts = Rs. 50",      color: "var(--fire-400)"       },
-                  { label: "1,000 = wager back",    color: "var(--color-success)"  },
-                  { label: "1,200 = +20% profit",   color: "var(--color-warning)"  },
+                  { label: `Min wager: Rs. ${GAME.MIN_WAGER}`, color: "var(--brand-500)"      },
+                  { label: "2× = double",                       color: "var(--fire-400)"       },
+                  { label: "5× = 5× your wager",               color: "var(--color-success)"  },
+                  { label: "Withdraw anytime",                  color: "var(--color-warning)"  },
                 ].map(chip => (
                   <span key={chip.label}
                     className="px-3 py-1 rounded-full border font-semibold text-[var(--text-secondary)] hover:text-[var(--brand-400)] transition-colors cursor-default"
@@ -252,7 +253,7 @@ export default function HomePage() {
               <p className="text-[var(--text-muted)] text-sm flex items-center gap-2">
                 <Icon path="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                   className="w-4 h-4 text-[var(--color-success)] flex-shrink-0"/>
-                Free to register · Min deposit Rs. 120 · Withdraw anytime
+                Free to register · Min deposit Rs. {GAME.MIN_DEPOSIT} · Withdraw anytime
               </p>
             </ScrollReveal>
           </div>
@@ -303,26 +304,26 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-10">
             <ScrollReveal direction="up">
               <SectionHeader id="earnings-heading" badge="Earn PKR" badgeVariant="brand"
-                heading="Every score milestone earns real money"
-                subheading="Milestones are cumulative — the higher you fly, the more you earn."
+                heading="The higher you secure, the more you earn"
+                subheading="Wager any amount. Press SECURE at any multiplier. Your reward = wager × multiplier."
                 align="center" />
             </ScrollReveal>
             <ScrollReveal direction="up" delay={80}>
               <div className="rounded-[var(--radius-2xl)] overflow-hidden border border-[var(--border-default)] bg-[var(--bg-elevated)]">
                 <div className="grid grid-cols-3 px-5 py-3 border-b border-[var(--border-default)] bg-[var(--bg-surface)]">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Score</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Multiplier</span>
                   <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] text-center">Earn</span>
                   <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] text-right">Note</span>
                 </div>
                 {MILESTONES.map((m, i) => (
-                  <div key={m.score}
+                  <div key={m.mult}
                     className={[
                       "grid grid-cols-3 px-5 py-4 transition-colors",
                       i < MILESTONES.length - 1 ? "border-b border-[var(--border-default)]" : "",
                       m.highlight ? "bg-[color-mix(in_srgb,var(--brand-500)_7%,transparent)]" : "hover:bg-[var(--bg-surface)]",
                     ].join(" ")}>
                     <span className={`font-black tabular-nums text-base ${m.highlight ? "gradient-text" : "text-[var(--text-primary)]"}`}>
-                      {m.score}
+                      {m.mult}
                     </span>
                     <span className="font-bold text-[var(--color-success)] text-center text-base">{m.earn}</span>
                     <span className="text-[var(--text-muted)] text-sm text-right self-center">
@@ -339,7 +340,7 @@ export default function HomePage() {
             </ScrollReveal>
             <ScrollReveal direction="up" delay={160}>
               <p className="text-center text-[var(--text-muted)] text-xs leading-relaxed">
-                Example: Wager Rs. 500, score 1,200 → earn Rs. 120 milestones + Rs. 600 jackpot = Rs. 720 total (Rs. 220 profit).
+                Example: Wager Rs. {GAME.MIN_WAGER}, secure at 3× → earn Rs. {GAME.MIN_WAGER * 3} (Rs. {GAME.MIN_WAGER * 3 - GAME.MIN_WAGER} profit). Secure at 5× → earn Rs. {GAME.MIN_WAGER * 5}.
               </p>
             </ScrollReveal>
           </div>
@@ -465,7 +466,7 @@ export default function HomePage() {
 
             <ScrollReveal direction="up" delay={160}>
               <p className="text-white/80 text-base leading-relaxed max-w-md">
-                Register free, deposit Rs. 120, and secure the eagle for real PKR rewards.
+                Register free, deposit Rs. {GAME.MIN_DEPOSIT}, and secure the eagle for real PKR rewards.
                 Every hunt pays. Every multiplier counts.
               </p>
             </ScrollReveal>
@@ -485,7 +486,7 @@ export default function HomePage() {
 
             <ScrollReveal direction="up" delay={320}>
               <p className="text-white/55 text-xs">
-                No credit card · Minimum deposit Rs. 120 · Withdraw via JazzCash or Easypaisa
+                No credit card · Minimum deposit Rs. {GAME.MIN_DEPOSIT} · Withdraw via JazzCash or Easypaisa
               </p>
             </ScrollReveal>
           </div>
