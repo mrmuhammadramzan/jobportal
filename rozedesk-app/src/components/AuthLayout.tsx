@@ -51,8 +51,6 @@
  */
 import React from "react";
 import Link         from "next/link";
-import Logo         from "./Logo";
-import ThemeToggle  from "./ThemeToggle";
 import { ROUTES }   from "@/lib/routes";
 import { BRAND, GAME } from "@/lib/gameConstants";
 
@@ -72,9 +70,9 @@ const DEFAULT_FEATURES = [
   "Withdraw anytime via JazzCash or Easypaisa",
 ];
 
-const DEFAULT_QUOTE  = "I deposited Rs. 200, scored 1,400 on my second game, and withdrew Rs. 280 the same day. This is real.";
+const DEFAULT_QUOTE  = "I deposited Rs. 200, secured at 4× on my second hunt, and withdrew Rs. 800 the same evening. HUNT is real.";
 const DEFAULT_AUTHOR = "Usman Tariq";
-const DEFAULT_ROLE   = `Player — ${BRAND.name}`;
+const DEFAULT_ROLE   = `Hunter — ${BRAND.name}`;
 
 export default function AuthLayout({
   children,
@@ -211,13 +209,9 @@ export default function AuthLayout({
         className="flex-1 flex flex-col bg-[var(--bg-surface)]"
         style={{ minHeight: "100dvh" }}
       >
-        {/* ── Top bar: mobile logo (left) + ThemeToggle (right) ── */}
+        {/* ── Top bar: mobile logo only — no theme toggle for gaming app ── */}
         <div className="flex items-center justify-between px-4 sm:px-8 pt-5 pb-2">
-          {/*
-           * Mobile logo — only shown when left panel is hidden (< md breakpoint).
-           * Gold-tinted pill keeps the eagle icon legible on both light and dark
-           * right-panel backgrounds. Wordmark uses gradient-text (gold → fire).
-           */}
+          {/* Mobile logo — shown below md breakpoint */}
           <div className="md:hidden flex items-center gap-2">
             <div className="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--bg-elevated)] flex items-center justify-center flex-shrink-0 border border-[var(--border-default)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -227,12 +221,10 @@ export default function AuthLayout({
               <span className="gradient-text">{BRAND.name}</span>
             </span>
           </div>
-
-          {/* On desktop the left panel has the logo — show nothing on the left */}
+          {/* Desktop: left panel has the logo */}
           <div className="hidden md:block" aria-hidden="true" />
-
-          {/* ThemeToggle — top-right, always visible, keyboard accessible */}
-          <ThemeToggle showLabel variant="default" />
+          {/* Empty spacer — keeps layout flex row balanced */}
+          <div />
         </div>
 
         {/* ── Form content — centred ── */}

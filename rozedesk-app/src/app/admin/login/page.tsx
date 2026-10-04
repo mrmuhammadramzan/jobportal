@@ -277,7 +277,7 @@ export default function AdminLoginPage() {
             href={ROUTES.signIn}
             className="text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors"
           >
-            Job seeker sign in →
+            Hunter sign in →
           </a>
         </p>
       </div>

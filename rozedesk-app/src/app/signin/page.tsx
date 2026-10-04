@@ -18,7 +18,7 @@ import FormInput   from "@/components/FormInput";
 import Button      from "@/components/Button";
 import { ROUTES }  from "@/lib/routes";
 import { saveSession } from "@/lib/auth";
-import { BRAND }   from "@/lib/gameConstants";
+import { BRAND, GAME } from "@/lib/gameConstants";
 
 /* ── Types ── */
 interface FormFields { phone: string; password: string; }
@@ -166,15 +166,15 @@ function SignInPageInner() {
 
   return (
     <AuthLayout
-      quote={`I scored 1,200 on my third game and withdrew Rs. 280 that same evening. ${BRAND.name} actually pays.`}
+      quote={`I deposited Rs. 200, secured at 5× on my second hunt, and earned Rs. 1,000. ${BRAND.name} pays instantly.`}
       quoteAuthor="Bilal Hassan"
-      quoteRole={`Player — ${BRAND.name}`}
+      quoteRole={`Hunter — ${BRAND.name}`}
       features={[
-        "Deposit from Rs. 120 to start playing",
-        "Every 100 points earns Rs. 10",
-        "Score 1,000+ to get your full wager back",
-        "Score 1,200+ for 20% profit on your wager",
-        "Withdraw earnings to JazzCash or Easypaisa",
+        `Deposit Rs. ${GAME.MIN_DEPOSIT} to start hunting`,
+        "Watch the eagle fly — multiplier climbs live",
+        "Press SECURE at any moment to lock your win",
+        "Reward = your wager × multiplier",
+        "Withdraw to JazzCash or Easypaisa anytime",
       ]}
     >
       {/* ── Success state ── */}
